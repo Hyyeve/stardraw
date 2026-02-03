@@ -1,10 +1,11 @@
 #include <array>
 #include <format>
-#include <slang-com-ptr.h>
-#include <slang.h>
 #include <unordered_map>
 
+#include <slang-com-ptr.h>
 #include "slang.hpp"
+
+#include <ranges>
 
 namespace stardraw
 {
@@ -195,7 +196,7 @@ namespace stardraw
 
         {
             Slang::ComPtr<slang::IBlob> diagnostics;
-            slang::ProgramLayout* layout = linked_shader->getLayout(target_index, diagnostics.writeRef());
+            slang::ShaderReflection* layout = linked_shader->getLayout(target_index, diagnostics.writeRef());
 
             if (diagnostics)
             {
@@ -203,9 +204,61 @@ namespace stardraw
                 return {status_type::BACKEND_FAILURE, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
 
-            //TODO: extract layout data
+            out_shader_data.reflection_data = layout;
         }
 
         return status_type::SUCCESS;
+    }
+
+    shader_param_location navigate_to_index(const shader_param_location& from, const uint32_t index)
+    {
+        slang::TypeLayoutReflection* element_layout = from.type_layout->getElementTypeLayout();
+        if (element_layout == nullptr) return invalid_location;
+
+        shader_param_location result = from;
+        result.type_layout = element_layout;
+        result.byte_address += index * element_layout->getStride();
+
+        result.binding_index *= from.type_layout->getElementCount();
+        result.binding_index += index;
+
+        return result;
+    }
+
+    shader_param_location navigate(const shader_param_location& from, const char* name_beign, const char* name_end)
+    {
+        const int32_t index = from.type_layout->findFieldIndexByName(name_beign, name_end);
+        if (index < 0) return invalid_location;
+
+        slang::VariableLayoutReflection* field = from.type_layout->getFieldByIndex(index);
+
+        shader_param_location result = from;
+        result.type_layout = field->getTypeLayout();
+        result.byte_address += field->getOffset();
+        result.binding_range += from.type_layout->getFieldBindingRangeOffset(index);
+
+        return result;
+    }
+
+    shader_param_location locate_shader_param(slang::ShaderReflection* shader_layout, const std::string_view& name, const uint32_t index)
+    {
+        auto name_parts = name | std::ranges::views::split('.') | std::ranges::views::drop(1);
+        auto root_name = name.substr(0, name.find_first_of('.'));
+
+        shader_param_location result;
+
+        slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();
+        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(globals->findFieldIndexByName(root_name.data(), root_name.data() + root_name.size()));
+        if (root_param == nullptr) return invalid_location;
+
+        result.type_layout = root_param->getTypeLayout()->getElementTypeLayout();
+        uint32_t descriptorSetIndex = root_param->getOffset(slang::ParameterCategory::RegisterSpace);
+        uint32_t descriptorSetIndex1 = root_param->getOffset(slang::ParameterCategory::DescriptorTableSlot);
+        uint32_t descriptorSetIndex2 = root_param->getOffset(slang::ParameterCategory::SubElementRegisterSpace);
+
+        for (auto elem : name_parts) result = navigate(result, elem.data(), elem.data() + elem.size());
+        if (index != -1u) result = navigate_to_index(result, index);
+
+        return result;
     }
 }

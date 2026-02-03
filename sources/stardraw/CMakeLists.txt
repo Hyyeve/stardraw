@@ -2,10 +2,9 @@ add_library(stardraw STATIC)
 
 target_sources(stardraw PRIVATE
 
-        api/api_impl.cpp
-        api/pipeline.cpp
-
-        api/slang.cpp
+        internal/api_impl.cpp
+        internal/pipeline.cpp
+        internal/slang.cpp
 
         gl45/commands_impl.cpp
         gl45/gl45_impl.hpp gl45/gl45_impl.cpp
@@ -21,7 +20,7 @@ target_sources(stardraw PUBLIC FILE_SET HEADERS BASE_DIRS ${H_SOURCES_ROOT} FILE
         api/descriptors.hpp
         api/commands.hpp
 
-        api/slang.hpp
+        internal/slang.hpp #TEMPORARILY EXPOSED
 )
 
 target_include_directories(stardraw PUBLIC
