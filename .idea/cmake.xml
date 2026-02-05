@@ -2,10 +2,10 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Win64Debug" ENABLED="true" GENERATION_DIR="generated/win64-debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="Clang-64" GENERATION_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=C:\Users\Hyeve\.vcpkg-clion\vcpkg\scripts\buildsystems\vcpkg.cmake" />
-      <configuration PROFILE_NAME="Win64Release" ENABLED="true" GENERATION_DIR="generated/win64-release" CONFIG_NAME="Release" TOOLCHAIN_NAME="Clang-64" GENERATION_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=C:\Users\Hyeve\.vcpkg-clion\vcpkg\scripts\buildsystems\vcpkg.cmake" />
-      <configuration PROFILE_NAME="WSLDebug" ENABLED="true" GENERATION_DIR="generated/wsl-debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="WSL" />
-      <configuration PROFILE_NAME="WSLRelease" ENABLED="true" GENERATION_DIR="generated/wsl-release" CONFIG_NAME="Release" TOOLCHAIN_NAME="WSL" />
+      <configuration PROFILE_NAME="Win64Debug" ENABLED="true" GENERATION_DIR="generated/win64-debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="Clang-64" GENERATION_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" />
+      <configuration PROFILE_NAME="Win64Release" ENABLED="true" GENERATION_DIR="generated/win64-release" CONFIG_NAME="Release" TOOLCHAIN_NAME="Clang-64" GENERATION_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=C:\\vcpkg\scripts\buildsystems\vcpkg.cmake" />
+      <configuration PROFILE_NAME="WSLDebug" ENABLED="false" GENERATION_DIR="generated/wsl-debug" CONFIG_NAME="Debug" TOOLCHAIN_NAME="WSL" />
+      <configuration PROFILE_NAME="WSLRelease" ENABLED="false" GENERATION_DIR="generated/wsl-release" CONFIG_NAME="Release" TOOLCHAIN_NAME="WSL" />
     </configurations>
   </component>
 </project>

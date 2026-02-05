@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/cmake_template.iml" filepath="$PROJECT_DIR$/.idea/cmake_template.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/stardraw.iml" filepath="$PROJECT_DIR$/.idea/stardraw.iml" />
     </modules>
   </component>
 </project>
