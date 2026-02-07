@@ -20,7 +20,7 @@ namespace stardraw
     };
 
     typedef polymorphic_list<command> command_list;
-    typedef std::unique_ptr<const command_list> command_list_ptr;
+    typedef std::unique_ptr<const command_list> command_list_handle;
     typedef polymorphic_list_builder<command> command_list_builder;
 
     enum class draw_mode : uint8_t

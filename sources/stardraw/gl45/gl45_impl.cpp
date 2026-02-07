@@ -98,18 +98,18 @@ namespace stardraw::gl45
     {
         //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
         if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN_NAME;
-        const command_list_ptr& refren = command_lists[std::string(name)];
+        const command_list_handle& refren = command_lists[std::string(name)];
 
         for (const command* cmd : *refren.get())
         {
             const status result = execute_command(cmd);
-            if (is_error_status(result)) return result;
+            if (is_status_error(result)) return result;
         }
 
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_impl::execute_temp_command_buffer(const command_list_ptr commands)
+    [[nodiscard]] status gl45_impl::execute_temp_command_buffer(const command_list_handle commands)
     {
         if (commands.get() == nullptr)
         {
@@ -119,13 +119,13 @@ namespace stardraw::gl45
         for (const command* cmd : *commands)
         {
             const status result = execute_command(cmd);
-            if (is_error_status(result)) return result;
+            if (is_status_error(result)) return result;
         }
 
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_impl::create_command_buffer(const std::string_view& name, command_list_ptr commands)
+    [[nodiscard]] status gl45_impl::create_command_buffer(const std::string_view& name, command_list_handle commands)
     {
         if (command_lists.contains(std::string(name))) return  { status_type::DUPLICATE_NAME, std::format("A command buffer named '{0}' already exists", name) };
         command_lists[std::string(name)] = std::move(commands);
@@ -135,13 +135,13 @@ namespace stardraw::gl45
     [[nodiscard]] status gl45_impl::delete_command_buffer(const std::string_view& name)
     {
         if (!command_lists.contains(std::string(name))) return status_type::NOTHING_TO_DO;
-        command_list_ptr cmd_list = std::move(command_lists[std::string(name)]);
+        command_list_handle cmd_list = std::move(command_lists[std::string(name)]);
         command_lists.erase(std::string(name));
         cmd_list.reset();
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_impl::create_objects(const descriptor_list_ptr descriptors)
+    [[nodiscard]] status gl45_impl::create_objects(const descriptor_list_handle descriptors)
     {
         if (descriptors.get() == nullptr)
         {
@@ -151,7 +151,7 @@ namespace stardraw::gl45
         for (const descriptor* descriptor : *descriptors)
         {
             const status create_status = create_object(descriptor);
-            if (is_error_status(create_status)) return create_status;
+            if (is_status_error(create_status)) return create_status;
         }
 
         return status_type::SUCCESS;
@@ -216,7 +216,7 @@ namespace stardraw::gl45
         if (!buff_state->is_valid())
         {
             delete buff_state;
-            return { status_type::BACKEND_FAILURE, std::format("Attempting to create buffer '{0}' resulted in an invalid buffer", descriptor->identifier().name) };
+            return { status_type::BACKEND_ERROR, std::format("Attempting to create buffer '{0}' resulted in an invalid buffer", descriptor->identifier().name) };
         }
 
         objects[descriptor->identifier().hash] = buff_state;
@@ -230,7 +230,7 @@ namespace stardraw::gl45
         if (vertex_spec->vertex_array_id == 0)
         {
             delete vertex_spec;
-            return { status_type::BACKEND_FAILURE, std::format("Attempting to create vertex specification '{0}' resulted in an invalid buffer", descriptor->identifier().name) };
+            return { status_type::BACKEND_ERROR, std::format("Attempting to create vertex specification '{0}' resulted in an invalid buffer", descriptor->identifier().name) };
         }
 
         const vertex_elements_specification& format = descriptor->format;
@@ -293,7 +293,7 @@ namespace stardraw::gl45
             const buffer_state* buffer_state = buffer_states[vertex_buffer];
             const status attach_status = vertex_spec->attach_vertex_buffer(buffer_slots[vertex_buffer], buffer_state->gl_id(), 0, buffer_strides[buffer_slots[vertex_buffer]]);
 
-            if (is_error_status(attach_status))
+            if (is_status_error(attach_status))
             {
                 delete vertex_spec;
                 return attach_status;
@@ -311,7 +311,7 @@ namespace stardraw::gl45
 
             const status attach_status = vertex_spec->attach_index_buffer(index_buffer_state->gl_id());
 
-            if (is_error_status(attach_status))
+            if (is_status_error(attach_status))
             {
                 delete vertex_spec;
                 return attach_status;
@@ -321,7 +321,7 @@ namespace stardraw::gl45
         if (!vertex_spec->is_valid())
         {
             delete vertex_spec;
-            return { status_type::BACKEND_FAILURE, std::format("Creating vertex specification '{0}' resulted in an invalid object", descriptor->identifier().name)};
+            return { status_type::BACKEND_ERROR, std::format("Creating vertex specification '{0}' resulted in an invalid object", descriptor->identifier().name)};
         }
 
         objects[descriptor->identifier().hash] = vertex_spec;

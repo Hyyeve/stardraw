@@ -120,7 +120,7 @@ namespace stardraw::gl45
 
         GLsizeiptr index_offset_unused;
         status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, false);
-        if (is_error_status(bind_result)) return bind_result;
+        if (is_status_error(bind_result)) return bind_result;
 
         glDrawArraysInstancedBaseInstance(gl_draw_mode(cmd->mode), cmd->start_vertex, cmd->count, cmd->instances, cmd->start_instance);
         return status_type::SUCCESS;
@@ -133,7 +133,7 @@ namespace stardraw::gl45
 
         GLsizeiptr index_offset;
         status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset, true);
-        if (is_error_status(bind_result)) return bind_result;
+        if (is_status_error(bind_result)) return bind_result;
 
         const GLenum index_element_type = gl_index_size(cmd->index_type);
         const uint32_t index_element_size = gl_type_size(index_element_type);
@@ -150,7 +150,7 @@ namespace stardraw::gl45
 
         GLsizeiptr index_offset_unused;
         status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, false);
-        if (is_error_status(bind_result)) return bind_result;
+        if (is_status_error(bind_result)) return bind_result;
 
         glMultiDrawArraysIndirect(gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_source_offset * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
         return status_type::SUCCESS;
@@ -163,7 +163,7 @@ namespace stardraw::gl45
 
         GLsizeiptr index_offset_unused;
         status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, true);
-        if (is_error_status(bind_result)) return bind_result;
+        if (is_status_error(bind_result)) return bind_result;
 
         //NOTE: will not work properly if a streaming buffer is used for indices
 

@@ -8,27 +8,27 @@
 
 namespace stardraw
 {
-    class pipeline;
-    typedef std::unique_ptr<pipeline> pipeline_ptr;
+    class render_context;
+    typedef std::unique_ptr<render_context> render_context_handle;
 
-    class pipeline
+    class render_context
     {
     public:
-        static pipeline_ptr create();
-        ~pipeline();
+        static render_context_handle create();
+        ~render_context();
 
-        pipeline(pipeline& other) = delete;                      //COPY CONSTRUCTOR
-        pipeline(pipeline&& other) = delete;                     //MOVE CONSTRUCTOR
-        pipeline& operator=(pipeline& other) = delete;           //COPY ASSIGNMENT
-        pipeline& operator=(pipeline&& other) noexcept = delete; //MOVE ASSIGNMENT
+        render_context(render_context& other) = delete;                      //COPY CONSTRUCTOR
+        render_context(render_context&& other) = delete;                     //MOVE CONSTRUCTOR
+        render_context& operator=(render_context& other) = delete;           //COPY ASSIGNMENT
+        render_context& operator=(render_context&& other) noexcept = delete; //MOVE ASSIGNMENT
 
         status create_backend(graphics_api api);
 
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) const;
-        [[nodiscard]] status execute_temp_command_buffer(command_list_ptr cmd_list) const;
-        [[nodiscard]] status create_command_buffer(const std::string_view& name, command_list_ptr cmd_list) const;
+        [[nodiscard]] status execute_temp_command_buffer(command_list_handle cmd_list) const;
+        [[nodiscard]] status create_command_buffer(const std::string_view& name, command_list_handle cmd_list) const;
         [[nodiscard]] status delete_command_buffer(const std::string_view& name) const;
-        [[nodiscard]] status create_objects(const descriptor_list_ptr descriptors) const;
+        [[nodiscard]] status create_objects(const descriptor_list_handle descriptors) const;
         [[nodiscard]] status delete_object(const std::string_view& name) const;
 
         [[nodiscard]] signal_status check_signal(const std::string_view& name) const;
@@ -39,7 +39,7 @@ namespace stardraw
         {
             command_list_builder builder;
             (builder.add(std::forward<const command_types&...>(commands)), ...);
-            command_list_ptr list = builder.finish();
+            command_list_handle list = builder.finish();
             return execute_temp_command_buffer(std::move(list));
         }
 
@@ -48,7 +48,7 @@ namespace stardraw
         {
             command_list_builder builder;
             (builder.add(std::forward<const command_types&>(commands)), ...);
-            command_list_ptr list = builder.finish();
+            command_list_handle list = builder.finish();
             return create_command_buffer(name, std::move(list));
         }
 
@@ -57,12 +57,12 @@ namespace stardraw
         {
             descriptor_list_builder builder;
             (builder.add(std::forward<const descriptor_types&>(descriptors)), ...);
-            descriptor_list_ptr list = builder.finish();
+            descriptor_list_handle list = builder.finish();
             return create_objects(std::move(list));
         }
 
     private:
-        pipeline() = default;
+        render_context() = default;
         api_impl* backend = nullptr;
     };
 }

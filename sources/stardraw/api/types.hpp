@@ -24,7 +24,7 @@ namespace stardraw
         ALREADY_INITIALIZED, NOT_INITIALIZED,
         UNKNOWN_SOURCE, UNEXPECTED_NULL, RANGE_OVERFLOW, TIMEOUT,
         DUPLICATE_NAME, UNKNOWN_NAME,
-        BACKEND_FAILURE, BROKEN_SOURCE,
+        BACKEND_ERROR, BROKEN_SOURCE,
     };
 
     struct status
@@ -37,7 +37,7 @@ namespace stardraw
         std::string message;
     };
 
-    inline bool is_error_status(const status& status)
+    inline bool is_status_error(const status& status)
     {
         switch (status.type)
         {

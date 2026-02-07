@@ -86,7 +86,7 @@ namespace stardraw::gl45
         if (main_buff_pointer == nullptr)
         {
             const status map_status = map_main_buffer();
-            if (is_error_status(map_status)) return map_status;
+            if (is_status_error(map_status)) return map_status;
         }
 
         const GLbyte* source_pointer = static_cast<const GLbyte*>(data);
@@ -114,7 +114,7 @@ namespace stardraw::gl45
             {
                 //Still not enough - try and create new staging buffer.
                 const status prepared = prepare_staging_buffer(std::min(bytes * 3, main_buffer_size));
-                if (is_error_status(prepared)) return prepared;
+                if (is_status_error(prepared)) return prepared;
             }
         }
 
@@ -139,14 +139,14 @@ namespace stardraw::gl45
 
         GLuint temp_buffer;
         glCreateBuffers(1, &temp_buffer);
-        if (temp_buffer == 0) return  { status_type::BACKEND_FAILURE, std::format("Unable to create temporary upload destination for buffer '{0}'", buffer_name) };
+        if (temp_buffer == 0) return  { status_type::BACKEND_ERROR, std::format("Unable to create temporary upload destination for buffer '{0}'", buffer_name) };
 
         glNamedBufferStorage(temp_buffer, bytes, nullptr, GL_MAP_WRITE_BIT);
         GLbyte* pointer = static_cast<GLbyte*>(glMapNamedBuffer(temp_buffer, GL_WRITE_ONLY));
         if (pointer == nullptr)
         {
             glDeleteBuffers(1, &temp_buffer);
-            return { status_type::BACKEND_FAILURE, std::format("Unable to write to temporary upload destination for buffer '{0}'", buffer_name) };
+            return { status_type::BACKEND_ERROR, std::format("Unable to write to temporary upload destination for buffer '{0}'", buffer_name) };
         }
 
         memcpy(pointer, data, bytes);
@@ -155,7 +155,7 @@ namespace stardraw::gl45
         if (!unmap_success)
         {
             glDeleteBuffers(1, &temp_buffer);
-            return { status_type::BACKEND_FAILURE, std::format("Unable to write to temporary upload destination for buffer '{0}'", buffer_name) };
+            return { status_type::BACKEND_ERROR, std::format("Unable to write to temporary upload destination for buffer '{0}'", buffer_name) };
         }
 
         const status copy_status = copy_data(temp_buffer, 0, address, bytes);
@@ -217,13 +217,13 @@ namespace stardraw::gl45
         remaining_staging_buffer_space = size;
 
         glCreateBuffers(1, &staging_buffer_id);
-        if (staging_buffer_id == 0) return  { status_type::BACKEND_FAILURE, std::format("Unable to create staging buffer for buffer '{0}'", buffer_name)};
+        if (staging_buffer_id == 0) return  { status_type::BACKEND_ERROR, std::format("Unable to create staging buffer for buffer '{0}'", buffer_name)};
 
         constexpr GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
         glNamedBufferStorage(staging_buffer_id, staging_buffer_size, nullptr, flags);
 
         staging_buff_pointer = glMapNamedBufferRange(staging_buffer_id, 0, staging_buffer_size, flags);
-        if (staging_buffer_id == 0) return { status_type::BACKEND_FAILURE, std::format("Unable to create staging buffer for buffer '{0}'", buffer_name)};
+        if (staging_buffer_id == 0) return { status_type::BACKEND_ERROR, std::format("Unable to create staging buffer for buffer '{0}'", buffer_name)};
 
         return status_type::SUCCESS;
     }
@@ -258,7 +258,7 @@ namespace stardraw::gl45
         if (main_buff_pointer != nullptr) return status_type::NOTHING_TO_DO;
         constexpr GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
         main_buff_pointer = glMapNamedBufferRange(main_buffer_id, 0, main_buffer_size, flags);
-        if (main_buff_pointer == nullptr) return  { status_type::BACKEND_FAILURE, std::format("Unable to write directly to buffer '{0}' (you probably need to create it with the SYSRAM memory hint?)", buffer_name) };
+        if (main_buff_pointer == nullptr) return  { status_type::BACKEND_ERROR, std::format("Unable to write directly to buffer '{0}' (you probably need to create it with the SYSRAM memory hint?)", buffer_name) };
         return status_type::SUCCESS;
     }
 

@@ -18,10 +18,10 @@ namespace stardraw::gl45
 
         [[nodiscard]] status execute_command(const command* cmd) override;
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
-        [[nodiscard]] status execute_temp_command_buffer(command_list_ptr commands) override;
-        [[nodiscard]] status create_command_buffer(const std::string_view& name, command_list_ptr commands) override;
+        [[nodiscard]] status execute_temp_command_buffer(command_list_handle commands) override;
+        [[nodiscard]] status create_command_buffer(const std::string_view& name, command_list_handle commands) override;
         [[nodiscard]] status delete_command_buffer(const std::string_view& name) override;
-        [[nodiscard]] status create_objects(descriptor_list_ptr descriptors) override;
+        [[nodiscard]] status create_objects(descriptor_list_handle descriptors) override;
         [[nodiscard]] status delete_object(const std::string_view& name) override;
         [[nodiscard]] signal_status check_signal(const std::string_view& name) override;
         [[nodiscard]] signal_status wait_signal(const std::string_view& name, uint64_t timeout) override;
@@ -79,7 +79,7 @@ namespace stardraw::gl45
             return find_gl_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
         }
 
-        std::unordered_map<std::string, command_list_ptr> command_lists;
+        std::unordered_map<std::string, command_list_handle> command_lists;
         std::unordered_map<uint64_t, object_state*> objects;
         std::unordered_map<std::string, signal_state> signals;
     };

@@ -28,7 +28,7 @@ namespace stardraw
     }
 
     typedef polymorphic_list<descriptor> descriptor_list;
-    typedef std::unique_ptr<const descriptor_list> descriptor_list_ptr;
+    typedef std::unique_ptr<const descriptor_list> descriptor_list_handle;
     typedef polymorphic_list_builder<descriptor> descriptor_list_builder;
 
     ///NOTE: Buffer memory storage cannot be guarenteed on OpenGL, but SYSRAM guarentees it will be possible to write into the buffer directly.

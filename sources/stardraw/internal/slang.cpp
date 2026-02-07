@@ -33,7 +33,7 @@ namespace stardraw
         if (global_slang_context == nullptr)
         {
             const SlangResult result = slang::createGlobalSession(&global_slang_context);
-            if (SLANG_FAILED(result)) return {status_type::BACKEND_FAILURE, "Slang context creation failed"};
+            if (SLANG_FAILED(result)) return {status_type::BACKEND_ERROR, "Slang context creation failed"};
         }
 
         if (active_slang_session != nullptr)
@@ -43,7 +43,7 @@ namespace stardraw
 
             loaded_modules.clear();
 
-            if (SLANG_FAILED(delete_result)) return {status_type::BACKEND_FAILURE, "Deleting previous slang session failed"};
+            if (SLANG_FAILED(delete_result)) return {status_type::BACKEND_ERROR, "Deleting previous slang session failed"};
         }
 
         std::vector<slang::CompilerOptionEntry> compiler_options;
@@ -83,7 +83,7 @@ namespace stardraw
         session_desc.searchPathCount = search_path_ptrs.size();
 
         const SlangResult session_creation = global_slang_context->createSession(session_desc, &active_slang_session);
-        if (SLANG_FAILED(session_creation)) return {status_type::BACKEND_FAILURE, "Slang session creation failed"};
+        if (SLANG_FAILED(session_creation)) return {status_type::BACKEND_ERROR, "Slang session creation failed"};
 
         return status_type::SUCCESS;
     }
@@ -97,13 +97,13 @@ namespace stardraw
         if (diagnostics)
         {
             std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-            return {status_type::BACKEND_FAILURE, std::format("Slang module loading '{1}' failed with error: '{0}'", msg, name)};
+            return {status_type::BACKEND_ERROR, std::format("Slang module loading '{1}' failed with error: '{0}'", msg, name)};
         }
 
         if (!module)
         {
             std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-            return {status_type::BACKEND_FAILURE, std::format("Slang module '{1}' loading failed with error: '{0}'", msg, name)};
+            return {status_type::BACKEND_ERROR, std::format("Slang module '{1}' loading failed with error: '{0}'", msg, name)};
         }
 
         loaded_modules[std::string(name)] = module;
@@ -121,7 +121,7 @@ namespace stardraw
         Slang::ComPtr<slang::IEntryPoint> slang_entry_point;
 
         const SlangResult found_entry_point = module->findEntryPointByName(entry_point_name.c_str(), slang_entry_point.writeRef());
-        if (SLANG_FAILED(found_entry_point)) return {status_type::BACKEND_FAILURE, std::format("Couldn't find entry point named '{0}' in module '{1}'", entry_point_name, entry_point_module)};
+        if (SLANG_FAILED(found_entry_point)) return {status_type::BACKEND_ERROR, std::format("Couldn't find entry point named '{0}' in module '{1}'", entry_point_name, entry_point_module)};
 
         shader_components.push_back(module);
         shader_components.push_back(slang_entry_point);
@@ -142,7 +142,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_FAILURE, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
         }
 
@@ -155,7 +155,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_FAILURE, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
         }
 
@@ -186,7 +186,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_FAILURE, std::format("Slang shader data for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
 
             out_shader_data.data_size = shader_blob->getBufferSize();
@@ -201,7 +201,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_FAILURE, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
 
             out_shader_data.reflection_data = layout;
