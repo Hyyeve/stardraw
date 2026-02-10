@@ -1,4 +1,5 @@
-#include "gl45_impl.hpp"
+#include "gl45_render_context.hpp"
+#include "gl45_window.hpp"
 
 #include <format>
 
@@ -60,7 +61,105 @@ namespace stardraw::gl45
         return {-1, -1, false, false};
     }
 
-    [[nodiscard]] status gl45_impl::execute_command(const command* cmd)
+    gl45_render_context::gl45_render_context(gl45_window* window) : parent_window(window) {}
+
+    [[nodiscard]] status gl45_render_context::execute_command_buffer(const std::string_view& name)
+    {
+        parent_window->apply_context();
+        //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
+        if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN_NAME;
+        const command_list& refren = command_lists[std::string(name)];
+
+        for (const polymorphic_ptr<command>& cmd : refren)
+        {
+            const status result = execute_command(cmd.ptr());
+            if (is_status_error(result)) return result;
+        }
+
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] status gl45_render_context::execute_temp_command_buffer(const command_list&& commands)
+    {
+        parent_window->apply_context();
+        for (const polymorphic_ptr<command>& cmd : commands)
+        {
+            const status result = execute_command(cmd.ptr());
+            if (is_status_error(result)) return result;
+        }
+
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] status gl45_render_context::create_command_buffer(const std::string_view& name, const command_list&& commands)
+    {
+        if (command_lists.contains(std::string(name))) return  { status_type::DUPLICATE_NAME, std::format("A command buffer named '{0}' already exists", name) };
+        command_lists[std::string(name)] = std::move(commands);
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] status gl45_render_context::delete_command_buffer(const std::string_view& name)
+    {
+        if (!command_lists.contains(std::string(name))) return status_type::NOTHING_TO_DO;
+        command_lists.erase(std::string(name));
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] status gl45_render_context::create_objects(const descriptor_list&& descriptors)
+    {
+        parent_window->apply_context();
+        for (const polymorphic_ptr<descriptor>& descriptor : descriptors)
+        {
+            const status create_status = create_object(descriptor.ptr());
+            if (is_status_error(create_status)) return create_status;
+        }
+
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] status gl45_render_context::delete_object(const std::string_view& name)
+    {
+        const object_identifier identifier = object_identifier(name);
+        if (!objects.contains(identifier.hash)) return status_type::NOTHING_TO_DO;
+
+        const object_state* state = objects[identifier.hash];
+        objects.erase(identifier.hash);
+        delete state;
+
+        return status_type::SUCCESS;
+    }
+
+    [[nodiscard]] signal_status gl45_render_context::check_signal(const std::string_view& name)
+    {
+        return wait_signal(name, 0);
+    }
+
+    [[nodiscard]] signal_status gl45_render_context::wait_signal(const std::string_view& name, const uint64_t timeout)
+    {
+        if (!signals.contains(std::string(name)))
+        {
+            return signal_status::UNKNOWN_SIGNAL;
+        }
+
+        const signal_state& state = signals[std::string(name)];
+        const GLenum status = glClientWaitSync(state.sync_point, 0, timeout);
+        switch (status)
+        {
+            case GL_ALREADY_SIGNALED: return signal_status::SIGNALLED;
+            case GL_TIMEOUT_EXPIRED: return signal_status::TIMED_OUT;
+            case GL_CONDITION_SATISFIED: return signal_status::SIGNALLED;
+            default: return signal_status::NOT_SIGNALLED;
+        }
+    }
+
+    [[nodiscard]] status gl45_render_context::bind_buffer(const object_identifier& source, const GLenum target)
+    {
+        const buffer_state* buffer_state = find_gl_buffer_state(source);
+        if (buffer_state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No buffer with name '{0}' exists in pipeline", source.name) };
+        return buffer_state->bind_to(target);
+    }
+
+    [[nodiscard]] status gl45_render_context::execute_command(const command* cmd)
     {
         if (cmd == nullptr)
         {
@@ -94,112 +193,7 @@ namespace stardraw::gl45
         return{ status_type::UNSUPPORTED, "Unsupported command" };
     }
 
-    [[nodiscard]] status gl45_impl::execute_command_buffer(const std::string_view& name)
-    {
-        //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
-        if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN_NAME;
-        const command_list_handle& refren = command_lists[std::string(name)];
-
-        for (const command* cmd : *refren.get())
-        {
-            const status result = execute_command(cmd);
-            if (is_status_error(result)) return result;
-        }
-
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status gl45_impl::execute_temp_command_buffer(const command_list_handle commands)
-    {
-        if (commands.get() == nullptr)
-        {
-            return { status_type::UNEXPECTED_NULL, "Null command buffer" };
-        }
-
-        for (const command* cmd : *commands)
-        {
-            const status result = execute_command(cmd);
-            if (is_status_error(result)) return result;
-        }
-
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status gl45_impl::create_command_buffer(const std::string_view& name, command_list_handle commands)
-    {
-        if (command_lists.contains(std::string(name))) return  { status_type::DUPLICATE_NAME, std::format("A command buffer named '{0}' already exists", name) };
-        command_lists[std::string(name)] = std::move(commands);
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status gl45_impl::delete_command_buffer(const std::string_view& name)
-    {
-        if (!command_lists.contains(std::string(name))) return status_type::NOTHING_TO_DO;
-        command_list_handle cmd_list = std::move(command_lists[std::string(name)]);
-        command_lists.erase(std::string(name));
-        cmd_list.reset();
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status gl45_impl::create_objects(const descriptor_list_handle descriptors)
-    {
-        if (descriptors.get() == nullptr)
-        {
-            return { status_type::UNEXPECTED_NULL, "Null descriptor list" };
-        }
-
-        for (const descriptor* descriptor : *descriptors)
-        {
-            const status create_status = create_object(descriptor);
-            if (is_status_error(create_status)) return create_status;
-        }
-
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status gl45_impl::delete_object(const std::string_view& name)
-    {
-        const object_identifier identifier = object_identifier(name);
-        if (!objects.contains(identifier.hash)) return status_type::NOTHING_TO_DO;
-
-        const object_state* state = objects[identifier.hash];
-        objects.erase(identifier.hash);
-        delete state;
-
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] signal_status gl45_impl::check_signal(const std::string_view& name)
-    {
-        return wait_signal(name, 0);
-    }
-
-    [[nodiscard]] signal_status gl45_impl::wait_signal(const std::string_view& name, const uint64_t timeout)
-    {
-        if (!signals.contains(std::string(name)))
-        {
-            return signal_status::UNKNOWN_SIGNAL;
-        }
-
-        const signal_state& state = signals[std::string(name)];
-        const GLenum status = glClientWaitSync(state.sync_point, 0, timeout);
-        switch (status)
-        {
-            case GL_ALREADY_SIGNALED: return signal_status::SIGNALLED;
-            case GL_TIMEOUT_EXPIRED: return signal_status::TIMED_OUT;
-            case GL_CONDITION_SATISFIED: return signal_status::SIGNALLED;
-            default: return signal_status::NOT_SIGNALLED;
-        }
-    }
-
-    [[nodiscard]] status gl45_impl::bind_buffer(const object_identifier& source, const GLenum target)
-    {
-        const buffer_state* buffer_state = find_gl_buffer_state(source);
-        if (buffer_state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No buffer with name '{0}' exists in pipeline", source.name) };
-        return buffer_state->bind_to(target);
-    }
-
-    [[nodiscard]] status gl45_impl::create_object(const descriptor* descriptor)
+    [[nodiscard]] status gl45_render_context::create_object(const descriptor* descriptor)
     {
         const descriptor_type type = descriptor->type();
         switch (type)
@@ -210,7 +204,7 @@ namespace stardraw::gl45
         return status_type::UNIMPLEMENTED;
     }
 
-    [[nodiscard]] status gl45_impl::create_buffer_state(const buffer_descriptor* descriptor)
+    [[nodiscard]] status gl45_render_context::create_buffer_state(const buffer_descriptor* descriptor)
     {
         buffer_state* buff_state = new buffer_state(*descriptor);
         if (!buff_state->is_valid())
@@ -224,7 +218,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_impl::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
+    status gl45_render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
     {
         vertex_specification_state* vertex_spec = new vertex_specification_state();
         if (vertex_spec->vertex_array_id == 0)
@@ -329,7 +323,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_impl::bind_vertex_specification_state(const object_identifier& source, GLsizeiptr& out_index_buffer_offset, const bool requires_index_buffer = false)
+    status gl45_render_context::bind_vertex_specification_state(const object_identifier& source, GLsizeiptr& out_index_buffer_offset, const bool requires_index_buffer = false)
     {
         out_index_buffer_offset = 0;
         const vertex_specification_state* state = find_gl_vertex_specification_state(source);

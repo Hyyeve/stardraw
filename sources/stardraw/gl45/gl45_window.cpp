@@ -1,10 +1,12 @@
-#include "gl_45_window.hpp"
+#include "gl45_window.hpp"
 
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
 
+#include "gl45_render_context.hpp"
 
-namespace stardraw
+
+namespace stardraw::gl45
 {
     gl45_window::gl45_window(const window_config& config)
     {
@@ -14,6 +16,7 @@ namespace stardraw
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config.debug_graphics_context);
         create_window(config);
+        context.reset(new gl45_render_context(this));
     }
 
     status gl45_window::set_vsync(const bool sync)
@@ -41,6 +44,11 @@ namespace stardraw
         TracyGpuZone("[Stardraw] Make opengl context active")
         glfwMakeContextCurrent(handle);
         return status_from_last_glfw_error();
+    }
+
+    render_context* gl45_window::get_render_context()
+    {
+        return context.get();
     }
 
     gl45_window::~gl45_window()

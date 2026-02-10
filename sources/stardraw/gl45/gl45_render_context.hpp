@@ -4,30 +4,33 @@
 
 #include "object_states.hpp"
 #include "types.hpp"
-#include "stardraw/api/api_impl.hpp"
 #include "stardraw/api/commands.hpp"
+#include "stardraw/api/render_context.hpp"
 #include "stardraw/api/types.hpp"
 
 namespace stardraw::gl45
 {
-    class gl45_impl final : public api_impl
+    class gl45_window;
+
+    class gl45_render_context final : public render_context
     {
     public:
-        gl45_impl() = default;
-        ~gl45_impl() override = default;
+        explicit gl45_render_context(gl45_window* window);
+        ~gl45_render_context() override = default;
 
-        [[nodiscard]] status execute_command(const command* cmd) override;
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
-        [[nodiscard]] status execute_temp_command_buffer(command_list_handle commands) override;
-        [[nodiscard]] status create_command_buffer(const std::string_view& name, command_list_handle commands) override;
+        [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
+        [[nodiscard]] status create_command_buffer(const std::string_view& name, const command_list&& commands) override;
         [[nodiscard]] status delete_command_buffer(const std::string_view& name) override;
-        [[nodiscard]] status create_objects(descriptor_list_handle descriptors) override;
+        [[nodiscard]] status create_objects(const descriptor_list&& descriptors) override;
         [[nodiscard]] status delete_object(const std::string_view& name) override;
         [[nodiscard]] signal_status check_signal(const std::string_view& name) override;
         [[nodiscard]] signal_status wait_signal(const std::string_view& name, uint64_t timeout) override;
 
     private:
         [[nodiscard]] status bind_buffer(const object_identifier& source, GLenum target);
+
+        [[nodiscard]] status execute_command(const command* cmd);
 
         [[nodiscard]] status execute_draw_cmd(const draw_command* cmd);
         [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
@@ -79,7 +82,8 @@ namespace stardraw::gl45
             return find_gl_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
         }
 
-        std::unordered_map<std::string, command_list_handle> command_lists;
+        gl45_window* parent_window;
+        std::unordered_map<std::string, command_list> command_lists;
         std::unordered_map<uint64_t, object_state*> objects;
         std::unordered_map<std::string, signal_state> signals;
     };

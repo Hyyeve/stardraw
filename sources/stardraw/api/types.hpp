@@ -4,7 +4,7 @@
 #include <string>
 #include <string_view>
 
-#include "polymorphic_list.hpp"
+#include "polymorphic_ptr.hpp"
 
 namespace stardraw
 {

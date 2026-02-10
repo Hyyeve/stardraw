@@ -1,8 +1,7 @@
 #pragma once
-#include <cstdint>
 
-#include "glad/glad.h"
 #include "stardraw/api/descriptors.hpp"
+#include "stardraw/gl45/gl_headers.hpp"
 
 namespace stardraw::gl45
 {

@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 
+#include "stardraw/api/polymorphic_ptr.hpp"
 #include "stardraw/api/types.hpp"
 
 namespace stardraw
@@ -19,9 +20,7 @@ namespace stardraw
         [[nodiscard]] virtual command_type type() const = 0;
     };
 
-    typedef polymorphic_list<command> command_list;
-    typedef std::unique_ptr<const command_list> command_list_handle;
-    typedef polymorphic_list_builder<command> command_list_builder;
+    typedef std::vector<polymorphic_ptr<command>> command_list;
 
     enum class draw_mode : uint8_t
     {

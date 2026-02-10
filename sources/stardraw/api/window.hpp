@@ -3,6 +3,7 @@
 #include <functional>
 #include <string>
 
+#include "render_context.hpp"
 #include "types.hpp"
 
 namespace stardraw
@@ -46,6 +47,7 @@ namespace stardraw
     {
     public:
         static window* create(const window_config& config);
+        virtual render_context* get_render_context() = 0;
 
         //Global functionality
         virtual status set_title(const std::string& title) = 0;
@@ -99,5 +101,7 @@ namespace stardraw
 
     protected:
         virtual ~window() = 0;
+
+        std::unique_ptr<render_context> context;
     };
 }

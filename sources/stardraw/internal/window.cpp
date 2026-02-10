@@ -1,6 +1,6 @@
-#include "stardraw/api/window.hpp"
 
-#include "stardraw/gl45/gl_45_window.hpp"
+#include "stardraw/gl45/gl45_window.hpp"
+#include "stardraw/api/window.hpp"
 
 namespace stardraw
 {
@@ -8,9 +8,8 @@ namespace stardraw
     {
         switch (config.api)
         {
-            case graphics_api::GL45: return new gl45_window(config);
+            case graphics_api::GL45: return new gl45::gl45_window(config);
+            default: return nullptr;
         }
-
-        return nullptr;
     }
 }
