@@ -7,6 +7,7 @@ namespace stardraw
     class glfw_window : public window
     {
     public:
+
         status set_title(const std::string& title) override;
         status set_icon(const uint32_t width, const uint32_t height, void* rgba8_pixels) override;
         status set_cursor_mode(const cursor_mode mode) override;
@@ -50,6 +51,8 @@ namespace stardraw
         void set_redraw_callback(const std::function<void(window* window)> func) override;
 
     protected:
+        glfw_window();
+
         void create_window(const window_config& config); //Handles non-graphics related config settings and initializes the handle and callbacks.
 
         virtual void on_framebuffer_resize(const uint32_t width, const uint32_t height) = 0;

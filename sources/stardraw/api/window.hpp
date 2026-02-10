@@ -46,6 +46,8 @@ namespace stardraw
     class window
     {
     public:
+        virtual ~window() = default;
+
         static window* create(const window_config& config);
         virtual render_context* get_render_context() = 0;
 
@@ -99,8 +101,9 @@ namespace stardraw
         virtual void set_focus_callback(std::function<void(window* window, const bool focused)> func) = 0;
         virtual void set_redraw_callback(std::function<void(window* window)>) = 0;
 
+        virtual void TEMP_UPDATE_WINDOW() = 0;
+
     protected:
-        virtual ~window() = 0;
 
         std::unique_ptr<render_context> context;
     };

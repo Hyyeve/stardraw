@@ -65,7 +65,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status gl45_render_context::execute_command_buffer(const std::string_view& name)
     {
-        parent_window->apply_context();
+        parent_window->make_gl_context_active();
         //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
         if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN_NAME;
         const command_list& refren = command_lists[std::string(name)];
@@ -81,7 +81,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status gl45_render_context::execute_temp_command_buffer(const command_list&& commands)
     {
-        parent_window->apply_context();
+        parent_window->make_gl_context_active();
         for (const polymorphic_ptr<command>& cmd : commands)
         {
             const status result = execute_command(cmd.ptr());
@@ -107,7 +107,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status gl45_render_context::create_objects(const descriptor_list&& descriptors)
     {
-        parent_window->apply_context();
+        parent_window->make_gl_context_active();
         for (const polymorphic_ptr<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());

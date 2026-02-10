@@ -10,12 +10,20 @@ namespace stardraw::gl45
     public:
         explicit gl45_window(const window_config& config);
         status set_vsync(const bool sync) override;
-        status apply_context();
+        status make_gl_context_active();
         render_context* get_render_context() override;
 
         ~gl45_window() override;
 
     private:
         void on_framebuffer_resize(const uint32_t width, const uint32_t height) override;
+
+    public:
+        void TEMP_UPDATE_WINDOW() override
+        {
+            glfwSwapBuffers(handle);
+            glfwPollEvents();
+        }
     };
+
 }

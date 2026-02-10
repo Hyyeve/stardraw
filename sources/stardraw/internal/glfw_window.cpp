@@ -6,6 +6,16 @@
 
 namespace stardraw
 {
+    static bool has_loaded_glfw;
+
+    void check_load_glfw()
+    {
+        if (!has_loaded_glfw)
+        {
+            has_loaded_glfw = (glfwInit() == GLFW_TRUE);
+        }
+    }
+
     status glfw_window::set_title(const std::string& title)
     {
         ZoneScoped;
@@ -293,6 +303,11 @@ namespace stardraw
     void glfw_window::set_redraw_callback(const std::function<void(window* window)> func)
     {
         redraw_callback = func;
+    }
+
+    glfw_window::glfw_window()
+    {
+        check_load_glfw();
     }
 
     void glfw_window::create_window(const window_config& config)

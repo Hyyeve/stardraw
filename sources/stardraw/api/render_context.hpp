@@ -12,7 +12,7 @@ namespace stardraw
     class render_context
     {
     public:
-        virtual ~render_context() = 0;
+        virtual ~render_context() = default;
 
         [[nodiscard]] virtual status execute_command_buffer(const std::string_view& name) = 0;
         [[nodiscard]] virtual status execute_temp_command_buffer(const command_list&& cmd_list) = 0;

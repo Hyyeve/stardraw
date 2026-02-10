@@ -16,7 +16,6 @@ namespace stardraw::gl45
     {
     public:
         explicit gl45_render_context(gl45_window* window);
-        ~gl45_render_context() override = default;
 
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
