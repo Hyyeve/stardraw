@@ -8,9 +8,10 @@ namespace stardraw::gl45
     class gl45_window final : public glfw_window
     {
     public:
-        explicit gl45_window(const window_config& config);
-        status set_vsync(const bool sync) override;
-        status make_gl_context_active();
+        static status create_gl45_window(const window_config& config, window** out_window);
+
+        [[nodiscard]] status set_vsync(const bool sync) override;
+        [[nodiscard]] status make_gl_context_active();
         render_context* get_render_context() override;
 
         ~gl45_window() override;

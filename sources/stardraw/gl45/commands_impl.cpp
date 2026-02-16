@@ -46,18 +46,6 @@ namespace stardraw::gl45
         }
     }
 
-    inline GLenum gl_buffer_attach_point(const buffer_attachment_type attachment)
-    {
-        switch (attachment)
-        {
-            case buffer_attachment_type::SHADER_STORAGE_BLOCK: return GL_SHADER_STORAGE_BUFFER;
-            case buffer_attachment_type::SHADER_UNIFORM_BLOCK: return GL_UNIFORM_BUFFER;
-            case buffer_attachment_type::SHADER_ATOMIC_COUNTER_BLOCK: return GL_ATOMIC_COUNTER_BUFFER;
-        }
-
-        return -1;
-    }
-
     inline void gl_set_flag(const GLenum flag, const bool enable, const GLuint index = 0)
     {
         if (enable)
@@ -112,13 +100,12 @@ namespace stardraw::gl45
         return -1;
     }
 
-    status gl45_render_context::execute_draw_cmd(const draw_command* cmd)
+    status gl45_render_context::execute_draw(const draw_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw cmd");
 
-        GLsizeiptr index_offset_unused;
-        status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, false);
+        status bind_result = bind_draw_specification_state(cmd->draw_specification_identifier, false);
         if (is_status_error(bind_result)) return bind_result;
 
         glDrawArraysInstancedBaseInstance(gl_draw_mode(cmd->mode), cmd->start_vertex, cmd->count, cmd->instances, cmd->start_instance);
@@ -130,14 +117,13 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indexed cmd");
 
-        GLsizeiptr index_offset;
-        status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset, true);
+        status bind_result = bind_draw_specification_state(cmd->draw_specification_identifier, true);
         if (is_status_error(bind_result)) return bind_result;
 
         const GLenum index_element_type = gl_index_size(cmd->index_type);
         const uint32_t index_element_size = gl_type_size(index_element_type);
 
-        glDrawElementsInstancedBaseVertexBaseInstance(gl_draw_mode(cmd->mode), cmd->count, index_element_type, reinterpret_cast<const void*>(cmd->start_index * index_element_size + index_offset), cmd->instances, cmd->vertex_index_offset, cmd->start_instance);
+        glDrawElementsInstancedBaseVertexBaseInstance(gl_draw_mode(cmd->mode), cmd->count, index_element_type, reinterpret_cast<const void*>(cmd->start_index * index_element_size), cmd->instances, cmd->vertex_index_offset, cmd->start_instance);
 
         return status_type::SUCCESS;
     }
@@ -147,11 +133,10 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indirect cmd");
 
-        GLsizeiptr index_offset_unused;
-        status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, false);
+        status bind_result = bind_draw_specification_state(cmd->draw_specification_identifier, false);
         if (is_status_error(bind_result)) return bind_result;
 
-        glMultiDrawArraysIndirect(gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_source_offset * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
+        glMultiDrawArraysIndirect(gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_offset * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
         return status_type::SUCCESS;
     }
 
@@ -160,15 +145,12 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indirect cmd");
 
-        GLsizeiptr index_offset_unused;
-        status bind_result = bind_vertex_specification_state(cmd->vertex_specification_source, index_offset_unused, true);
+        status bind_result = bind_draw_specification_state(cmd->draw_specification_identifier, true);
         if (is_status_error(bind_result)) return bind_result;
-
-        //NOTE: will not work properly if a streaming buffer is used for indices
 
         const GLenum index_element_type = gl_index_size(cmd->index_type);
 
-        glMultiDrawElementsIndirect(gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_source_offset * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
+        glMultiDrawElementsIndirect(gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_offset * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
         return status_type::SUCCESS;
     }
 
@@ -208,18 +190,6 @@ namespace stardraw::gl45
         if (!dest_state->is_in_buffer_range(cmd->dest_address, cmd->bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested copy range is out of range in buffer '{0}'", cmd->dest_identifier.name)};
 
         return dest_state->copy_data(source_state->gl_id(), cmd->source_address, cmd->dest_address, cmd->bytes);
-    }
-
-    status gl45_render_context::execute_buffer_attach(const buffer_attach_command* cmd)
-    {
-        ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute buffer attach cmd");
-
-        const buffer_state* buffer_state = find_gl_buffer_state(cmd->buffer_identifier);
-        if (buffer_state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No buffer with name '{0}' in pipeline", cmd->buffer_identifier.name) };
-        if (!buffer_state->is_valid()) return{ status_type::BROKEN_SOURCE, std::format("Buffer '{0}' is in an invalid state", cmd->buffer_identifier.name) };
-
-        return buffer_state->bind_to_slot(gl_buffer_attach_point(cmd->attachment_type), cmd->attachment_index);
     }
 
     inline GLenum gl_blend_factor(const blending_factor factor)

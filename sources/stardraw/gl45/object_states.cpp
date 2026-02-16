@@ -2,12 +2,13 @@
 
 #include <format>
 
+#include "stardraw/internal/internal_types.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
 namespace stardraw::gl45
 {
-    buffer_state::buffer_state(const buffer_descriptor& desc)
+    buffer_state::buffer_state(const buffer_descriptor& desc, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create buffer object");
@@ -15,12 +16,17 @@ namespace stardraw::gl45
         buffer_name = desc.identifier().name;
 
         glCreateBuffers(1, &main_buffer_id);
-        if (main_buffer_id == 0) return;
+        if (main_buffer_id == 0)
+        {
+            out_status = {status_type::BACKEND_ERROR, std::format("Creating buffer {0} failed", desc.identifier().name)};
+            return;
+        }
 
         const GLbitfield flags = (desc.memory == buffer_memory_storage::SYSRAM) ? GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_WRITE_BIT | GL_CLIENT_STORAGE_BIT : 0;
 
         main_buffer_size = desc.size;
         glNamedBufferStorage(main_buffer_id, main_buffer_size, nullptr, flags);
+        out_status = status_type::SUCCESS;
     }
 
     buffer_state::~buffer_state()
@@ -260,6 +266,247 @@ namespace stardraw::gl45
         main_buff_pointer = glMapNamedBufferRange(main_buffer_id, 0, main_buffer_size, flags);
         if (main_buff_pointer == nullptr) return  { status_type::BACKEND_ERROR, std::format("Unable to write directly to buffer '{0}' (you probably need to create it with the SYSRAM memory hint?)", buffer_name) };
         return status_type::SUCCESS;
+    }
+
+    shader_state::shader_state(const shader_descriptor& desc, status& out_status) {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Create shader object");
+
+        if (desc.cache_ptr != nullptr && desc.cache_size > 0)
+        {
+            out_status = create_from_cache(desc.cache_ptr, desc.cache_size);
+        }
+        else
+        {
+            out_status = create_from_stages(desc.stages);
+        }
+    }
+
+    shader_state::~shader_state() {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Delete shader object")
+        if (!is_valid()) return;
+
+        glDeleteProgram(shader_program_id);
+        shader_program_id = 0;
+    }
+
+    bool shader_state::is_valid() const {
+        return shader_program_id != 0;
+    }
+
+    status shader_state::make_active() const {
+        if (!is_valid()) return {status_type::BACKEND_ERROR, "Shader object not valid!"};
+        glUseProgram(shader_program_id);
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::make_shader_cache(void** cache_ptr, uint64_t& cache_size) const {
+        return store_cache(shader_program_id, cache_ptr, cache_size);
+    }
+
+    descriptor_type shader_state::object_type() const {
+        return descriptor_type::SHADER;
+    }
+
+    status shader_state::create_from_stages(const std::vector<shader_stage>& stages) {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Create shader (from source)");
+
+        std::vector<GLuint> shader_stages;
+        status stages_compile_status = status_type::SUCCESS;
+        for (const shader_stage& stage : stages)
+        {
+            const GLenum shader_type = gl_shader_type(stage.type);
+            if (shader_type == 0)
+            {
+                stages_compile_status = {status_type::BACKEND_ERROR, "A provided shader stage is not supported on this API!"};
+                break;
+            }
+
+            const std::string source = std::string(static_cast<const char*>(stage.program->data));
+            GLuint compiled_stage;
+            const status compile_status = compile_shader_stage(source, shader_type, compiled_stage);
+            if (is_status_error(compile_status))
+            {
+                stages_compile_status = compile_status;
+                break;
+            }
+
+            shader_stages.push_back(compiled_stage);
+        }
+
+        if (is_status_error(stages_compile_status))
+        {
+            for (const GLuint& compiled_stage : shader_stages)
+            {
+                glDeleteShader(compiled_stage);
+            }
+
+            return stages_compile_status;
+        }
+
+        GLuint shader_program;
+        status link_status = link_shader(shader_stages, shader_program);
+
+        for (const GLuint shader : shader_stages)
+        {
+            glDeleteShader(shader);
+        }
+
+        if (is_status_error(link_status)) return link_status;
+
+        shader_program_id = shader_program;
+
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::create_from_cache(const void* data, const uint64_t data_size) {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Create shader (from cache)");
+
+        const void* header_pointer = data;
+        const void* data_pointer = static_cast<const uint8_t*>(header_pointer) + sizeof(cache_header);
+        const cache_header header = *static_cast<const cache_header*>(header_pointer);
+
+        const GLuint program = glCreateProgram();
+        if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
+        glProgramBinary(program, header.format, data_pointer, data_size - sizeof(cache_header));
+
+        status validate_status = validate_program(program);
+
+        if (is_status_error(validate_status))
+        {
+            glDeleteProgram(program);
+            return validate_status;
+        }
+
+        shader_program_id = program;
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::store_cache(const GLuint program_id, void** out_data, uint64_t& out_data_size) {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Write shader binary");
+
+        if (program_id == 0) return {status_type::BACKEND_ERROR, "Invalid shader program"};
+
+        GLint buffer_size = 0;
+        glGetProgramiv(program_id, GL_PROGRAM_BINARY_LENGTH, &buffer_size);
+
+        void* data = malloc(buffer_size + sizeof(cache_header));
+        void* binary_start = static_cast<GLbyte*>(data) + sizeof(cache_header);
+
+        GLint written_length = 0;
+        GLenum written_format = 0;
+
+        glGetProgramBinary(program_id, buffer_size, &written_length, &written_format, binary_start);
+        *static_cast<cache_header*>(data) = cache_header {written_format};
+
+        *out_data = data;
+        out_data_size = buffer_size;
+        return status_type::SUCCESS;
+    }
+
+    GLenum shader_state::gl_shader_type(const shader_stage_type stage) {
+        switch (stage)
+        {
+            case shader_stage_type::VERTEX: return GL_VERTEX_SHADER;
+            case shader_stage_type::TESSELATION_CONTROL: return GL_TESS_CONTROL_SHADER;
+            case shader_stage_type::TESSELATION_EVAL: return GL_TESS_EVALUATION_SHADER;
+            case shader_stage_type::GEOMETRY: return GL_GEOMETRY_SHADER;
+            case shader_stage_type::FRAGMENT: return GL_FRAGMENT_SHADER;
+            case shader_stage_type::COMPUTE: return GL_COMPUTE_SHADER;
+        }
+
+        return 0;
+    }
+
+    status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id) {
+        const GLuint program = glCreateProgram();
+        if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
+
+        for (const GLuint shader : stages)
+        {
+            if (shader != 0) glAttachShader(program, shader);
+        }
+
+        glLinkProgram(program);
+
+        GLint success = GL_TRUE;
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+        if (success != GL_TRUE)
+        {
+            glDeleteProgram(program);
+            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
+        }
+
+        out_shader_id = program;
+
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id) {
+        const GLuint shader = glCreateShader(type);
+        if (shader == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateShader)"};
+
+        const char* c_str = source.c_str();
+        glShaderSource(shader, 1, &c_str, nullptr);
+        glCompileShader(shader);
+
+        GLint success = GL_TRUE;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+        if (success != GL_TRUE)
+        {
+            glDeleteShader(shader);
+            return {status_type::BACKEND_ERROR, std::format("Shader stage compilation failed with error: \n {0}", get_shader_log(shader))};
+        }
+
+        out_shader_id = shader;
+
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::validate_program(const GLuint program) {
+        GLint success = GL_TRUE;
+
+        glValidateProgram(program);
+        glGetProgramiv(program, GL_VALIDATE_STATUS, &success);
+
+        if (success != GL_TRUE)
+        {
+            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
+        }
+
+        return status_type::SUCCESS;
+    }
+
+    std::string shader_state::get_shader_log(const GLuint shader) {
+        int32_t log_length = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+
+        std::string log;
+        log.resize(std::max(log_length, 0));
+
+        glGetShaderInfoLog(shader, log_length, nullptr, log.data());
+        glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+
+        return log;
+    }
+
+    std::string shader_state::get_program_log(const GLuint program) {
+        int32_t log_length = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
+
+        std::string log;
+        log.resize(std::max(log_length, 0));
+
+        glGetProgramInfoLog(program, log_length, nullptr, log.data());
+        glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+
+        return log;
     }
 
     vertex_specification_state::vertex_specification_state()

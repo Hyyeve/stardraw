@@ -15,7 +15,7 @@ namespace stardraw
 
     enum class signal_status : uint8_t
     {
-        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL
+        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
     };
 
     enum class status_type : uint8_t

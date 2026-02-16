@@ -4,6 +4,7 @@ target_sources(stardraw PRIVATE
 
         internal/slang.cpp
         internal/window.cpp
+        internal/shaders.cpp
         internal/glfw_window.hpp internal/glfw_window.cpp
 
         gl45/commands_impl.cpp
@@ -23,8 +24,7 @@ target_sources(stardraw PUBLIC FILE_SET HEADERS BASE_DIRS ${H_SOURCES_ROOT} FILE
         api/descriptors.hpp
         api/commands.hpp
         api/window.hpp
-
-        internal/slang.hpp #TEMPORARILY EXPOSED
+        api/shaders.hpp
 )
 
 target_include_directories(stardraw PRIVATE

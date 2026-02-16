@@ -10,15 +10,16 @@ namespace stardraw::gl45
 {
     static bool has_loaded_glad = false;
 
-    void check_load_glad()
+    bool check_loaded_glad()
     {
         if (!has_loaded_glad)
         {
             has_loaded_glad = (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0);
         }
+        return has_loaded_glad;
     }
 
-    gl45_window::gl45_window(const window_config& config)
+    status gl45_window::create_gl45_window(const window_config& config, window** out_window)
     {
         ZoneScoped;
 
@@ -27,11 +28,36 @@ namespace stardraw::gl45
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config.debug_graphics_context);
 
-        create_window(config);
-        make_gl_context_active();
-        check_load_glad();
+        gl45_window* window = new gl45_window();
+        {
+            status create_status = window->create_window(config);
+            if (is_status_error(create_status))
+            {
+                delete window;
+                return create_status;
+            }
+        }
 
-        context.reset(new gl45_render_context(this));
+        {
+            status context_status = window->make_gl_context_active();
+            if (is_status_error(context_status))
+            {
+                delete window;
+                return context_status;
+            }
+        }
+
+        const bool glad_loaded = check_loaded_glad();
+        if (!glad_loaded)
+        {
+            delete window;
+            return {status_type::BACKEND_ERROR, "Couldn't initialize GLAD" };
+        }
+
+        window->context.reset(new gl45_render_context(window));
+
+        *out_window = window;
+        return status_type::SUCCESS;
     }
 
     status gl45_window::set_vsync(const bool sync)
@@ -73,7 +99,8 @@ namespace stardraw::gl45
 
     void gl45_window::on_framebuffer_resize(const uint32_t width, const uint32_t height)
     {
-        make_gl_context_active();
+        const status context_status = make_gl_context_active();
+        if (is_status_error(context_status)) return;
         glViewport(0, 0, width, height);
     }
 }

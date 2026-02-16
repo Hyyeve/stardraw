@@ -4,6 +4,7 @@
 
 #include "object_states.hpp"
 #include "types.hpp"
+
 #include "stardraw/api/commands.hpp"
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/types.hpp"
@@ -23,22 +24,24 @@ namespace stardraw::gl45
         [[nodiscard]] status delete_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status create_objects(const descriptor_list&& descriptors) override;
         [[nodiscard]] status delete_object(const std::string_view& name) override;
+
         [[nodiscard]] signal_status check_signal(const std::string_view& name) override;
         [[nodiscard]] signal_status wait_signal(const std::string_view& name, uint64_t timeout) override;
+
+        [[nodiscard]] status cache_shader(const std::string_view& name, void** out_cache_ptr, uint64_t& out_cache_size) override;
 
     private:
         [[nodiscard]] status bind_buffer(const object_identifier& source, GLenum target);
 
         [[nodiscard]] status execute_command(const command* cmd);
 
-        [[nodiscard]] status execute_draw_cmd(const draw_command* cmd);
+        [[nodiscard]] status execute_draw(const draw_command* cmd);
         [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
         [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd);
         [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd);
 
         [[nodiscard]] status execute_buffer_upload(const buffer_upload_command* cmd);
         [[nodiscard]] status execute_buffer_copy(const buffer_copy_command* cmd);
-        [[nodiscard]] status execute_buffer_attach(const buffer_attach_command* cmd);
 
         [[nodiscard]] static status execute_config_blending(const config_blending_command* cmd);
         [[nodiscard]] static status execute_config_stencil(const config_stencil_command* cmd);
@@ -52,8 +55,14 @@ namespace stardraw::gl45
         [[nodiscard]] status create_object(const descriptor* descriptor);
 
         [[nodiscard]] status create_buffer_state(const buffer_descriptor* descriptor);
+        [[nodiscard]] status create_shader_state(const shader_descriptor* descriptor);
+
+        [[nodiscard]] status create_shader_specification_state(const shader_specification_descriptor* descriptor);
         [[nodiscard]] status create_vertex_specification_state(const vertex_specification_descriptor* descriptor);
-        [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source, GLsizeiptr& out_index_buffer_offset, bool requires_index_buffer);
+        [[nodiscard]] status create_draw_specification_state(const draw_specification_descriptor* descriptor);
+        [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source, bool requires_index_buffer);
+        [[nodiscard]] status bind_shader_specification_state(const object_identifier& source);
+        [[nodiscard]] status bind_draw_specification_state(const object_identifier& source, bool requres_index_buffer);
 
         template <typename state_type, descriptor_type object_type>
         [[nodiscard]] state_type* find_gl_state(const object_identifier& identifier)
@@ -76,9 +85,24 @@ namespace stardraw::gl45
             return find_gl_state<buffer_state, descriptor_type::BUFFER>(identifier);
         }
 
+        [[nodiscard]] inline shader_state* find_gl_shader_state(const object_identifier& identifier)
+        {
+            return find_gl_state<shader_state, descriptor_type::SHADER>(identifier);
+        }
+
         [[nodiscard]] inline vertex_specification_state* find_gl_vertex_specification_state(const object_identifier& identifier)
         {
             return find_gl_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
+        }
+
+        [[nodiscard]] inline shader_specification_state* find_gl_shader_specification_state(const object_identifier& identifier)
+        {
+            return find_gl_state<shader_specification_state, descriptor_type::SHADER_SPECIFICATION>(identifier);
+        }
+
+        [[nodiscard]] inline draw_specification_state* find_gl_draw_specification_state(const object_identifier& identifier)
+        {
+            return find_gl_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
         }
 
         gl45_window* parent_window;

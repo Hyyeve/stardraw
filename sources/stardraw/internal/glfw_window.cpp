@@ -310,12 +310,18 @@ namespace stardraw
         check_load_glfw();
     }
 
-    void glfw_window::create_window(const window_config& config)
+    status glfw_window::create_window(const window_config& config)
     {
         ZoneScoped;
         glfwWindowHint(GLFW_AUTO_ICONIFY, false);
         glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, config.transparent_framebuffer ? GLFW_TRUE : GLFW_FALSE);
         handle = glfwCreateWindow(config.width, config.height, config.title.c_str(), nullptr, nullptr);
+
+        if (handle == nullptr)
+        {
+            return status_from_last_glfw_error();
+        }
+
         glfwSetWindowUserPointer(handle, this);
 
         glfwSetWindowCloseCallback(handle, close_requested_event);
@@ -326,6 +332,8 @@ namespace stardraw
         glfwSetWindowIconifyCallback(handle, minimized_restored_event);
         glfwSetWindowMaximizeCallback(handle, maximized_restored_event);
         glfwSetFramebufferSizeCallback(handle, framebuffer_resize_event);
+
+        return status_type::SUCCESS;
     }
 
     status glfw_window::status_from_last_glfw_error()

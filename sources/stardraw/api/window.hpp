@@ -48,7 +48,7 @@ namespace stardraw
     public:
         virtual ~window() = default;
 
-        static window* create(const window_config& config);
+        [[nodiscard]] static status create(const window_config& config, window** out_window);
         virtual render_context* get_render_context() = 0;
 
         //Global functionality

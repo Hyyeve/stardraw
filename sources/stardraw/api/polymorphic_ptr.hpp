@@ -6,6 +6,7 @@
 
 namespace stardraw
 {
+    //Wrapper over a value with a polymorphic type
     template <typename base_type>
     class polymorphic_ptr
     {
