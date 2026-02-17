@@ -8,10 +8,10 @@ target_sources(stardraw PRIVATE
         internal/glfw_window.hpp internal/glfw_window.cpp
 
         gl45/commands_impl.cpp
-        gl45/gl45_render_context.hpp gl45/gl45_render_context.cpp
+        gl45/render_context.hpp gl45/render_context.cpp
         gl45/object_states.hpp gl45/object_states.cpp
         gl45/types.hpp
-        gl45/gl45_window.hpp gl45/gl45_window.cpp
+        gl45/window.hpp gl45/window.cpp
 
         vk13/Device.hpp vk13/Device.cpp
         vk13/simple_window.hpp vk13/simple_window.cpp

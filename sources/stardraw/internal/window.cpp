@@ -1,5 +1,5 @@
 
-#include "stardraw/gl45/gl45_window.hpp"
+#include "stardraw/gl45/window.hpp"
 #include "stardraw/api/window.hpp"
 
 namespace stardraw
@@ -8,7 +8,7 @@ namespace stardraw
     {
         switch (config.api)
         {
-            case graphics_api::GL45: return gl45::gl45_window::create_gl45_window(config, out_window);
+            case graphics_api::GL45: return gl45::window::create_gl45_window(config, out_window);
             default: return { status_type::UNSUPPORTED, "Provided graphics api is not supported." };
         }
     }

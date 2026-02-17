@@ -1,6 +1,6 @@
 #include <format>
 
-#include "gl45_render_context.hpp"
+#include "render_context.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -100,7 +100,7 @@ namespace stardraw::gl45
         return -1;
     }
 
-    status gl45_render_context::execute_draw(const draw_command* cmd)
+    status render_context::execute_draw(const draw_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw cmd");
@@ -112,7 +112,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_draw_indexed(const draw_indexed_command* cmd)
+    status render_context::execute_draw_indexed(const draw_indexed_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indexed cmd");
@@ -128,7 +128,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_draw_indirect(const draw_indirect_command* cmd)
+    status render_context::execute_draw_indirect(const draw_indirect_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indirect cmd");
@@ -140,7 +140,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd)
+    status render_context::execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute draw indirect cmd");
@@ -154,7 +154,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_buffer_upload(const buffer_upload_command* cmd)
+    status render_context::execute_buffer_upload(const buffer_upload_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute buffer upload cmd");
@@ -173,7 +173,7 @@ namespace stardraw::gl45
         return  { status_type::UNSUPPORTED, "Uknowmn buffer upload type" };
     }
 
-    status gl45_render_context::execute_buffer_copy(const buffer_copy_command* cmd)
+    status render_context::execute_buffer_copy(const buffer_copy_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute buffer copy cmd");
@@ -232,7 +232,7 @@ namespace stardraw::gl45
     }
 
 
-    status gl45_render_context::execute_config_blending(const config_blending_command* cmd)
+    status render_context::execute_config_blending(const config_blending_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config blending cmd");
@@ -291,7 +291,7 @@ namespace stardraw::gl45
         return -1;
     }
 
-    status gl45_render_context::execute_config_stencil(const config_stencil_command* cmd)
+    status render_context::execute_config_stencil(const config_stencil_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config stencil cmd");
@@ -307,7 +307,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_config_scissor(const config_scissor_command* cmd)
+    status render_context::execute_config_scissor(const config_scissor_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config scissor cmd");
@@ -320,7 +320,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_config_face_cull(const config_face_cull_command* cmd)
+    status render_context::execute_config_face_cull(const config_face_cull_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config face cull cmd");
@@ -337,7 +337,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_config_depth_test(const config_depth_test_command* cmd)
+    status render_context::execute_config_depth_test(const config_depth_test_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config depth test cmd");
@@ -351,7 +351,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_config_depth_range(const config_depth_range_command* cmd)
+    status render_context::execute_config_depth_range(const config_depth_range_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config depth range cmd");
@@ -360,7 +360,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::execute_clear_window(const clear_window_command* cmd)
+    status render_context::execute_clear_window(const clear_window_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute clear window cmd");

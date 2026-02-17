@@ -5,16 +5,16 @@
 
 namespace stardraw::gl45
 {
-    class gl45_window final : public glfw_window
+    class window final : public glfw_window
     {
     public:
-        static status create_gl45_window(const window_config& config, window** out_window);
+        static status create_gl45_window(const window_config& config, stardraw::window** out_window);
 
         [[nodiscard]] status set_vsync(const bool sync) override;
         [[nodiscard]] status make_gl_context_active();
-        render_context* get_render_context() override;
+        stardraw::render_context* get_render_context() override;
 
-        ~gl45_window() override;
+        ~window() override;
 
     private:
         void on_framebuffer_resize(const uint32_t width, const uint32_t height) override;

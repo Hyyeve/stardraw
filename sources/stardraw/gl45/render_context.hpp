@@ -11,12 +11,12 @@
 
 namespace stardraw::gl45
 {
-    class gl45_window;
+    class window;
 
-    class gl45_render_context final : public render_context
+    class render_context final : public stardraw::render_context
     {
     public:
-        explicit gl45_render_context(gl45_window* window);
+        explicit render_context(window* window);
 
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
@@ -105,7 +105,7 @@ namespace stardraw::gl45
             return find_gl_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
         }
 
-        gl45_window* parent_window;
+        window* parent_window;
         std::unordered_map<std::string, command_list> command_lists;
         std::unordered_map<uint64_t, object_state*> objects;
         std::unordered_map<std::string, signal_state> signals;

@@ -126,18 +126,24 @@ namespace stardraw::gl45
     class shader_specification_state final : public object_state
     {
     public:
+        explicit shader_specification_state(const shader_specification_descriptor& desc) : shader(desc.shader), bindings(desc.shader_bindings) {}
+
         [[nodiscard]] descriptor_type object_type() const override
         {
             return descriptor_type::SHADER_SPECIFICATION;
         }
+
+        object_identifier shader;
+        std::vector<shader_data_binding> bindings;
     };
 
     class draw_specification_state final : public object_state
     {
     public:
-        [[nodiscard]] descriptor_type object_type() const override
-        {
-            return descriptor_type::DRAW_SPECIFICATION;
-        }
+        explicit draw_specification_state(const draw_specification_descriptor& descriptor);
+        [[nodiscard]] descriptor_type object_type() const override;
+
+        object_identifier shader_specification;
+        object_identifier vertex_specification;
     };
 }

@@ -310,7 +310,7 @@ namespace stardraw
         check_load_glfw();
     }
 
-    status glfw_window::create_window(const window_config& config)
+    status glfw_window::initialize_window(const window_config& config)
     {
         ZoneScoped;
         glfwWindowHint(GLFW_AUTO_ICONIFY, false);

@@ -1,5 +1,5 @@
-#include "gl45_render_context.hpp"
-#include "gl45_window.hpp"
+#include "render_context.hpp"
+#include "window.hpp"
 
 #include <format>
 
@@ -61,9 +61,9 @@ namespace stardraw::gl45
         return {-1, -1, false, false};
     }
 
-    gl45_render_context::gl45_render_context(gl45_window* window) : parent_window(window) {}
+    render_context::render_context(window* window) : parent_window(window) {}
 
-    [[nodiscard]] status gl45_render_context::execute_command_buffer(const std::string_view& name)
+    [[nodiscard]] status render_context::execute_command_buffer(const std::string_view& name)
     {
         status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return context_status;
@@ -81,7 +81,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_render_context::execute_temp_command_buffer(const command_list&& commands)
+    [[nodiscard]] status render_context::execute_temp_command_buffer(const command_list&& commands)
     {
         status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return context_status;
@@ -95,21 +95,21 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_render_context::create_command_buffer(const std::string_view& name, const command_list&& commands)
+    [[nodiscard]] status render_context::create_command_buffer(const std::string_view& name, const command_list&& commands)
     {
         if (command_lists.contains(std::string(name))) return  { status_type::DUPLICATE_NAME, std::format("A command buffer named '{0}' already exists", name) };
         command_lists[std::string(name)] = commands;
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_render_context::delete_command_buffer(const std::string_view& name)
+    [[nodiscard]] status render_context::delete_command_buffer(const std::string_view& name)
     {
         if (!command_lists.contains(std::string(name))) return status_type::NOTHING_TO_DO;
         command_lists.erase(std::string(name));
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_render_context::create_objects(const descriptor_list&& descriptors)
+    [[nodiscard]] status render_context::create_objects(const descriptor_list&& descriptors)
     {
         status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return context_status;
@@ -123,7 +123,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] status gl45_render_context::delete_object(const std::string_view& name)
+    [[nodiscard]] status render_context::delete_object(const std::string_view& name)
     {
         const object_identifier identifier = object_identifier(name);
         if (!objects.contains(identifier.hash)) return status_type::NOTHING_TO_DO;
@@ -135,12 +135,12 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    [[nodiscard]] signal_status gl45_render_context::check_signal(const std::string_view& name)
+    [[nodiscard]] signal_status render_context::check_signal(const std::string_view& name)
     {
         return wait_signal(name, 0);
     }
 
-    [[nodiscard]] signal_status gl45_render_context::wait_signal(const std::string_view& name, const uint64_t timeout)
+    [[nodiscard]] signal_status render_context::wait_signal(const std::string_view& name, const uint64_t timeout)
     {
         const status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return signal_status::CONTEXT_ERROR;
@@ -161,20 +161,20 @@ namespace stardraw::gl45
         }
     }
 
-    status gl45_render_context::cache_shader(const std::string_view& name, void** out_cache_ptr, uint64_t& out_cache_size)
+    status render_context::cache_shader(const std::string_view& name, void** out_cache_ptr, uint64_t& out_cache_size)
     {
         const shader_state* shader = find_gl_shader_state(object_identifier(name));
         return shader->make_shader_cache(out_cache_ptr, out_cache_size);
     }
 
-    [[nodiscard]] status gl45_render_context::bind_buffer(const object_identifier& source, const GLenum target)
+    [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
     {
         const buffer_state* buffer_state = find_gl_buffer_state(source);
-        if (buffer_state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No buffer with name '{0}' exists in pipeline", source.name) };
+        if (buffer_state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No buffer with name '{0}' exists in context", source.name) };
         return buffer_state->bind_to(target);
     }
 
-    [[nodiscard]] status gl45_render_context::execute_command(const command* cmd)
+    [[nodiscard]] status render_context::execute_command(const command* cmd)
     {
         if (cmd == nullptr)
         {
@@ -207,7 +207,7 @@ namespace stardraw::gl45
         return{ status_type::UNSUPPORTED, "Unsupported command" };
     }
 
-    [[nodiscard]] status gl45_render_context::create_object(const descriptor* descriptor)
+    [[nodiscard]] status render_context::create_object(const descriptor* descriptor)
     {
         if (objects.contains(descriptor->identifier().hash))
         {
@@ -226,7 +226,7 @@ namespace stardraw::gl45
         return status_type::UNIMPLEMENTED;
     }
 
-    [[nodiscard]] status gl45_render_context::create_buffer_state(const buffer_descriptor* descriptor)
+    [[nodiscard]] status render_context::create_buffer_state(const buffer_descriptor* descriptor)
     {
         status create_status = status_type::SUCCESS;
         buffer_state* buffer = new buffer_state(*descriptor, create_status);
@@ -241,7 +241,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::create_shader_state(const shader_descriptor* descriptor)
+    status render_context::create_shader_state(const shader_descriptor* descriptor)
     {
         status shader_create_status = status_type::SUCCESS;
         shader_state* shader = new shader_state(*descriptor, shader_create_status);
@@ -255,12 +255,19 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::create_shader_specification_state(const shader_specification_descriptor* descriptor)
+    status render_context::create_shader_specification_state(const shader_specification_descriptor* descriptor)
     {
-        //TODO
+        shader_specification_state* shader_spec = new shader_specification_state(*descriptor);
+
+        const shader_state* shader = find_gl_shader_state(shader_spec->shader);
+        if (shader == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Referenced shader object '{0}' not found in context", shader_spec->shader.name) };
+        if (!shader->is_valid()) return {status_type::BROKEN_SOURCE, std::format("Shader object '{0}' is in an invalid state", shader_spec->shader.name) };
+
+        objects[descriptor->identifier().hash] = shader_spec;
+        return status_type::SUCCESS;
     }
 
-    status gl45_render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
+    status render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
     {
         vertex_specification_state* vertex_spec = new vertex_specification_state();
         if (vertex_spec->vertex_array_id == 0)
@@ -365,27 +372,60 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status gl45_render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
+    status render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
     {
-        //TODO
+        if (!find_gl_vertex_specification_state(object_identifier(descriptor->vertex_specification)))
+        {
+            return {status_type::UNKNOWN_NAME, std::format("Referenced vertex specification '{0}' not found in context", descriptor->vertex_specification)};
+        }
+
+        if (!find_gl_shader_specification_state(object_identifier(descriptor->shader_specification)))
+        {
+            return {status_type::UNKNOWN_NAME, std::format("Referenced shader specification '{0}' not found in context", descriptor->shader_specification)};
+        }
+
+        //draw specification is a thin wrapper that references shader and vertex specifications
+        objects[descriptor->identifier().hash] = new draw_specification_state(*descriptor);
+        return status_type::SUCCESS;
     }
 
-    status gl45_render_context::bind_vertex_specification_state(const object_identifier& source, const bool requires_index_buffer = false)
+    status render_context::bind_vertex_specification_state(const object_identifier& source, const bool requires_index_buffer = false)
     {
         const vertex_specification_state* state = find_gl_vertex_specification_state(source);
-        if (state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No vertex specification with name '{0}' exists in pipeline", source.name) };
+        if (state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No vertex specification with name '{0}' exists in context", source.name) };
         if (!state->is_valid()) return { status_type::BROKEN_SOURCE, std::format("Vertex specification object '{0}' is in an invalid state", source.name) };
         if (requires_index_buffer && state->index_buffer == 0) return { status_type::BROKEN_SOURCE, std::format("Vertex specification '{0}' does not have an index buffer, cannot be used for indexed drawing", source.name)};
         return state->bind();
     }
 
-    status gl45_render_context::bind_shader_specification_state(const object_identifier& source)
+    status render_context::bind_shader_specification_state(const object_identifier& source)
     {
-        //TODO
+        const shader_specification_state* shader_spec = find_gl_shader_specification_state(source);
+        if (shader_spec == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No shader specification with name '{0}' exists in context", source.name) };
+
+        const shader_state* shader = find_gl_shader_state(shader_spec->shader);
+        if (shader == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Referenced shader object '{0}' not found in context", shader_spec->shader.name) };
+        if (!shader->is_valid()) return {status_type::BROKEN_SOURCE, std::format("Shader object '{0}' is in an invalid state", shader_spec->shader.name) };
+
+        status activate_status = shader->make_active();
+        if (is_status_error(activate_status)) return activate_status;
+
+        //TODO: Shader input bindings
+
+        return status_type::SUCCESS;
     }
 
-    status gl45_render_context::bind_draw_specification_state(const object_identifier& source, bool requres_index_buffer)
+    status render_context::bind_draw_specification_state(const object_identifier& source, const bool requres_index_buffer)
     {
-        //TODO
+        const draw_specification_state* state = find_gl_draw_specification_state(source);
+        if (state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No draw specification with name '{0}' exists in context", source.name) };
+
+        status vertex_specification_bind = bind_vertex_specification_state(state->vertex_specification, requres_index_buffer);
+        if (is_status_error(vertex_specification_bind)) return vertex_specification_bind;
+
+        status shader_specification_bind = bind_shader_specification_state(state->shader_specification);
+        if (is_status_error(shader_specification_bind)) return shader_specification_bind;
+
+        return status_type::SUCCESS;
     }
 }

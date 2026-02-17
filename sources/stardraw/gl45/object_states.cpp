@@ -324,7 +324,7 @@ namespace stardraw::gl45
                 break;
             }
 
-            const std::string source = std::string(static_cast<const char*>(stage.program->data));
+            const std::string source = std::string(std::string_view(static_cast<const char*>(stage.program->data), stage.program->data_size));
             GLuint compiled_stage;
             const status compile_status = compile_shader_stage(source, shader_type, compiled_stage);
             if (is_status_error(compile_status))
@@ -460,8 +460,9 @@ namespace stardraw::gl45
 
         if (success != GL_TRUE)
         {
+            const std::string log = get_shader_log(shader);
             glDeleteShader(shader);
-            return {status_type::BACKEND_ERROR, std::format("Shader stage compilation failed with error: \n {0}", get_shader_log(shader))};
+            return {status_type::BACKEND_ERROR, std::format("Shader stage compilation failed with error: \n {0}", log)};
         }
 
         out_shader_id = shader;
@@ -560,5 +561,10 @@ namespace stardraw::gl45
         glVertexArrayElementBuffer(vertex_array_id, index_buffer_id);
         index_buffer = index_buffer_id;
         return status_type::SUCCESS;
+    }
+
+    draw_specification_state::draw_specification_state(const draw_specification_descriptor& descriptor): shader_specification(descriptor.shader_specification), vertex_specification(descriptor.vertex_specification) {}
+    descriptor_type draw_specification_state::object_type() const {
+        return descriptor_type::DRAW_SPECIFICATION;
     }
 }

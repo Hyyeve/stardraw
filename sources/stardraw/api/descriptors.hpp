@@ -108,7 +108,7 @@ namespace stardraw
 
     struct shader_specification_descriptor final : descriptor
     {
-        shader_specification_descriptor(const std::string_view& name, const std::string_view& shader, const std::vector<shader_data_binding>& shader_bindings) : descriptor(name), shader(shader), shader_bindings(shader_bindings) {}
+        shader_specification_descriptor(const std::string_view& name, const std::string_view& shader, const std::vector<shader_data_binding>& shader_bindings = {}) : descriptor(name), shader(shader), shader_bindings(shader_bindings) {}
 
         [[nodiscard]] descriptor_type type() const override
         {

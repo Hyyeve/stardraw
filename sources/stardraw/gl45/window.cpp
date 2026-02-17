@@ -1,9 +1,10 @@
-#include "gl45_window.hpp"
+#include "window.hpp"
 
+#include <memory>
 #include <tracy/Tracy.hpp>
 #include <tracy/TracyOpenGL.hpp>
 
-#include "gl45_render_context.hpp"
+#include "render_context.hpp"
 
 
 namespace stardraw::gl45
@@ -14,53 +15,50 @@ namespace stardraw::gl45
     {
         if (!has_loaded_glad)
         {
-            has_loaded_glad = (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0);
+            has_loaded_glad = gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
         }
         return has_loaded_glad;
     }
 
-    status gl45_window::create_gl45_window(const window_config& config, window** out_window)
+    status window::create_gl45_window(const window_config& config, stardraw::window** out_window)
     {
         ZoneScoped;
+
+        window* win = new window();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config.debug_graphics_context);
 
-        gl45_window* window = new gl45_window();
+        status create_status = win->initialize_window(config);
+        if (is_status_error(create_status))
         {
-            status create_status = window->create_window(config);
-            if (is_status_error(create_status))
-            {
-                delete window;
-                return create_status;
-            }
+            delete win;
+            return create_status;
         }
 
+        status context_status = win->make_gl_context_active();
+        if (is_status_error(context_status))
         {
-            status context_status = window->make_gl_context_active();
-            if (is_status_error(context_status))
-            {
-                delete window;
-                return context_status;
-            }
+            delete win;
+            return context_status;
         }
 
         const bool glad_loaded = check_loaded_glad();
         if (!glad_loaded)
         {
-            delete window;
-            return {status_type::BACKEND_ERROR, "Couldn't initialize GLAD" };
+            delete win;
+            return {status_type::BACKEND_ERROR, "Couldn't initialize GLAD"};
         }
 
-        window->context.reset(new gl45_render_context(window));
+        win->context = std::make_unique<render_context>(win);
 
-        *out_window = window;
+        *out_window = win;
         return status_type::SUCCESS;
     }
 
-    status gl45_window::set_vsync(const bool sync)
+    status window::set_vsync(const bool sync)
     {
         ZoneScoped;
         status context_status = make_gl_context_active();
@@ -79,7 +77,7 @@ namespace stardraw::gl45
     }
 
     // ReSharper disable once CppMemberFunctionMayBeConst
-    status gl45_window::make_gl_context_active()
+    status window::make_gl_context_active()
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Make opengl context active")
@@ -87,17 +85,17 @@ namespace stardraw::gl45
         return status_from_last_glfw_error();
     }
 
-    render_context* gl45_window::get_render_context()
+    stardraw::render_context* window::get_render_context()
     {
         return context.get();
     }
 
-    gl45_window::~gl45_window()
+    window::~window()
     {
         glfwDestroyWindow(handle);
     }
 
-    void gl45_window::on_framebuffer_resize(const uint32_t width, const uint32_t height)
+    void window::on_framebuffer_resize(const uint32_t width, const uint32_t height)
     {
         const status context_status = make_gl_context_active();
         if (is_status_error(context_status)) return;

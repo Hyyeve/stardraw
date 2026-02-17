@@ -53,7 +53,7 @@ namespace stardraw
     protected:
         glfw_window();
 
-        [[nodiscard]] status create_window(const window_config& config); //Handles non-graphics related config settings and initializes the handle and callbacks.
+        [[nodiscard]] status initialize_window(const window_config& config); //Handles non-graphics related config settings and initializes the handle and callbacks.
 
         virtual void on_framebuffer_resize(const uint32_t width, const uint32_t height) = 0;
 
