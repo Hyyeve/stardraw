@@ -28,6 +28,9 @@ namespace stardraw
 
     [[nodiscard]] status setup_shader_compiler(const std::vector<shader_macro>& macro_defines = {});
     [[nodiscard]] status load_shader_module(const std::string_view& module_name, const std::string_view& source);
+    [[nodiscard]] status load_shader_module(const std::string_view& module_name, const void* cache_ptr, const uint64_t cache_size);
+    [[nodiscard]] status cache_shader_module(const std::string& module_name, void** out_cache_ptr, uint64_t& out_cache_size);
+
     [[nodiscard]] status link_shader(const std::string& shader_name, const std::string& entry_point_module, const std::string& entry_point_name, const std::vector<std::string>& additional_modules = {});
 
     [[nodiscard]] status create_shader_program(const std::string& shader_name, const graphics_api& api, shader_program** out_shader_program);

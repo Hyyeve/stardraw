@@ -161,12 +161,6 @@ namespace stardraw::gl45
         }
     }
 
-    status render_context::cache_shader(const std::string_view& name, void** out_cache_ptr, uint64_t& out_cache_size)
-    {
-        const shader_state* shader = find_gl_shader_state(object_identifier(name));
-        return shader->make_shader_cache(out_cache_ptr, out_cache_size);
-    }
-
     [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
     {
         const buffer_state* buffer_state = find_gl_buffer_state(source);
@@ -189,12 +183,12 @@ namespace stardraw::gl45
             case command_type::DRAW_INDIRECT: return execute_draw_indirect(dynamic_cast<const draw_indirect_command*>(cmd));
             case command_type::DRAW_INDEXED_INDIRECT: return execute_draw_indexed_indirect(dynamic_cast<const draw_indexed_indirect_command*>(cmd));
 
-            case command_type::CONFIG_BLENDING: return execute_config_blending(dynamic_cast<const config_blending_command*>(cmd));
-            case command_type::CONFIG_STENCIL: return execute_config_stencil(dynamic_cast<const config_stencil_command*>(cmd));
-            case command_type::CONFIG_SCISSOR: return execute_config_scissor(dynamic_cast<const config_scissor_command*>(cmd));
-            case command_type::CONFIG_FACE_CULL: return execute_config_face_cull(dynamic_cast<const config_face_cull_command*>(cmd));
-            case command_type::CONFIG_DEPTH_TEST: return execute_config_depth_test(dynamic_cast<const config_depth_test_command*>(cmd));
-            case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const config_depth_range_command*>(cmd));
+            case command_type::CONFIG_BLENDING: return execute_config_blending(dynamic_cast<const blending_config_command*>(cmd));
+            case command_type::CONFIG_STENCIL: return execute_config_stencil(dynamic_cast<const stencil_config_command*>(cmd));
+            case command_type::CONFIG_SCISSOR: return execute_config_scissor(dynamic_cast<const scissor_config_command*>(cmd));
+            case command_type::CONFIG_FACE_CULL: return execute_config_face_cull(dynamic_cast<const face_cull_config_command*>(cmd));
+            case command_type::CONFIG_DEPTH_TEST: return execute_config_depth_test(dynamic_cast<const depth_test_config_command*>(cmd));
+            case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const depth_range_config_command*>(cmd));
 
             case command_type::BUFFER_UPLOAD: return execute_buffer_upload(dynamic_cast<const buffer_upload_command*>(cmd));
             case command_type::BUFFER_COPY: return execute_buffer_copy(dynamic_cast<const buffer_copy_command*>(cmd));
@@ -404,13 +398,25 @@ namespace stardraw::gl45
         if (shader_spec == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No shader specification with name '{0}' exists in context", source.name) };
 
         const shader_state* shader = find_gl_shader_state(shader_spec->shader);
-        if (shader == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Referenced shader object '{0}' not found in context", shader_spec->shader.name) };
-        if (!shader->is_valid()) return {status_type::BROKEN_SOURCE, std::format("Shader object '{0}' is in an invalid state", shader_spec->shader.name) };
+        if (shader == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Referenced shader object '{0}' not found in context (referenced by shader specification '{1}')", shader_spec->shader.name, source.name) };
+        if (!shader->is_valid()) return {status_type::BROKEN_SOURCE, std::format("Shader object '{0}' is in an invalid state (referenced by shader specification '{1}')", shader_spec->shader.name, source.name) };
 
         status activate_status = shader->make_active();
         if (is_status_error(activate_status)) return activate_status;
 
-        //TODO: Shader input bindings
+        for (const shader_data_binding& binding : shader_spec->bindings)
+        {
+            const buffer_state* buffer = find_gl_buffer_state(object_identifier(binding.buffer));
+            if (buffer == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Referenced buffer object '{0}' not found in context (referenced by shader specification '{1}')", binding.buffer, source.name) };
+            if (!buffer->is_valid()) return { status_type::BROKEN_SOURCE, std::format("Buffer object '{0}' is in an invalid state (referenced by shader specification '{1}')", binding.buffer, source.name) };
+
+            shader_state::binding_block_location binding_location {};
+            status has_binding = shader->get_binding_slot(binding.binding, binding_location);
+            if (is_status_error(has_binding)) return has_binding;
+
+            status attach_status = buffer->bind_to_slot(binding_location.type, binding_location.slot);
+            if (is_status_error(attach_status)) return attach_status;
+        }
 
         return status_type::SUCCESS;
     }
@@ -418,7 +424,7 @@ namespace stardraw::gl45
     status render_context::bind_draw_specification_state(const object_identifier& source, const bool requres_index_buffer)
     {
         const draw_specification_state* state = find_gl_draw_specification_state(source);
-        if (state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("No draw specification with name '{0}' exists in context", source.name) };
+        if (state == nullptr) return { status_type::UNKNOWN_SOURCE, std::format("Draw specification object '{0}' not found in context", source.name) };
 
         status vertex_specification_bind = bind_vertex_specification_state(state->vertex_specification, requres_index_buffer);
         if (is_status_error(vertex_specification_bind)) return vertex_specification_bind;

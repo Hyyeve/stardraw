@@ -23,7 +23,5 @@ namespace stardraw
 
         [[nodiscard]] virtual signal_status check_signal(const std::string_view& name) = 0;
         [[nodiscard]] virtual signal_status wait_signal(const std::string_view& name, const uint64_t timeout_nanos) = 0;
-
-        [[nodiscard]] virtual status cache_shader(const std::string_view& name, void** out_cache_data, uint64_t& out_cache_size) = 0;
     };
 }

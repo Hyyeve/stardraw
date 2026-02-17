@@ -64,6 +64,12 @@ namespace stardraw::gl45
     class shader_state final : public object_state
     {
     public:
+        struct binding_block_location
+        {
+            GLenum type; //buffer type: SSBO, UBO, etc
+            GLuint slot;
+        };
+
         explicit shader_state(const shader_descriptor& desc, status& out_status);
 
         ~shader_state() override;
@@ -71,21 +77,12 @@ namespace stardraw::gl45
         [[nodiscard]] bool is_valid() const;
 
         [[nodiscard]] status make_active() const;
-        [[nodiscard]] status make_shader_cache(void** cache_ptr, uint64_t& cache_size) const;
+        [[nodiscard]] status get_binding_slot(const std::string_view& name, ::stardraw::gl45::shader_state::binding_block_location& out_location) const;
 
         [[nodiscard]] descriptor_type object_type() const override;
 
     private:
-
-        struct cache_header
-        {
-            GLenum format;
-        };
-
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);
-        [[nodiscard]] status create_from_cache(const void* data, const uint64_t data_size);
-
-        [[nodiscard]] static status store_cache(const GLuint program_id, void** out_data, uint64_t& out_data_size);
 
         [[nodiscard]] static GLenum gl_shader_type(shader_stage_type stage);
 
@@ -94,10 +91,13 @@ namespace stardraw::gl45
 
         [[nodiscard]] static status validate_program(const GLuint program);
 
+        [[nodiscard]] status load_interface_locations(const shader_stage& stage);
+
         [[nodiscard]] static std::string get_shader_log(const GLuint shader);
         [[nodiscard]] static std::string get_program_log(const GLuint program);
 
         GLuint shader_program_id = 0;
+        std::unordered_map<std::string, binding_block_location> binding_block_locations;
     };
 
     class vertex_specification_state final : public object_state

@@ -1,60 +1,23 @@
 #include <array>
-#include <utility>
+#include <filesystem>
+#include <fstream>
 
 #include "stardraw/api/shaders.hpp"
 #include "stardraw/api/window.hpp"
-#include "stardraw/internal/slang.hpp"
 using namespace stardraw;
 
-const std::string SLANG_TXT =
-    "struct VertexIn\n"
-    "{\n"
-    "    float3	position : POSITION;\n"
-    "    float4	color    : COLOR;\n"
-    "};\n"
-    " \n"
-    "struct FragmentIn\n"
-    "{\n"
-    "    float4 color;\n"
-    "};\n"
-    " \n"
-    "struct VertexOut\n"
-    "{\n"
-    "    FragmentIn frag_data : FragmentIn;\n"
-    "    float4 position : SV_Position;\n"
-    "};\n"
-    " \n"
-    "struct FragmentOut\n"
-    "{\n"
-    "    float4 color;\n"
-    "};\n"
-    " \n"
-    "[shader(\"vertex\")]\n"
-    "VertexOut vertexMain(VertexIn data)\n"
-    "{\n"
-    "    VertexOut output;\n"
-    " \n"
-    "    let vertex_pos = float4(data.position, 1.0);\n"
-    "\n"
-    "    output.frag_data.color = data.color;\n"
-    "    output.position = vertex_pos;\n"
-    " \n"
-    "    return output;\n"
-    "}\n"
-    " \n"
-    "[shader(\"fragment\")]\n"
-    "FragmentOut fragmentMain(FragmentIn data : FragmentIn) : SV_Target\n"
-    "{\n"
-    "    FragmentOut output;\n"
-    "    output.color = data.color;\n"
-    "    return output;\n"
-    "}";
+shader_buffer_layout* uniforms_layout;
 
 std::vector<shader_stage> load_shader()
 {
+    const std::filesystem::path path = "shader.slang";
+    std::ifstream file(path, std::ios::in);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
+
     status init_status = stardraw::setup_shader_compiler();
-    std::string slang_source = SLANG_TXT;
-    status load_status = stardraw::load_shader_module("basic", slang_source);
+    status load_status = stardraw::load_shader_module("basic", buffer.str());
     status link_status_vtx = stardraw::link_shader("basic_pos_col_vtx", "basic", "vertexMain");
     status link_status_frg = stardraw::link_shader("basic_pos_col_frg", "basic", "fragmentMain");
 
@@ -63,6 +26,8 @@ std::vector<shader_stage> load_shader()
 
     shader_program* frg_shader;
     status frg_load_status = stardraw::create_shader_program("basic_pos_col_frg", graphics_api::GL45, &frg_shader);
+
+    status layout_create = stardraw::create_shader_buffer_layout(frg_shader, "uniforms", &uniforms_layout);
 
     return {{shader_stage_type::VERTEX, vtx_shader}, {shader_stage_type::FRAGMENT, frg_shader}};
 }
@@ -73,10 +38,20 @@ struct vertex
     float color[4];
 };
 
+struct uniform_block
+{
+    float tint[4];
+    float additive[3];
+};
+
 std::array triangle = {
     vertex {-1, -1, 0, 1, 0, 0, 1},
     vertex {1, -1, 0, 0, 1, 0, 1},
     vertex {0, 1, 0, 0, 0, 1, 1}
+};
+
+uniform_block uniforms = {
+    1, 1.0f, 1, 0.5f, 0.2, 0.2, 0.2
 };
 
 int main()
@@ -111,9 +86,15 @@ int main()
         }
     );
 
-    status upload_status = ctx->execute_temp_command_buffer({
+    void* uniform_mem = layout_shader_buffer_memory(uniforms_layout, &uniforms, sizeof(uniform_block));
+
+    status init_status = ctx->execute_temp_command_buffer({
         buffer_upload_command("vertices", 0, sizeof(vertex) * 3, &triangle),
+        buffer_upload_command("uniforms", 0, sizeof(uniform_block), uniform_mem),
+        blending_config_command(blending_configs::ALPHA),
     });
+
+    free(uniform_mem);
 
     while (true)
     {

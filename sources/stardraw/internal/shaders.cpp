@@ -143,6 +143,47 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
+    status load_shader_module(const std::string_view& module_name, const void* cache_ptr, const uint64_t cache_size)
+    {
+        const std::string fake_path = std::format("{0}_fakepath.slang", module_name);
+        Slang::ComPtr<slang::IBlob> diagnostics;
+
+        const Slang::ComPtr module(active_slang_session->loadModuleFromIRBlob(module_name.data(), fake_path.c_str(), slang_createBlob(cache_ptr, cache_size), diagnostics.writeRef()));
+
+        if (diagnostics)
+        {
+            std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
+            return {status_type::BACKEND_ERROR, std::format("Slang module loading '{1}' failed with error: '{0}'", msg, module_name)};
+        }
+
+        if (!module)
+        {
+            std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
+            return {status_type::BACKEND_ERROR, std::format("Slang module '{1}' loading failed with error: '{0}'", msg, module_name)};
+        }
+
+        loaded_modules[std::string(module_name)] = module;
+
+        return status_type::SUCCESS;
+    }
+
+    status cache_shader_module(const std::string& module_name, void** out_cache_ptr, uint64_t& out_cache_size)
+    {
+        if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", module_name)};
+        const Slang::ComPtr<slang::IModule> module = loaded_modules[module_name];
+
+        ISlangBlob* serialized_blob;
+        const SlangResult serialize_result = module->serialize(&serialized_blob);
+        if (SLANG_FAILED(serialize_result)) return {status_type::BACKEND_ERROR, std::format("Failed to serialize module '{0}'", module_name)};
+
+        *out_cache_ptr = malloc(serialized_blob->getBufferSize());
+        memcpy(*out_cache_ptr, serialized_blob->getBufferPointer(), serialized_blob->getBufferSize());
+
+        delete serialized_blob;
+
+        return status_type::SUCCESS;
+    }
+
     status link_shader(const std::string& shader_name, const std::string& entry_point_module, const std::string& entry_point_name, const std::vector<std::string>& additional_modules)
     {
         std::vector<slang::IComponentType*> shader_components;
@@ -192,6 +233,7 @@ namespace stardraw
         }
 
         linked_shaders[shader_name] = linked_program;
+
         return status_type::SUCCESS;
     }
 

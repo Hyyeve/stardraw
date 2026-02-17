@@ -28,8 +28,6 @@ namespace stardraw::gl45
         [[nodiscard]] signal_status check_signal(const std::string_view& name) override;
         [[nodiscard]] signal_status wait_signal(const std::string_view& name, uint64_t timeout) override;
 
-        [[nodiscard]] status cache_shader(const std::string_view& name, void** out_cache_ptr, uint64_t& out_cache_size) override;
-
     private:
         [[nodiscard]] status bind_buffer(const object_identifier& source, GLenum target);
 
@@ -43,12 +41,12 @@ namespace stardraw::gl45
         [[nodiscard]] status execute_buffer_upload(const buffer_upload_command* cmd);
         [[nodiscard]] status execute_buffer_copy(const buffer_copy_command* cmd);
 
-        [[nodiscard]] static status execute_config_blending(const config_blending_command* cmd);
-        [[nodiscard]] static status execute_config_stencil(const config_stencil_command* cmd);
-        [[nodiscard]] static status execute_config_scissor(const config_scissor_command* cmd);
-        [[nodiscard]] static status execute_config_face_cull(const config_face_cull_command* cmd);
-        [[nodiscard]] static status execute_config_depth_test(const config_depth_test_command* cmd);
-        [[nodiscard]] static status execute_config_depth_range(const config_depth_range_command* cmd);
+        [[nodiscard]] static status execute_config_blending(const blending_config_command* cmd);
+        [[nodiscard]] static status execute_config_stencil(const stencil_config_command* cmd);
+        [[nodiscard]] static status execute_config_scissor(const scissor_config_command* cmd);
+        [[nodiscard]] static status execute_config_face_cull(const face_cull_config_command* cmd);
+        [[nodiscard]] static status execute_config_depth_test(const depth_test_config_command* cmd);
+        [[nodiscard]] static status execute_config_depth_range(const depth_range_config_command* cmd);
 
         [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
 

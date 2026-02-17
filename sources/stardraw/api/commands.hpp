@@ -147,9 +147,9 @@ namespace stardraw
         constexpr stencil_config DISABLED = {.enabled = false };
     }
 
-    struct config_stencil_command final : command
+    struct stencil_config_command final : command
     {
-        explicit config_stencil_command(const stencil_config& config, const stencil_facing faces = stencil_facing::BOTH) : config(config), for_facing(faces) {}
+        explicit stencil_config_command(const stencil_config& config, const stencil_facing faces = stencil_facing::BOTH) : config(config), for_facing(faces) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -223,9 +223,9 @@ namespace stardraw
         constexpr blending_config LIGHTEN = {blending_factor::ONE, blending_factor::ONE, blending_func::MAX};
     }
 
-    struct config_blending_command final : command
+    struct blending_config_command final : command
     {
-        explicit config_blending_command(const blending_config& config, const uint32_t draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
+        explicit blending_config_command(const blending_config& config, const uint32_t draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -256,9 +256,9 @@ namespace stardraw
         constexpr depth_test_config WRITE_UNCONDITIONALLY = {depth_test_func::ALWAYS};
     }
 
-    struct config_depth_test_command final : command
+    struct depth_test_config_command final : command
     {
-        explicit config_depth_test_command(const depth_test_config& config) : config(config) {}
+        explicit depth_test_config_command(const depth_test_config& config) : config(config) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -268,9 +268,9 @@ namespace stardraw
         depth_test_config config;
     };
 
-    struct config_depth_range_command final : command
+    struct depth_range_config_command final : command
     {
-        explicit config_depth_range_command(const double near, const double far, const uint32_t viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
+        explicit depth_range_config_command(const double near, const double far, const uint32_t viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -287,9 +287,9 @@ namespace stardraw
         DISABLED, BACK, FRONT, BOTH
     };
 
-    struct config_face_cull_command final : command
+    struct face_cull_config_command final : command
     {
-        explicit config_face_cull_command(const face_cull_mode& mode) : mode(mode) {}
+        explicit face_cull_config_command(const face_cull_mode& mode) : mode(mode) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -315,9 +315,9 @@ namespace stardraw
         constexpr scissor_test_config DISABLED = {.enabled = false };
     }
 
-    struct config_scissor_command final : command
+    struct scissor_config_command final : command
     {
-        explicit config_scissor_command(const scissor_test_config& config, const uint32_t viewport_index = 0) : config(config), viewport_index(viewport_index) {}
+        explicit scissor_config_command(const scissor_test_config& config, const uint32_t viewport_index = 0) : config(config), viewport_index(viewport_index) {}
 
         [[nodiscard]] command_type type() const override
         {

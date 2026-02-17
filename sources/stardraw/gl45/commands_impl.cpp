@@ -232,7 +232,7 @@ namespace stardraw::gl45
     }
 
 
-    status render_context::execute_config_blending(const config_blending_command* cmd)
+    status render_context::execute_config_blending(const blending_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config blending cmd");
@@ -291,7 +291,7 @@ namespace stardraw::gl45
         return -1;
     }
 
-    status render_context::execute_config_stencil(const config_stencil_command* cmd)
+    status render_context::execute_config_stencil(const stencil_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config stencil cmd");
@@ -307,7 +307,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::execute_config_scissor(const config_scissor_command* cmd)
+    status render_context::execute_config_scissor(const scissor_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config scissor cmd");
@@ -320,7 +320,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::execute_config_face_cull(const config_face_cull_command* cmd)
+    status render_context::execute_config_face_cull(const face_cull_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config face cull cmd");
@@ -337,7 +337,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::execute_config_depth_test(const config_depth_test_command* cmd)
+    status render_context::execute_config_depth_test(const depth_test_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config depth test cmd");
@@ -351,7 +351,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::execute_config_depth_range(const config_depth_range_command* cmd)
+    status render_context::execute_config_depth_range(const depth_range_config_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute config depth range cmd");
