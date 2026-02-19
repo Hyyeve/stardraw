@@ -196,6 +196,7 @@ namespace stardraw::gl45
 
             case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window_command*>(cmd));
             case command_type::CLEAR_BUFFER: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::SHADER_PARAMETERS_UPLOAD: return execute_shader_parameters_upload(dynamic_cast<const shader_parameters_upload_command*>(cmd));
         }
 
         return{ status_type::UNSUPPORTED, "Unsupported command" };

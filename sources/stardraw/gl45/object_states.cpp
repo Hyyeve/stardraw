@@ -87,6 +87,7 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Direct buffer upload");
+        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         if (main_buff_pointer == nullptr)
@@ -105,6 +106,7 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Staged buffer upload");
+        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         update_staging_buffer_space(); //Clean up any free blocks ahead of us
@@ -141,6 +143,8 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Temp copy buffer upload");
+
+        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         GLuint temp_buffer;
@@ -304,6 +308,16 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    status shader_state::write_parameter(const shader_parameter& parameter) const
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Write shader parameter")
+        const shader_parameter_value& value = parameter.value;
+        const shader_parameter_location& location = parameter.location;
+
+        return status_type::SUCCESS;
+    }
+
     descriptor_type shader_state::object_type() const
     {
         return descriptor_type::SHADER;
@@ -447,9 +461,31 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    [[nodiscard]] status shader_state::add_binding_block(const std::string& name, const GLenum binding_type, const uint32_t slot)
+    {
+        if (binding_block_locations.contains(name))
+        {
+            const binding_block_location& existing = binding_block_locations[name];
+            if (existing.type != binding_type || existing.slot != slot)
+            {
+                return {status_type::DUPLICATE_NAME, std::format("Aliasing binding block in shader! More than one block named '{0}'", name)};
+            }
+            return status_type::SUCCESS;
+        }
+
+        binding_block_locations[std::string(name)] = {binding_type, slot};
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::add_parameter_block(const std::string& name)
+    {
+        parameter_blocks[name] = parameter_block_info {};
+        return status_type::SUCCESS;
+    }
+
     status shader_state::load_interface_locations(const shader_stage& stage)
     {
-        slang::ShaderReflection* reflection = stage.program->reflection_data;
+        slang::ShaderReflection* reflection = shader_reflection_of(stage.program);
         slang::TypeLayoutReflection* globals = reflection->getGlobalParamsTypeLayout();
         for (uint32_t idx = 0; idx < globals->getFieldCount(); idx++)
         {
@@ -458,34 +494,28 @@ namespace stardraw::gl45
             const std::string name = root_param->getName();
             const slang::TypeReflection::Kind kind = root_param->getType()->getKind();
 
-            GLenum binding_type;
-
             switch (kind)
             {
                 case slang::TypeReflection::Kind::ConstantBuffer:
                 {
-                    binding_type = GL_UNIFORM_BUFFER;
-                    break;
+                    const status add_status = add_binding_block(name, GL_UNIFORM_BUFFER, slot);
+                    if (is_status_error(add_status)) return add_status;
+                    continue;
                 }
                 case slang::TypeReflection::Kind::ShaderStorageBuffer:
                 {
-                    binding_type = GL_SHADER_STORAGE_BUFFER;
-                    break;
+                    const status add_status = add_binding_block(name, GL_SHADER_STORAGE_BUFFER, slot);
+                    if (is_status_error(add_status)) return add_status;
+                    continue;
+                }
+                case slang::TypeReflection::Kind::ParameterBlock:
+                {
+                    const status add_status = add_parameter_block(name);
+                    if (is_status_error(add_status)) return add_status;
+                    continue;
                 }
                 default: continue;
             }
-
-            if (binding_block_locations.contains(name))
-            {
-                const binding_block_location& existing = binding_block_locations[name];
-                if (existing.type != binding_type || existing.slot != slot)
-                {
-                    return {status_type::DUPLICATE_NAME, std::format("Aliasing binding block in shader! More than one block named '{0}'", name)};
-                }
-                continue;
-            }
-
-            binding_block_locations[std::string(name)] = {binding_type, slot};
         }
 
         return status_type::SUCCESS;

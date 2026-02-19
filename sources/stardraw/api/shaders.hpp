@@ -11,8 +11,40 @@ namespace stardraw
         //todo: raytracing stages for other backends?
     };
 
-    struct shader_buffer_layout;
-    struct shader_program;
+    struct shader_buffer_layout
+    {
+        struct pad
+        {
+            uint64_t address;
+            uint64_t size;
+        };
+
+        uint64_t packed_size = 0;
+        uint64_t padded_size = 0;
+        std::vector<pad> pads;
+    };
+
+    struct shader_parameter_location
+    {
+        [[nodiscard]] shader_parameter_location index(uint32_t index) const;
+        [[nodiscard]] shader_parameter_location field(const std::string_view& name) const;
+
+        std::string root_param;
+        void* internal_ptr = nullptr;
+        uint32_t byte_address = 0;
+        uint32_t binding_set = 0;
+        uint32_t binding_slot = 0;
+        uint32_t binding_slot_index = 0;
+    };
+
+    struct shader_program
+    {
+        [[nodiscard]] shader_parameter_location locate(const std::string_view& name) const;
+
+        void* data;
+        uint32_t data_size;
+        void* internal_ptr;
+    };
 
     struct shader_macro
     {

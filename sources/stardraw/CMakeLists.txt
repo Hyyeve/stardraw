@@ -25,6 +25,7 @@ target_sources(stardraw PUBLIC FILE_SET HEADERS BASE_DIRS ${H_SOURCES_ROOT} FILE
         api/commands.hpp
         api/window.hpp
         api/shaders.hpp
+        api/shader_parameter_value.hpp
 )
 
 target_include_directories(stardraw PRIVATE

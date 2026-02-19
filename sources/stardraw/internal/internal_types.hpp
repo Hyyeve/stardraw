@@ -1,25 +1,21 @@
 #pragma once
 #include <slang.h>
 
+#include "stardraw/api/shaders.hpp"
+
 namespace stardraw
 {
-    struct shader_buffer_layout
-    {
-        struct pad
-        {
-            uint64_t address;
-            uint64_t size;
-        };
-
-        uint64_t packed_size = 0;
-        uint64_t padded_size = 0;
-        std::vector<pad> pads;
+    const shader_parameter_location invalid_shader_paramter_location = {
+        "???", nullptr, 0, 0, 0, 0
     };
 
-    struct shader_program
+    inline slang::TypeLayoutReflection* type_layout_of(const shader_parameter_location& location)
     {
-        void* data;
-        uint32_t data_size;
-        slang::ShaderReflection* reflection_data;
-    };
+        return static_cast<slang::TypeLayoutReflection*>(location.internal_ptr);
+    }
+
+    inline slang::ShaderReflection* shader_reflection_of(const shader_program* program)
+    {
+        return static_cast<slang::ShaderReflection*>(program->internal_ptr);
+    }
 }

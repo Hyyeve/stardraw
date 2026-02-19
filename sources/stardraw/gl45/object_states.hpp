@@ -5,6 +5,7 @@
 
 #include "types.hpp"
 #include "glad/glad.h"
+#include "stardraw/api/commands.hpp"
 
 namespace stardraw::gl45
 {
@@ -70,6 +71,11 @@ namespace stardraw::gl45
             GLuint slot;
         };
 
+        struct parameter_block_info
+        {
+
+        };
+
         explicit shader_state(const shader_descriptor& desc, status& out_status);
 
         ~shader_state() override;
@@ -78,6 +84,7 @@ namespace stardraw::gl45
 
         [[nodiscard]] status make_active() const;
         [[nodiscard]] status get_binding_slot(const std::string_view& name, ::stardraw::gl45::shader_state::binding_block_location& out_location) const;
+        [[nodiscard]] status write_parameter(const shader_parameter& parameter) const;
 
         [[nodiscard]] descriptor_type object_type() const override;
 
@@ -92,11 +99,14 @@ namespace stardraw::gl45
         [[nodiscard]] static status validate_program(const GLuint program);
 
         [[nodiscard]] status load_interface_locations(const shader_stage& stage);
+        [[nodiscard]] status add_binding_block(const std::string& name, GLenum binding_type, uint32_t slot);
+        [[nodiscard]] status add_parameter_block(const std::string& name);
 
         [[nodiscard]] static std::string get_shader_log(const GLuint shader);
         [[nodiscard]] static std::string get_program_log(const GLuint program);
 
         GLuint shader_program_id = 0;
+        std::unordered_map<std::string, parameter_block_info> parameter_blocks;
         std::unordered_map<std::string, binding_block_location> binding_block_locations;
     };
 

@@ -276,7 +276,7 @@ namespace stardraw
                 return {status_type::BACKEND_ERROR, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, shader_name)};
             }
 
-            result->reflection_data = layout;
+            result->internal_ptr = layout;
         }
 
         *out_shader_program = result;
@@ -358,11 +358,64 @@ namespace stardraw
         return results;
     }
 
+    shader_parameter_location shader_parameter_location::index(const uint32_t index) const
+    {
+        slang::TypeLayoutReflection* type_layout = type_layout_of(*this);
+        slang::TypeLayoutReflection* element_layout = type_layout->getElementTypeLayout();
+        if (element_layout == nullptr) return invalid_shader_paramter_location;
+
+        shader_parameter_location result = shader_parameter_location(*this);
+        result.internal_ptr = element_layout;
+        result.byte_address += index * element_layout->getStride();
+
+        result.binding_slot_index *= type_layout->getElementCount();
+        result.binding_slot_index += index;
+
+        return result;
+    }
+
+    shader_parameter_location shader_parameter_location::field(const std::string_view& name) const
+    {
+        slang::TypeLayoutReflection* type_layout = type_layout_of(*this);
+        const int32_t index = type_layout->findFieldIndexByName(name.data(), name.data() + name.size());
+        if (index < 0) return invalid_shader_paramter_location;
+
+        slang::VariableLayoutReflection* field = type_layout->getFieldByIndex(index);
+
+        shader_parameter_location result = shader_parameter_location(*this);
+        result.internal_ptr = field->getTypeLayout();
+        result.byte_address += field->getOffset();
+        result.binding_slot += type_layout->getFieldBindingRangeOffset(index);
+
+        return result;
+    }
+
+    shader_parameter_location shader_program::locate(const std::string_view& name) const
+    {
+        shader_parameter_location result;
+
+        slang::TypeLayoutReflection* globals = shader_reflection_of(this)->getGlobalParamsTypeLayout();
+        const int64_t global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
+        if (global_idx <= 0) return invalid_shader_paramter_location;
+
+        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
+        if (root_param == nullptr) return invalid_shader_paramter_location;
+
+        result.root_param = name;
+        result.internal_ptr = root_param->getTypeLayout()->getElementTypeLayout();
+        result.byte_address = 0;
+        result.binding_set = root_param->getOffset(slang::ParameterCategory::RegisterSpace);
+        result.binding_slot = globals->getFieldBindingRangeOffset(global_idx);
+        result.binding_slot_index = 0;
+
+        return result;
+    }
+
     status create_shader_buffer_layout(const shader_program* program, const std::string_view& buffer_name, shader_buffer_layout** out_buffer_layout)
     {
         if (program == nullptr || out_buffer_layout == nullptr) return status_type::UNEXPECTED_NULL;
 
-        slang::ShaderReflection* shader_layout = program->reflection_data;
+        slang::ShaderReflection* shader_layout = shader_reflection_of(program);
         shader_buffer_layout* result = new shader_buffer_layout();
 
         slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();

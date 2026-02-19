@@ -50,6 +50,8 @@ namespace stardraw::gl45
 
         [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
 
+        [[nodiscard]] status execute_shader_parameters_upload(const shader_parameters_upload_command* cmd);
+
         [[nodiscard]] status create_object(const descriptor* descriptor);
 
         [[nodiscard]] status create_buffer_state(const buffer_descriptor* descriptor);

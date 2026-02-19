@@ -1,6 +1,8 @@
 #pragma once
 #include <string_view>
 
+#include "shaders.hpp"
+#include "shader_parameter_value.hpp"
 #include "stardraw/api/polymorphic_ptr.hpp"
 #include "stardraw/api/types.hpp"
 
@@ -11,7 +13,8 @@ namespace stardraw
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
         CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE,
         BUFFER_UPLOAD, BUFFER_COPY, BUFFER_DOWNLOAD,
-        CLEAR_WINDOW, CLEAR_BUFFER
+        CLEAR_WINDOW, CLEAR_BUFFER,
+        SHADER_PARAMETERS_UPLOAD,
     };
 
     struct command
@@ -34,14 +37,14 @@ namespace stardraw
 
     struct draw_command final : command
     {
-        draw_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const uint32_t start_vertex = 0, const uint32_t instances = 1, const uint32_t start_instance = 0) : draw_specification_identifier(draw_specification), mode(mode), count(count), start_vertex(start_vertex), instances(instances), start_instance(start_instance) {}
+        draw_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const uint32_t start_vertex = 0, const uint32_t instances = 1, const uint32_t start_instance = 0) : draw_specification(draw_specification), mode(mode), count(count), start_vertex(start_vertex), instances(instances), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW;
         }
 
-        object_identifier draw_specification_identifier;
+        object_identifier draw_specification;
         draw_mode mode;
         uint32_t count;
 
@@ -55,14 +58,14 @@ namespace stardraw
 
     struct draw_indexed_command final : command
     {
-        draw_indexed_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const int32_t vertex_index_offset = 0, const uint32_t start_index = 0, const uint32_t instances = 1, const uint32_t start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification_identifier(draw_specification), mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
+        draw_indexed_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const int32_t vertex_index_offset = 0, const uint32_t start_index = 0, const uint32_t instances = 1, const uint32_t start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification(draw_specification), mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDEXED;
         }
 
-        object_identifier draw_specification_identifier;
+        object_identifier draw_specification;
 
         draw_mode mode;
         draw_indexed_index_type index_type;
@@ -81,14 +84,14 @@ namespace stardraw
 
     struct draw_indirect_command final : command
     {
-        draw_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0) : draw_specification_identifier(draw_specification), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0) : draw_specification(draw_specification), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
 
-        object_identifier draw_specification_identifier;
+        object_identifier draw_specification;
 
         draw_mode mode;
         uint32_t draw_count;
@@ -97,14 +100,14 @@ namespace stardraw
 
     struct draw_indexed_indirect_command final : command
     {
-        draw_indexed_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification_identifier(draw_specification), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indexed_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification(draw_specification), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
 
-        object_identifier draw_specification_identifier;
+        object_identifier draw_specification;
 
         draw_mode mode;
         draw_indexed_index_type index_type;
@@ -338,14 +341,14 @@ namespace stardraw
 
     struct buffer_upload_command final : command
     {
-        explicit buffer_upload_command(const std::string_view& buffer, const uint64_t address, const uint64_t bytes, const void* const data, const buffer_upload_type upload_type = buffer_upload_type::SAFE_ONE_TIME) : buffer_identifier(buffer), upload_address(address), upload_bytes(bytes), upload_data(data), upload_type(upload_type) {}
+        explicit buffer_upload_command(const std::string_view& buffer, const uint64_t address, const uint64_t bytes, const void* const data, const buffer_upload_type upload_type = buffer_upload_type::SAFE_ONE_TIME) : buffer(buffer), upload_address(address), upload_bytes(bytes), upload_data(data), upload_type(upload_type) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::BUFFER_UPLOAD;
         }
 
-        object_identifier buffer_identifier;
+        object_identifier buffer;
         uint64_t upload_address;
         uint64_t upload_bytes;
         const void* const upload_data;
@@ -354,15 +357,15 @@ namespace stardraw
 
     struct buffer_copy_command final : command
     {
-        explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const uint64_t from_address, const uint64_t to_address, const uint64_t bytes) : source_identifier(source_buffer), dest_identifier(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
+        explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const uint64_t from_address, const uint64_t to_address, const uint64_t bytes) : source_buffer(source_buffer), dest_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::BUFFER_COPY;
         }
 
-        object_identifier source_identifier;
-        object_identifier dest_identifier;
+        object_identifier source_buffer;
+        object_identifier dest_buffer;
         uint64_t source_address;
         uint64_t dest_address;
         uint64_t bytes;
@@ -405,4 +408,23 @@ namespace stardraw
         clear_values_config config;
     };
 
+    struct shader_parameter
+    {
+        shader_parameter_location location;
+        shader_parameter_value value;
+    };
+
+    struct shader_parameters_upload_command final : command
+    {
+        explicit shader_parameters_upload_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters) : shader(shader), parameters(parameters) {}
+        explicit shader_parameters_upload_command(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters) : shader(shader), parameters(parameters) {}
+
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::SHADER_PARAMETERS_UPLOAD;
+        }
+
+        object_identifier shader;
+        std::vector<shader_parameter> parameters;
+    };
 }

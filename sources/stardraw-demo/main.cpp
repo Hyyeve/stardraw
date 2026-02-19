@@ -7,6 +7,8 @@
 using namespace stardraw;
 
 shader_buffer_layout* uniforms_layout;
+shader_program* frag_shader;
+shader_program* vert_shader;
 
 std::vector<shader_stage> load_shader()
 {
@@ -21,15 +23,11 @@ std::vector<shader_stage> load_shader()
     status link_status_vtx = stardraw::link_shader("basic_pos_col_vtx", "basic", "vertexMain");
     status link_status_frg = stardraw::link_shader("basic_pos_col_frg", "basic", "fragmentMain");
 
-    shader_program* vtx_shader;
-    status vtx_load_status = stardraw::create_shader_program("basic_pos_col_vtx", graphics_api::GL45, &vtx_shader);
+    status vtx_load_status = stardraw::create_shader_program("basic_pos_col_vtx", graphics_api::GL45, &vert_shader);
+    status frg_load_status = stardraw::create_shader_program("basic_pos_col_frg", graphics_api::GL45, &frag_shader);
+    status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", &uniforms_layout);
 
-    shader_program* frg_shader;
-    status frg_load_status = stardraw::create_shader_program("basic_pos_col_frg", graphics_api::GL45, &frg_shader);
-
-    status layout_create = stardraw::create_shader_buffer_layout(frg_shader, "uniforms", &uniforms_layout);
-
-    return {{shader_stage_type::VERTEX, vtx_shader}, {shader_stage_type::FRAGMENT, frg_shader}};
+    return {{shader_stage_type::VERTEX, vert_shader}, {shader_stage_type::FRAGMENT, frag_shader}};
 }
 
 struct vertex
@@ -92,6 +90,9 @@ int main()
         buffer_upload_command("vertices", 0, sizeof(vertex) * 3, &triangle),
         buffer_upload_command("uniforms", 0, sizeof(uniform_block), uniform_mem),
         blending_config_command(blending_configs::ALPHA),
+        shader_parameters_upload_command("shader", {
+            {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
+        }),
     });
 
     free(uniform_mem);
