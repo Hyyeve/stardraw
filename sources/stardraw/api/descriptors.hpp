@@ -14,7 +14,7 @@ namespace stardraw
 
     struct descriptor
     {
-        explicit descriptor(const std::string_view& name) : ident(name) {}
+        explicit constexpr descriptor(const std::string_view& name) : ident(name) {}
         virtual ~descriptor() = default;
 
         [[nodiscard]] virtual descriptor_type type() const = 0;

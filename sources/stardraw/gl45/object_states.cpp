@@ -1,6 +1,7 @@
 #include "object_states.hpp"
 
 #include <format>
+#include <spirv_glsl.hpp>
 
 #include "stardraw/internal/internal_types.hpp"
 #include "tracy/Tracy.hpp"
@@ -315,6 +316,8 @@ namespace stardraw::gl45
         const shader_parameter_value& value = parameter.value;
         const shader_parameter_location& location = parameter.location;
 
+        if (location == invalid_shader_paramter_location) return {status_type::UNKNOWN_NAME, "Shader parameter location not found in shader"};
+
         return status_type::SUCCESS;
     }
 
@@ -325,10 +328,16 @@ namespace stardraw::gl45
 
     status shader_state::create_from_stages(const std::vector<shader_stage>& stages)
     {
-        std::vector<GLuint> shader_stages;
+        std::vector<std::string> converted_sources;
+        status convert_status = remap_spirv_stages(stages, converted_sources);
+        if (is_status_error(convert_status)) return convert_status;
+
         status stages_compile_status = status_type::SUCCESS;
-        for (const shader_stage& stage : stages)
+        std::vector<GLuint> shader_stages;
+        for (uint32_t idx = 0; idx < stages.size(); idx++)
         {
+            const shader_stage& stage = stages[idx];
+
             const GLenum shader_type = gl_shader_type(stage.type);
             if (shader_type == 0)
             {
@@ -336,7 +345,7 @@ namespace stardraw::gl45
                 break;
             }
 
-            const std::string source = std::string(std::string_view(static_cast<const char*>(stage.program->data), stage.program->data_size));
+            const std::string source = converted_sources[idx];
             GLuint compiled_stage;
             const status compile_status = compile_shader_stage(source, shader_type, compiled_stage);
             if (is_status_error(compile_status))
@@ -420,6 +429,102 @@ namespace stardraw::gl45
         out_shader_id = program;
 
         return status_type::SUCCESS;
+    }
+
+    status shader_state::remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources)
+    {
+        struct stage_compiler
+        {
+            spirv_cross::CompilerGLSL compiler;
+            std::vector<spirv_cross::Resource> resources_with_binding_sets;
+        };
+
+        std::vector<stage_compiler*> stage_compilers;
+
+        status result_status = status_type::SUCCESS;
+
+        try
+        {
+            for (const shader_stage& stage : stages)
+            {
+                stage_compilers.push_back(new stage_compiler {spirv_cross::CompilerGLSL(static_cast<const uint32_t*>(stage.program->data), stage.program->data_size / sizeof(uint32_t)), {}});
+            }
+
+            std::vector<uint32_t> bindings_per_set;
+
+            for (stage_compiler* stage : stage_compilers)
+            {
+                spirv_cross::ShaderResources resources = stage->compiler.get_shader_resources();
+
+                stage->resources_with_binding_sets.append_range(resources.sampled_images);
+                stage->resources_with_binding_sets.append_range(resources.separate_images);
+                stage->resources_with_binding_sets.append_range(resources.separate_samplers);
+                stage->resources_with_binding_sets.append_range(resources.uniform_buffers);
+                stage->resources_with_binding_sets.append_range(resources.storage_buffers);
+                stage->resources_with_binding_sets.append_range(resources.storage_images);
+                stage->resources_with_binding_sets.append_range(resources.atomic_counters);
+
+                for (const spirv_cross::Resource& resource : stage->resources_with_binding_sets)
+                {
+                    const uint32_t descriptor_set = stage->compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                    const uint32_t binding_index = stage->compiler.get_decoration(resource.id, spv::DecorationBinding);
+                    if (descriptor_set >= bindings_per_set.size()) bindings_per_set.resize(descriptor_set + 1);
+                    bindings_per_set[descriptor_set] = std::max(bindings_per_set[descriptor_set], binding_index + 1);
+                }
+            }
+
+            descriptor_set_binding_offsets.resize(bindings_per_set.size());
+
+            uint32_t binding_offset = 0;
+            for (uint32_t idx = 0; idx < bindings_per_set.size(); idx++)
+            {
+                descriptor_set_binding_offsets[idx] = binding_offset;
+                binding_offset += bindings_per_set[idx];
+            }
+
+            for (stage_compiler* stage : stage_compilers)
+            {
+                for (const spirv_cross::Resource& resource : stage->resources_with_binding_sets)
+                {
+                    const uint32_t descriptor_set = stage->compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                    const uint32_t binding_index = stage->compiler.get_decoration(resource.id, spv::DecorationBinding);
+                    stage->compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+                    stage->compiler.set_decoration(resource.id, spv::DecorationBinding, binding_index + descriptor_set_binding_offsets[descriptor_set]);
+                }
+
+                //Handle merging sampler states with samplers where possible, transfer binding and name from original sampler.
+                stage->compiler.build_combined_image_samplers();
+                for (const spirv_cross::CombinedImageSampler& combined : stage->compiler.get_combined_image_samplers())
+                {
+                    const std::string tex_name = stage->compiler.get_name(combined.image_id);
+                    const uint32_t binding = stage->compiler.get_decoration(combined.image_id, spv::Decoration::DecorationBinding);
+                    stage->compiler.set_decoration(combined.combined_id, spv::Decoration::DecorationBinding, binding);
+                    stage->compiler.set_name(combined.combined_id, tex_name);
+                }
+
+                stage->compiler.set_common_options({ .version = 450, .emit_push_constant_as_uniform_buffer = true });
+
+                const std::string source = stage->compiler.compile();
+                if (source.empty())
+                {
+                    result_status = {status_type::BACKEND_ERROR, "Failed to transpile SPIR-V into OpenGL compatible GLSL"};
+                    break;
+                }
+
+                out_sources.push_back(source);
+            }
+        }
+        catch (std::exception& _)
+        {
+            result_status = {status_type::BACKEND_ERROR, "Failed to transpile SPIR-V into OpenGL compatible GLSL"};
+        }
+
+        for (const stage_compiler* stage : stage_compilers)
+        {
+            delete stage;
+        }
+
+        return result_status;
     }
 
     status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id)

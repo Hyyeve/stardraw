@@ -51,7 +51,7 @@ namespace stardraw
 
     struct object_identifier
     {
-        explicit object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
+        explicit constexpr object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
         uint64_t hash;
         std::string name;
     };

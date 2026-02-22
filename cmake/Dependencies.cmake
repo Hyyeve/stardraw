@@ -4,6 +4,8 @@ find_package(OpenGL REQUIRED)
 find_package(slang REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(glfw3 3.3 REQUIRED)
+find_package(spirv_cross_core REQUIRED)
+find_package(spirv_cross_glsl REQUIRED)
 
 include(FetchContent)
 

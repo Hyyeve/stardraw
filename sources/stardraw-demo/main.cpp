@@ -19,12 +19,21 @@ std::vector<shader_stage> load_shader()
     file.close();
 
     status init_status = stardraw::setup_shader_compiler();
-    status load_status = stardraw::load_shader_module("basic", buffer.str());
-    status link_status_vtx = stardraw::link_shader("basic_pos_col_vtx", "basic", "vertexMain");
-    status link_status_frg = stardraw::link_shader("basic_pos_col_frg", "basic", "fragmentMain");
+    status load_status = stardraw::load_shader_module("main", buffer.str());
 
-    status vtx_load_status = stardraw::create_shader_program("basic_pos_col_vtx", graphics_api::GL45, &vert_shader);
-    status frg_load_status = stardraw::create_shader_program("basic_pos_col_frg", graphics_api::GL45, &frag_shader);
+    shader_entry_point vert_entry_point = {"main", "vertexMain"};
+    shader_entry_point frag_entry_point = {"main", "fragmentMain"};
+
+    status link_status_vtx = stardraw::link_shader_modules(
+        "main_linked",
+        {
+            vert_entry_point,
+            frag_entry_point,
+        }
+    );
+
+    status vtx_load_status = stardraw::create_shader_program("main_linked",  vert_entry_point, graphics_api::GL45, &vert_shader);
+    status frg_load_status = stardraw::create_shader_program("main_linked", frag_entry_point, graphics_api::GL45, &frag_shader);
     status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", &uniforms_layout);
 
     return {{shader_stage_type::VERTEX, vert_shader}, {shader_stage_type::FRAGMENT, frag_shader}};
@@ -49,7 +58,7 @@ std::array triangle = {
 };
 
 uniform_block uniforms = {
-    1, 1.0f, 1, 0.5f, 0.2, 0.2, 0.2
+    1, 1.0f, 1, 0.5f, 0.5, 0.5, 0.5
 };
 
 int main()
@@ -76,6 +85,8 @@ int main()
         }
     );
 
+    shader_parameter_location test_loc = frag_shader->locate("params").field("tex");
+
     status made_commands = ctx->create_command_buffer(
         "main",
         {
@@ -91,8 +102,8 @@ int main()
         buffer_upload_command("uniforms", 0, sizeof(uniform_block), uniform_mem),
         blending_config_command(blending_configs::ALPHA),
         shader_parameters_upload_command("shader", {
-            {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
-        }),
+                                             {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
+                                         }),
     });
 
     free(uniform_mem);

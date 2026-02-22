@@ -2,7 +2,6 @@ add_library(stardraw STATIC)
 
 target_sources(stardraw PRIVATE
 
-        internal/slang.cpp
         internal/window.cpp
         internal/shaders.cpp
         internal/glfw_window.hpp internal/glfw_window.cpp
@@ -46,3 +45,4 @@ target_link_libraries(stardraw PRIVATE glad)
 target_link_libraries(stardraw PRIVATE slang::slang)
 target_link_libraries(stardraw PRIVATE Vulkan::Vulkan)
 target_link_libraries(stardraw PRIVATE glfw)
+target_link_libraries(stardraw PRIVATE spirv-cross-glsl)

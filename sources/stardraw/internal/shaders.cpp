@@ -4,16 +4,34 @@
 #include <array>
 #include <format>
 #include <queue>
+#include <set>
 #include <slang-com-ptr.h>
 #include <slang.h>
+#include <spirv_glsl.hpp>
 #include <stack>
+
+template <>
+struct std::hash<stardraw::shader_entry_point>
+{
+    std::size_t operator()(const stardraw::shader_entry_point& key) const noexcept
+    {
+        return hash<string>()(key.module_name + key.entry_point_name);
+    }
+};
 
 namespace stardraw
 {
+
+    struct linked_set
+    {
+        Slang::ComPtr<slang::IComponentType> linked_components;
+        std::unordered_map<shader_entry_point, uint32_t> entry_point_indexes;
+    };
+
     static slang::IGlobalSession* global_slang_context;
     static slang::ISession* active_slang_session;
     static std::unordered_map<std::string, Slang::ComPtr<slang::IModule>> loaded_modules;
-    static std::unordered_map<std::string, Slang::ComPtr<slang::IComponentType>> linked_shaders;
+    static std::unordered_map<std::string, linked_set> linked_sets;
 
     status delete_shader_buffer_layout(shader_buffer_layout** buffer_layout)
     {
@@ -22,8 +40,8 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
-    void* layout_shader_buffer_memory(const shader_buffer_layout* layout, const void* data, const uint64_t data_size) {
-
+    void* layout_shader_buffer_memory(const shader_buffer_layout* layout, const void* data, const uint64_t data_size)
+    {
         if (layout == nullptr || data == nullptr) return nullptr;
 
         const uint64_t element_count = data_size / layout->packed_size;
@@ -46,7 +64,7 @@ namespace stardraw
             for (const shader_buffer_layout::pad& pad : layout->pads)
             {
                 const uint64_t size_to_pad_start = pad.address - current_write_offset;
-                memcpy(output+ base_write_address + current_write_offset, in_bytes + base_read_address + current_read_offset, size_to_pad_start);
+                memcpy(output + base_write_address + current_write_offset, in_bytes + base_read_address + current_read_offset, size_to_pad_start);
                 current_write_offset = pad.address + pad.size;
                 current_read_offset += size_to_pad_start;
             }
@@ -100,8 +118,8 @@ namespace stardraw
 
         const static std::array slang_targets = {
             slang::TargetDesc {
-                .format = SLANG_GLSL,
-                .profile = global_slang_context->findProfile("glsl_450"),
+                .format = SlangCompileTarget::SLANG_SPIRV,
+                .profile = global_slang_context->findProfile("spirv_latest"),
             },
         };
 
@@ -184,20 +202,27 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
-    status link_shader(const std::string& shader_name, const std::string& entry_point_module, const std::string& entry_point_name, const std::vector<std::string>& additional_modules)
+
+    status link_shader_modules(const std::string& linked_set_name, const std::vector<shader_entry_point>& entry_points, const std::vector<std::string>& additional_modules)
     {
         std::vector<slang::IComponentType*> shader_components;
+        std::unordered_map<shader_entry_point, uint32_t> entry_point_index_map;
 
-        if (!loaded_modules.contains(entry_point_module)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", entry_point_module)};
-        const Slang::ComPtr<slang::IModule> module = loaded_modules[entry_point_module];
+        for (uint32_t idx = 0; idx < entry_points.size(); idx++)
+        {
+            const shader_entry_point& entry_point = entry_points[idx];
 
-        Slang::ComPtr<slang::IEntryPoint> slang_entry_point;
+            if (!loaded_modules.contains(entry_point.module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", entry_point.module_name)};
+            const Slang::ComPtr<slang::IModule> module = loaded_modules[entry_point.module_name];
 
-        const SlangResult found_entry_point = module->findEntryPointByName(entry_point_name.c_str(), slang_entry_point.writeRef());
-        if (SLANG_FAILED(found_entry_point)) return {status_type::BACKEND_ERROR, std::format("Couldn't find entry point named '{0}' in module '{1}'", entry_point_name, entry_point_module)};
+            Slang::ComPtr<slang::IEntryPoint> slang_entry_point;
 
-        shader_components.push_back(module);
-        shader_components.push_back(slang_entry_point);
+            const SlangResult found_entry_point = module->findEntryPointByName(entry_point.entry_point_name.c_str(), slang_entry_point.writeRef());
+            if (SLANG_FAILED(found_entry_point)) return {status_type::BACKEND_ERROR, std::format("Couldn't find entry point named '{0}' in module '{1}'", entry_point.entry_point_name, entry_point.module_name)};
+
+            shader_components.push_back(slang_entry_point);
+            entry_point_index_map[entry_point] = idx;
+        }
 
         for (const std::string& module_name : additional_modules)
         {
@@ -215,7 +240,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, linked_set_name)};
             }
         }
 
@@ -228,23 +253,32 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader linking for '{1}' failed with error: '{0}'", msg, linked_set_name)};
             }
         }
 
-        linked_shaders[shader_name] = linked_program;
+
+        linked_sets[linked_set_name] = {
+            linked_program,
+            std::move(entry_point_index_map)
+        };
 
         return status_type::SUCCESS;
     }
 
-    status create_shader_program(const std::string& shader_name, const graphics_api& api, shader_program** out_shader_program)
+
+    status create_shader_program(const std::string& linked_set_name, const shader_entry_point& entry_point, const graphics_api& api, shader_program** out_shader_program)
     {
         if (out_shader_program == nullptr) return status_type::UNEXPECTED_NULL;
         *out_shader_program = new shader_program();
         shader_program* result = *out_shader_program;
 
-        if (!linked_shaders.contains(shader_name)) return {status_type::UNKNOWN_NAME, std::format("No linked slang shader called '{0}' exists.", shader_name)};
-        const Slang::ComPtr<slang::IComponentType> linked_shader = linked_shaders[shader_name];
+        if (!linked_sets.contains(linked_set_name)) return {status_type::UNKNOWN_NAME, std::format("No linked slang shader called '{0}' exists.", linked_set_name)};
+        const linked_set& linked_set = linked_sets[linked_set_name];
+        const Slang::ComPtr<slang::IComponentType> linked_shader = linked_set.linked_components;
+
+        if (!linked_set.entry_point_indexes.contains(entry_point)) return {status_type::UNKNOWN_NAME, "Entry point not found in linked set"};
+        const uint32_t entry_point_idx = linked_set.entry_point_indexes.at(entry_point);
 
         const int target_index = get_target_index_for_api(api);
         if (target_index == -1) return {status_type::UNSUPPORTED, "API selected is not currently supported for slang shaders"};
@@ -253,12 +287,12 @@ namespace stardraw
             Slang::ComPtr<slang::IBlob> shader_blob;
             Slang::ComPtr<slang::IBlob> diagnostics;
 
-            linked_shader->getEntryPointCode(0, target_index, shader_blob.writeRef(), diagnostics.writeRef());
+            linked_shader->getEntryPointCode(entry_point_idx, target_index, shader_blob.writeRef(), diagnostics.writeRef());
 
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{1}' failed with error: '{0}'", msg, linked_set_name)};
             }
 
             result->data_size = shader_blob->getBufferSize();
@@ -273,7 +307,7 @@ namespace stardraw
             if (diagnostics)
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-                return {status_type::BACKEND_ERROR, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, shader_name)};
+                return {status_type::BACKEND_ERROR, std::format("Slang shader layout for '{1}' failed with error: '{0}'", msg, linked_set_name)};
             }
 
             result->internal_ptr = layout;
@@ -368,8 +402,8 @@ namespace stardraw
         result.internal_ptr = element_layout;
         result.byte_address += index * element_layout->getStride();
 
-        result.binding_slot_index *= type_layout->getElementCount();
-        result.binding_slot_index += index;
+        result.binding_index *= type_layout->getElementCount();
+        result.binding_index += index;
 
         return result;
     }
@@ -396,7 +430,7 @@ namespace stardraw
 
         slang::TypeLayoutReflection* globals = shader_reflection_of(this)->getGlobalParamsTypeLayout();
         const int64_t global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
-        if (global_idx <= 0) return invalid_shader_paramter_location;
+        if (global_idx < 0) return invalid_shader_paramter_location;
 
         slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
         if (root_param == nullptr) return invalid_shader_paramter_location;
@@ -406,7 +440,7 @@ namespace stardraw
         result.byte_address = 0;
         result.binding_set = root_param->getOffset(slang::ParameterCategory::RegisterSpace);
         result.binding_slot = globals->getFieldBindingRangeOffset(global_idx);
-        result.binding_slot_index = 0;
+        result.binding_index = 0;
 
         return result;
     }
@@ -421,7 +455,7 @@ namespace stardraw
         slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();
         const uint64_t global_idx = globals->findFieldIndexByName(buffer_name.data(), buffer_name.data() + buffer_name.size());
         slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
-        if (root_param == nullptr) return { status_type::UNKNOWN_NAME, std::format("Couldn't find buffer by name {0}",buffer_name )};
+        if (root_param == nullptr) return {status_type::UNKNOWN_NAME, std::format("Couldn't find buffer by name {0}", buffer_name)};
 
         slang::TypeLayoutReflection* base_layout = root_param->getTypeLayout()->getElementTypeLayout();
         result->padded_size = base_layout->getStride();

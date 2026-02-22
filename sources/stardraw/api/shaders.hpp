@@ -28,13 +28,14 @@ namespace stardraw
     {
         [[nodiscard]] shader_parameter_location index(uint32_t index) const;
         [[nodiscard]] shader_parameter_location field(const std::string_view& name) const;
+        [[nodiscard]] bool operator==(const shader_parameter_location& other) const = default;
 
         std::string root_param;
         void* internal_ptr = nullptr;
         uint32_t byte_address = 0;
         uint32_t binding_set = 0;
         uint32_t binding_slot = 0;
-        uint32_t binding_slot_index = 0;
+        uint32_t binding_index = 0;
     };
 
     struct shader_program
@@ -58,14 +59,20 @@ namespace stardraw
         shader_program* program;
     };
 
+    struct shader_entry_point
+    {
+        std::string module_name;
+        std::string entry_point_name;
+        bool operator==(const shader_entry_point& key) const = default;
+    };
+
     [[nodiscard]] status setup_shader_compiler(const std::vector<shader_macro>& macro_defines = {});
     [[nodiscard]] status load_shader_module(const std::string_view& module_name, const std::string_view& source);
     [[nodiscard]] status load_shader_module(const std::string_view& module_name, const void* cache_ptr, const uint64_t cache_size);
     [[nodiscard]] status cache_shader_module(const std::string& module_name, void** out_cache_ptr, uint64_t& out_cache_size);
+    [[nodiscard]] status link_shader_modules(const std::string& linked_set_name, const std::vector<shader_entry_point>& entry_points, const std::vector<std::string>& additional_modules = {});
 
-    [[nodiscard]] status link_shader(const std::string& shader_name, const std::string& entry_point_module, const std::string& entry_point_name, const std::vector<std::string>& additional_modules = {});
-
-    [[nodiscard]] status create_shader_program(const std::string& shader_name, const graphics_api& api, shader_program** out_shader_program);
+    [[nodiscard]] status create_shader_program(const std::string& linked_set_name, const shader_entry_point& entry_point, const graphics_api& api, shader_program** out_shader_program);
     [[nodiscard]] status delete_shader_program(shader_program** shader_program);
 
     [[nodiscard]] status create_shader_buffer_layout(const shader_program* program, const std::string_view& buffer_name, shader_buffer_layout** out_buffer_layout);

@@ -92,6 +92,7 @@ namespace stardraw::gl45
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);
 
         [[nodiscard]] static GLenum gl_shader_type(shader_stage_type stage);
+        [[nodiscard]] status remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources);
 
         [[nodiscard]] static status link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id);
         [[nodiscard]] static status compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id);
@@ -106,6 +107,7 @@ namespace stardraw::gl45
         [[nodiscard]] static std::string get_program_log(const GLuint program);
 
         GLuint shader_program_id = 0;
+        std::vector<uint32_t> descriptor_set_binding_offsets;
         std::unordered_map<std::string, parameter_block_info> parameter_blocks;
         std::unordered_map<std::string, binding_block_location> binding_block_locations;
     };
