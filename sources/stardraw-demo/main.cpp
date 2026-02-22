@@ -32,7 +32,7 @@ std::vector<shader_stage> load_shader()
         }
     );
 
-    status vtx_load_status = stardraw::create_shader_program("main_linked",  vert_entry_point, graphics_api::GL45, &vert_shader);
+    status vtx_load_status = stardraw::create_shader_program("main_linked", vert_entry_point, graphics_api::GL45, &vert_shader);
     status frg_load_status = stardraw::create_shader_program("main_linked", frag_entry_point, graphics_api::GL45, &frag_shader);
     status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", &uniforms_layout);
 
@@ -101,9 +101,11 @@ int main()
         buffer_upload_command("vertices", 0, sizeof(vertex) * 3, &triangle),
         buffer_upload_command("uniforms", 0, sizeof(uniform_block), uniform_mem),
         blending_config_command(blending_configs::ALPHA),
-        shader_parameters_upload_command("shader", {
-                                             {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
-                                         }),
+        shader_parameters_upload_command(
+            "shader",
+            {
+                {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
+            }),
     });
 
     free(uniform_mem);

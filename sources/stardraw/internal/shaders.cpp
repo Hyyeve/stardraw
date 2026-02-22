@@ -176,8 +176,7 @@ namespace stardraw
 
         if (!module)
         {
-            std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
-            return {status_type::BACKEND_ERROR, std::format("Slang module '{1}' loading failed with error: '{0}'", msg, module_name)};
+            return {status_type::BACKEND_ERROR, std::format("Slang module '{0}' loading failed with unknwon error", module_name)};
         }
 
         loaded_modules[std::string(module_name)] = module;
@@ -190,14 +189,15 @@ namespace stardraw
         if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", module_name)};
         const Slang::ComPtr<slang::IModule> module = loaded_modules[module_name];
 
-        ISlangBlob* serialized_blob;
-        const SlangResult serialize_result = module->serialize(&serialized_blob);
+        Slang::ComPtr<ISlangBlob> serialized_blob;
+        const SlangResult serialize_result = module->serialize(serialized_blob.writeRef());
         if (SLANG_FAILED(serialize_result)) return {status_type::BACKEND_ERROR, std::format("Failed to serialize module '{0}'", module_name)};
 
-        *out_cache_ptr = malloc(serialized_blob->getBufferSize());
-        memcpy(*out_cache_ptr, serialized_blob->getBufferPointer(), serialized_blob->getBufferSize());
+        const uint64_t cache_size = serialized_blob->getBufferSize();
 
-        delete serialized_blob;
+        *out_cache_ptr = malloc(cache_size);
+        memcpy(*out_cache_ptr, serialized_blob->getBufferPointer(),cache_size);
+        out_cache_size = cache_size;
 
         return status_type::SUCCESS;
     }
