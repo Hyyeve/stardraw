@@ -1,5 +1,5 @@
 #include "../api/shaders.hpp"
-#include "internal_types.hpp"
+#include "internal.hpp"
 
 #include <array>
 #include <format>
@@ -21,7 +21,6 @@ struct std::hash<stardraw::shader_entry_point>
 
 namespace stardraw
 {
-
     struct linked_set
     {
         Slang::ComPtr<slang::IComponentType> linked_components;
@@ -35,7 +34,7 @@ namespace stardraw
 
     status delete_shader_buffer_layout(shader_buffer_layout** buffer_layout)
     {
-        if (buffer_layout == nullptr) return status_type::UNEXPECTED_NULL;
+        if (buffer_layout == nullptr) return status_type::UNEXPECTED;
         delete *buffer_layout;
         return status_type::SUCCESS;
     }
@@ -186,7 +185,7 @@ namespace stardraw
 
     status cache_shader_module(const std::string& module_name, void** out_cache_ptr, uint64_t& out_cache_size)
     {
-        if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", module_name)};
+        if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN, std::format("No loaded slang module called '{0}' found.", module_name)};
         const Slang::ComPtr<slang::IModule> module = loaded_modules[module_name];
 
         Slang::ComPtr<ISlangBlob> serialized_blob;
@@ -196,7 +195,7 @@ namespace stardraw
         const uint64_t cache_size = serialized_blob->getBufferSize();
 
         *out_cache_ptr = malloc(cache_size);
-        memcpy(*out_cache_ptr, serialized_blob->getBufferPointer(),cache_size);
+        memcpy(*out_cache_ptr, serialized_blob->getBufferPointer(), cache_size);
         out_cache_size = cache_size;
 
         return status_type::SUCCESS;
@@ -212,7 +211,7 @@ namespace stardraw
         {
             const shader_entry_point& entry_point = entry_points[idx];
 
-            if (!loaded_modules.contains(entry_point.module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", entry_point.module_name)};
+            if (!loaded_modules.contains(entry_point.module_name)) return {status_type::UNKNOWN, std::format("No loaded slang module called '{0}' found.", entry_point.module_name)};
             const Slang::ComPtr<slang::IModule> module = loaded_modules[entry_point.module_name];
 
             Slang::ComPtr<slang::IEntryPoint> slang_entry_point;
@@ -226,7 +225,7 @@ namespace stardraw
 
         for (const std::string& module_name : additional_modules)
         {
-            if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN_NAME, std::format("No loaded slang module called '{0}' found.", module_name)};
+            if (!loaded_modules.contains(module_name)) return {status_type::UNKNOWN, std::format("No loaded slang module called '{0}' found.", module_name)};
             const Slang::ComPtr<slang::IModule> additional_module = loaded_modules[module_name];
             shader_components.push_back(additional_module);
         }
@@ -266,18 +265,17 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
-
     status create_shader_program(const std::string& linked_set_name, const shader_entry_point& entry_point, const graphics_api& api, shader_program** out_shader_program)
     {
-        if (out_shader_program == nullptr) return status_type::UNEXPECTED_NULL;
+        if (out_shader_program == nullptr) return status_type::UNEXPECTED;
         *out_shader_program = new shader_program();
         shader_program* result = *out_shader_program;
 
-        if (!linked_sets.contains(linked_set_name)) return {status_type::UNKNOWN_NAME, std::format("No linked slang shader called '{0}' exists.", linked_set_name)};
+        if (!linked_sets.contains(linked_set_name)) return {status_type::UNKNOWN, std::format("No linked slang shader called '{0}' exists.", linked_set_name)};
         const linked_set& linked_set = linked_sets[linked_set_name];
         const Slang::ComPtr<slang::IComponentType> linked_shader = linked_set.linked_components;
 
-        if (!linked_set.entry_point_indexes.contains(entry_point)) return {status_type::UNKNOWN_NAME, "Entry point not found in linked set"};
+        if (!linked_set.entry_point_indexes.contains(entry_point)) return {status_type::UNKNOWN, "Entry point not found in linked set"};
         const uint32_t entry_point_idx = linked_set.entry_point_indexes.at(entry_point);
 
         const int target_index = get_target_index_for_api(api);
@@ -293,6 +291,11 @@ namespace stardraw
             {
                 std::string msg = std::string(static_cast<const char*>(diagnostics->getBufferPointer()));
                 return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{1}' failed with error: '{0}'", msg, linked_set_name)};
+            }
+
+            if (!shader_blob)
+            {
+                return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{0}' failed with unknown error", linked_set_name)};
             }
 
             result->data_size = shader_blob->getBufferSize();
@@ -319,7 +322,7 @@ namespace stardraw
 
     status delete_shader_program(shader_program** shader_program)
     {
-        if (shader_program == nullptr || *shader_program == nullptr) return status_type::UNEXPECTED_NULL;
+        if (shader_program == nullptr || *shader_program == nullptr) return status_type::UNEXPECTED;
         free((*shader_program)->data);
         delete *shader_program;
         *shader_program = nullptr;
@@ -394,32 +397,54 @@ namespace stardraw
 
     shader_parameter_location shader_parameter_location::index(const uint32_t index) const
     {
-        slang::TypeLayoutReflection* type_layout = type_layout_of(*this);
+        slang::TypeLayoutReflection* type_layout = slang_type_reflection(*this);
         slang::TypeLayoutReflection* element_layout = type_layout->getElementTypeLayout();
         if (element_layout == nullptr) return invalid_shader_paramter_location;
 
         shader_parameter_location result = shader_parameter_location(*this);
-        result.internal_ptr = element_layout;
+        result.offset_ptr = element_layout;
         result.byte_address += index * element_layout->getStride();
 
-        result.binding_index *= type_layout->getElementCount();
-        result.binding_index += index;
+        result.binding_range_index *= type_layout->getElementCount();
+        result.binding_range_index += index;
 
         return result;
     }
 
+    bool is_single_element_container_kind(const slang::TypeReflection::Kind kind)
+    {
+        switch (kind)
+        {
+            case slang::TypeReflection::Kind::ConstantBuffer:
+            case slang::TypeReflection::Kind::TextureBuffer:
+            case slang::TypeReflection::Kind::ShaderStorageBuffer:
+            case slang::TypeReflection::Kind::ParameterBlock:
+            {
+                return true;
+            }
+
+            default:
+            {
+                return false;
+            }
+        }
+    }
+
     shader_parameter_location shader_parameter_location::field(const std::string_view& name) const
     {
-        slang::TypeLayoutReflection* type_layout = type_layout_of(*this);
+        slang::TypeLayoutReflection* type_layout = slang_type_reflection(*this);
+
+        if (is_single_element_container_kind(type_layout->getKind())) type_layout = type_layout->getElementTypeLayout();
+
         const int32_t index = type_layout->findFieldIndexByName(name.data(), name.data() + name.size());
         if (index < 0) return invalid_shader_paramter_location;
 
         slang::VariableLayoutReflection* field = type_layout->getFieldByIndex(index);
 
         shader_parameter_location result = shader_parameter_location(*this);
-        result.internal_ptr = field->getTypeLayout();
+        result.offset_ptr = field->getTypeLayout();
         result.byte_address += field->getOffset();
-        result.binding_slot += type_layout->getFieldBindingRangeOffset(index);
+        result.binding_range += type_layout->getFieldBindingRangeOffset(index);
 
         return result;
     }
@@ -428,34 +453,48 @@ namespace stardraw
     {
         shader_parameter_location result;
 
-        slang::TypeLayoutReflection* globals = shader_reflection_of(this)->getGlobalParamsTypeLayout();
-        const int64_t global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
-        if (global_idx < 0) return invalid_shader_paramter_location;
+        slang::VariableLayoutReflection* globals_as_var = slang_shader_reflection(this)->getGlobalParamsVarLayout();
+        slang::TypeLayoutReflection* globals = globals_as_var->getTypeLayout();
+        const int64_t field_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
+        if (field_idx < 0) return invalid_shader_paramter_location;
 
-        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
+        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(field_idx);
         if (root_param == nullptr) return invalid_shader_paramter_location;
 
-        result.root_param = name;
-        result.internal_ptr = root_param->getTypeLayout()->getElementTypeLayout();
+        result.root_ptr = root_param;
+        result.offset_ptr = root_param->getTypeLayout();
+        result.root_idx = field_idx;
         result.byte_address = 0;
-        result.binding_set = root_param->getOffset(slang::ParameterCategory::RegisterSpace);
-        result.binding_slot = globals->getFieldBindingRangeOffset(global_idx);
-        result.binding_index = 0;
+        result.binding_range = 0;
+        result.binding_range_index = 0;
 
         return result;
     }
 
+    int64_t shader_program::buffer_size(const std::string_view& name) const
+    {
+        slang::TypeLayoutReflection* globals = slang_shader_reflection(this)->getGlobalParamsTypeLayout();
+        const int64_t global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
+        if (global_idx < 0) return -1;
+
+        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
+        if (root_param == nullptr) return -1;
+        const size_t size = root_param->getTypeLayout()->getElementTypeLayout()->getSize();
+        return size == ~static_cast<size_t>(0) ? -1 : size; //Slang encodes unsized types as max value, we convert that to -1.
+    }
+
     status create_shader_buffer_layout(const shader_program* program, const std::string_view& buffer_name, shader_buffer_layout** out_buffer_layout)
     {
-        if (program == nullptr || out_buffer_layout == nullptr) return status_type::UNEXPECTED_NULL;
+        if (program == nullptr || out_buffer_layout == nullptr) return status_type::UNEXPECTED;
 
-        slang::ShaderReflection* shader_layout = shader_reflection_of(program);
+        slang::ShaderReflection* shader_layout = slang_shader_reflection(program);
         shader_buffer_layout* result = new shader_buffer_layout();
 
         slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();
-        const uint64_t global_idx = globals->findFieldIndexByName(buffer_name.data(), buffer_name.data() + buffer_name.size());
+        const int64_t global_idx = globals->findFieldIndexByName(buffer_name.data(), buffer_name.data() + buffer_name.size());
+        if (global_idx < 0) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name {0}", buffer_name)};
         slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
-        if (root_param == nullptr) return {status_type::UNKNOWN_NAME, std::format("Couldn't find buffer by name {0}", buffer_name)};
+        if (root_param == nullptr) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name {0}", buffer_name)};
 
         slang::TypeLayoutReflection* base_layout = root_param->getTypeLayout()->getElementTypeLayout();
         result->padded_size = base_layout->getStride();
@@ -488,5 +527,102 @@ namespace stardraw
         *out_buffer_layout = result;
 
         return status_type::SUCCESS;
+    }
+
+    slang::TypeLayoutReflection* slang_type_reflection(const shader_parameter_location& location)
+    {
+        return static_cast<slang::TypeLayoutReflection*>(location.offset_ptr);
+    }
+
+    slang::VariableLayoutReflection* slang_root_var_reflection(const shader_parameter_location& location)
+    {
+        return static_cast<slang::VariableLayoutReflection*>(location.root_ptr);
+    }
+
+    slang::ShaderReflection* slang_shader_reflection(const shader_program* program)
+    {
+        return static_cast<slang::ShaderReflection*>(program->internal_ptr);
+    }
+
+    bool does_slang_type_consume_bindings(slang::TypeLayoutReflection* type)
+    {
+        switch (type->getKind())
+        {
+            case slang::TypeReflection::Kind::Array:
+            {
+                return does_slang_type_consume_bindings(type->getElementTypeLayout());
+            }
+
+            case slang::TypeReflection::Kind::None:
+            case slang::TypeReflection::Kind::Struct:
+            case slang::TypeReflection::Kind::Matrix:
+            case slang::TypeReflection::Kind::Vector:
+            case slang::TypeReflection::Kind::Scalar:
+            {
+                return false;
+            }
+
+            default:
+            {
+                return true;
+            }
+        }
+    }
+
+    binding_location_info vk_binding_for_location(const shader_parameter_location& location)
+    {
+        slang::VariableLayoutReflection* root_var = slang_root_var_reflection(location);
+        slang::TypeLayoutReflection* root_layout = root_var->getTypeLayout();
+        slang::TypeLayoutReflection* selected_layout = slang_type_reflection(location);
+
+        const bool inside_parameter_block = root_layout->getKind() == slang::TypeReflection::Kind::ParameterBlock;
+        const bool is_parameter_block = root_var->getTypeLayout() == selected_layout && inside_parameter_block;
+        const bool does_consume_bindings = does_slang_type_consume_bindings(selected_layout); //Does this variable have it's own binding?
+
+        if (!inside_parameter_block && does_consume_bindings)
+        {
+            //Stuff that's not inside a parameter block doesn't have binding range
+            //NOTE: Is there any case where the selected var could have it's own bindings separate to the root?
+            //This won't work for that case if it exists
+            const SlangInt set = root_var->getBindingSpace(slang::ParameterCategory::DescriptorTableSlot);
+            const SlangInt slot = root_var->getOffset(slang::DescriptorTableSlot);
+            return {set, slot, root_layout};
+        }
+
+        if (!does_consume_bindings || is_parameter_block)
+        {
+            if (inside_parameter_block)
+            {
+                //Parameter blocks can have an explicit attribute for the set, which is exposed as 'sub element register space'
+                //They cannot have an explicit attribute for the binding slot, since they can contain multiple opaque types.
+                //The binding slot for plain data within a parameter block is always 0 (automatically introduced constant buffer)
+                const SlangInt set_offset = root_var->getOffset(slang::ParameterCategory::SubElementRegisterSpace);
+                return {set_offset, 0, root_layout};
+            }
+
+            //Plain data outside of a parameter block (probably within a constant/structured/etc buffer) is part of the root binding
+            const SlangInt set_offset = root_var->getBindingSpace(slang::ParameterCategory::DescriptorTableSlot);
+            const SlangInt slot_offset = root_var->getOffset(slang::DescriptorTableSlot);
+
+            return {set_offset, slot_offset, root_layout};
+        }
+
+        //Inside a parameter block and DOES have its own binding - get binding data by binding range.
+
+        slang::TypeLayoutReflection* root_element_layout = root_layout->getElementTypeLayout();
+
+        //Parameter blocks can have an explicit attribute for the set, which is exposed as 'sub element register space'
+        //They cannot have an explicit attribute for the binding slot, since they can contain multiple opaque types.
+        const SlangInt set_offset = root_var->getOffset(slang::ParameterCategory::SubElementRegisterSpace);
+
+        //Slang binding range -> Slang descriptor set indexes
+        const SlangInt slang_binding_set = root_element_layout->getBindingRangeDescriptorSetIndex(location.binding_range);
+        const SlangInt slang_binding_slot = root_element_layout->getBindingRangeFirstDescriptorRangeIndex(location.binding_range);
+
+        //Slang descriptor set indexes -> actual VK descriptor set / slot.
+        const SlangInt set = root_element_layout->getDescriptorSetSpaceOffset(slang_binding_set) + set_offset;
+        const SlangInt slot = root_element_layout->getDescriptorSetDescriptorRangeIndexOffset(slang_binding_set, slang_binding_slot);
+
+        return {set, slot, selected_layout};
     }
 }

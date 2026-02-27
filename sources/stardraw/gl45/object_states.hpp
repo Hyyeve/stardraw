@@ -7,6 +7,15 @@
 #include "glad/glad.h"
 #include "stardraw/api/commands.hpp"
 
+template <>
+struct std::hash<stardraw::shader_parameter_location>
+{
+    std::size_t operator()(const stardraw::shader_parameter_location& key) const noexcept
+    {
+        return hash<uint32_t>()(key.binding_range_index + key.binding_range + key.byte_address + key.root_idx);
+    }
+};
+
 namespace stardraw::gl45
 {
     class buffer_state final : public object_state
@@ -83,11 +92,12 @@ namespace stardraw::gl45
         [[nodiscard]] bool is_valid() const;
 
         [[nodiscard]] status make_active() const;
-        [[nodiscard]] status get_binding_slot(const std::string_view& name, ::stardraw::gl45::shader_state::binding_block_location& out_location) const;
-        [[nodiscard]] status write_parameter(const shader_parameter& parameter) const;
-
+        [[nodiscard]] status upload_parameter(const shader_parameter& parameter);
         [[nodiscard]] descriptor_type object_type() const override;
 
+        std::vector<uint32_t> descriptor_set_binding_offsets;
+        std::vector<shader_parameter> parameter_store;
+        std::unordered_map<uint32_t, std::string> bound_objects;
     private:
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);
 
@@ -99,17 +109,10 @@ namespace stardraw::gl45
 
         [[nodiscard]] static status validate_program(const GLuint program);
 
-        [[nodiscard]] status load_interface_locations(const shader_stage& stage);
-        [[nodiscard]] status add_binding_block(const std::string& name, GLenum binding_type, uint32_t slot);
-        [[nodiscard]] status add_parameter_block(const std::string& name);
-
         [[nodiscard]] static std::string get_shader_log(const GLuint shader);
         [[nodiscard]] static std::string get_program_log(const GLuint program);
 
         GLuint shader_program_id = 0;
-        std::vector<uint32_t> descriptor_set_binding_offsets;
-        std::unordered_map<std::string, parameter_block_info> parameter_blocks;
-        std::unordered_map<std::string, binding_block_location> binding_block_locations;
     };
 
     class vertex_specification_state final : public object_state
@@ -120,6 +123,7 @@ namespace stardraw::gl45
         ~vertex_specification_state() override;
 
         [[nodiscard]] bool is_valid() const;
+        [[nodiscard]] bool has_index_buffer() const;
 
         [[nodiscard]] status bind() const;
         [[nodiscard]] status attach_vertex_buffer(const GLuint slot, const GLuint id, const GLintptr offset, const GLsizei stride);
@@ -130,32 +134,20 @@ namespace stardraw::gl45
             return descriptor_type::VERTEX_SPECIFICATION;
         }
 
+
         std::vector<GLuint> vertex_buffers;
         GLuint index_buffer = 0;
         GLuint vertex_array_id = 0;
     };
 
-    class shader_specification_state final : public object_state
-    {
-    public:
-        explicit shader_specification_state(const shader_specification_descriptor& desc) : shader(desc.shader), bindings(desc.shader_bindings) {}
-
-        [[nodiscard]] descriptor_type object_type() const override
-        {
-            return descriptor_type::SHADER_SPECIFICATION;
-        }
-
-        object_identifier shader;
-        std::vector<shader_data_binding> bindings;
-    };
-
     class draw_specification_state final : public object_state
     {
     public:
-        explicit draw_specification_state(const draw_specification_descriptor& descriptor);
+        explicit draw_specification_state(const draw_specification_descriptor& descriptor, bool has_index_buffer);
         [[nodiscard]] descriptor_type object_type() const override;
 
-        object_identifier shader_specification;
+        object_identifier shader;
         object_identifier vertex_specification;
+        bool has_index_buffer;
     };
 }

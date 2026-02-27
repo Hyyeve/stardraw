@@ -4,12 +4,6 @@ struct UniformData
     float3 additive;
 }
 
-struct ParameterData
-{
-    float3 tint2;
-    Sampler2D tex;
-}
-
 struct VertexIn
 {
     float3	position : POSITION;
@@ -33,10 +27,7 @@ struct FragmentOut
     float4 color;
 };
 
-ConstantBuffer<UniformData> uniforms;
-ParameterBlock<ParameterData> params;
-ParameterBlock<ParameterData> params2;
-ParameterBlock<ParameterData> params3;
+StructuredBuffer<UniformData> structured;
 
 [shader("vertex")]
 VertexOut vertexMain(VertexIn data)
@@ -45,7 +36,7 @@ VertexOut vertexMain(VertexIn data)
 
     let vertex_pos = float4(data.position, 1.0);
 
-    output.frag_data.color = data.color + params3.tint2.rrgg;
+    output.frag_data.color = data.color;
     output.frag_data.uv = vertex_pos.xy;
     output.position = vertex_pos;
 
@@ -56,6 +47,6 @@ VertexOut vertexMain(VertexIn data)
 FragmentOut fragmentMain(FragmentIn data : FragmentIn) : SV_Target
 {
     FragmentOut output;
-    output.color = data.color * uniforms.tint + float4(uniforms.additive.rgb, 1) * params.tex.Sample(data.uv) * params2.tex.Sample(data.uv);
+    output.color = data.color * structured[1].tint;
     return output;
 };

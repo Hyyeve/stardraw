@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -22,9 +21,8 @@ namespace stardraw
     {
         SUCCESS, UNSUPPORTED, UNIMPLEMENTED, NOTHING_TO_DO,
         ALREADY_INITIALIZED, NOT_INITIALIZED,
-        UNKNOWN_SOURCE, UNEXPECTED_NULL, RANGE_OVERFLOW, TIMEOUT,
-        DUPLICATE_NAME, UNKNOWN_NAME,
-        BACKEND_ERROR, BROKEN_SOURCE,
+        UNKNOWN, DUPLICATE, UNEXPECTED, RANGE_OVERFLOW, TIMEOUT,
+        BACKEND_ERROR, INVALID,
     };
 
     struct status
@@ -47,18 +45,12 @@ namespace stardraw
         }
     }
 
-
-
     struct object_identifier
     {
         explicit constexpr object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
         uint64_t hash;
         std::string name;
     };
-
-
-
-
 
 }
 

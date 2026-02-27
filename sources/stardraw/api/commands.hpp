@@ -11,10 +11,10 @@ namespace stardraw
     enum class command_type : uint8_t
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
-        CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE,
+        CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW,
         BUFFER_UPLOAD, BUFFER_COPY, BUFFER_DOWNLOAD,
         CLEAR_WINDOW, CLEAR_BUFFER,
-        SHADER_PARAMETERS_UPLOAD,
+        CONFIG_SHADER,
     };
 
     struct command
@@ -37,14 +37,13 @@ namespace stardraw
 
     struct draw_command final : command
     {
-        draw_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const uint32_t start_vertex = 0, const uint32_t instances = 1, const uint32_t start_instance = 0) : draw_specification(draw_specification), mode(mode), count(count), start_vertex(start_vertex), instances(instances), start_instance(start_instance) {}
+        draw_command(const draw_mode mode, const uint32_t count, const uint32_t start_vertex = 0, const uint32_t instances = 1, const uint32_t start_instance = 0) : mode(mode), count(count), start_vertex(start_vertex), instances(instances), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW;
         }
 
-        object_identifier draw_specification;
         draw_mode mode;
         uint32_t count;
 
@@ -58,14 +57,12 @@ namespace stardraw
 
     struct draw_indexed_command final : command
     {
-        draw_indexed_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t count, const int32_t vertex_index_offset = 0, const uint32_t start_index = 0, const uint32_t instances = 1, const uint32_t start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification(draw_specification), mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
+        draw_indexed_command(const draw_mode mode, const uint32_t count, const int32_t vertex_index_offset = 0, const uint32_t start_index = 0, const uint32_t instances = 1, const uint32_t start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDEXED;
         }
-
-        object_identifier draw_specification;
 
         draw_mode mode;
         draw_indexed_index_type index_type;
@@ -84,14 +81,12 @@ namespace stardraw
 
     struct draw_indirect_command final : command
     {
-        draw_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0) : draw_specification(draw_specification), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indirect_command(const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0) : mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
-
-        object_identifier draw_specification;
 
         draw_mode mode;
         uint32_t draw_count;
@@ -100,19 +95,28 @@ namespace stardraw
 
     struct draw_indexed_indirect_command final : command
     {
-        draw_indexed_indirect_command(const std::string_view& draw_specification, const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : draw_specification(draw_specification), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indexed_indirect_command(const draw_mode mode, const uint32_t draw_count, const uint32_t indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
 
-        object_identifier draw_specification;
-
         draw_mode mode;
         draw_indexed_index_type index_type;
         uint32_t draw_count;
         uint32_t indirect_offset;
+    };
+
+    struct draw_config_command final : command
+    {
+        explicit draw_config_command(const std::string& draw_specification) : draw_specification(draw_specification) {}
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::CONFIG_DRAW;
+        }
+
+        object_identifier draw_specification;
     };
 
     enum class stencil_test_func : uint8_t
@@ -412,16 +416,17 @@ namespace stardraw
     {
         shader_parameter_location location;
         shader_parameter_value value;
+        bool operator==(const shader_parameter& parameter) const = default;
     };
 
-    struct shader_parameters_upload_command final : command
+    struct shader_config_command final : command
     {
-        explicit shader_parameters_upload_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters) : shader(shader), parameters(parameters) {}
-        explicit shader_parameters_upload_command(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters) : shader(shader), parameters(parameters) {}
+        explicit shader_config_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters) : shader(shader), parameters(parameters) {}
+        explicit shader_config_command(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters) : shader(shader), parameters(parameters) {}
 
         [[nodiscard]] command_type type() const override
         {
-            return command_type::SHADER_PARAMETERS_UPLOAD;
+            return command_type::CONFIG_SHADER;
         }
 
         object_identifier shader;

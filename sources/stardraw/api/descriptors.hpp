@@ -9,7 +9,7 @@ namespace stardraw
 {
     enum class descriptor_type : uint8_t
     {
-        BUFFER, SHADER, VERTEX_SPECIFICATION, SHADER_SPECIFICATION, DRAW_SPECIFICATION,
+        BUFFER, SHADER, VERTEX_SPECIFICATION, DRAW_SPECIFICATION,
     };
 
     struct descriptor
@@ -100,35 +100,16 @@ namespace stardraw
         std::string index_buffer;
     };
 
-    struct shader_data_binding
-    {
-        std::string buffer;
-        std::string binding;
-    };
-
-    struct shader_specification_descriptor final : descriptor
-    {
-        shader_specification_descriptor(const std::string_view& name, const std::string_view& shader, const std::vector<shader_data_binding>& shader_bindings = {}) : descriptor(name), shader(shader), shader_bindings(shader_bindings) {}
-
-        [[nodiscard]] descriptor_type type() const override
-        {
-            return descriptor_type::SHADER_SPECIFICATION;
-        }
-
-        std::string shader;
-        std::vector<shader_data_binding> shader_bindings;
-    };
-
     struct draw_specification_descriptor final : descriptor
     {
-        draw_specification_descriptor(const std::string_view& name, const std::string_view& vertex_specification, const std::string_view& shader_specification) : descriptor(name), vertex_specification(vertex_specification), shader_specification(shader_specification) {}
+        draw_specification_descriptor(const std::string_view& name, const std::string_view& vertex_specification, const std::string_view& shader) : descriptor(name), vertex_specification(vertex_specification), shader(shader) {}
         [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::DRAW_SPECIFICATION;
         }
 
         std::string vertex_specification;
-        std::string shader_specification;
+        std::string shader;
     };
 
     struct shader_descriptor final : descriptor

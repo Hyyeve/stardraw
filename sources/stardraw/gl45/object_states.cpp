@@ -3,7 +3,7 @@
 #include <format>
 #include <spirv_glsl.hpp>
 
-#include "stardraw/internal/internal_types.hpp"
+#include "stardraw/internal/internal.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -88,7 +88,7 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Direct buffer upload");
-        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
+        if (data == nullptr) return {status_type::UNEXPECTED, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         if (main_buff_pointer == nullptr)
@@ -107,7 +107,7 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Staged buffer upload");
-        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
+        if (data == nullptr) return {status_type::UNEXPECTED, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         update_staging_buffer_space(); //Clean up any free blocks ahead of us
@@ -145,7 +145,7 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Temp copy buffer upload");
 
-        if (data == nullptr) return {status_type::UNEXPECTED_NULL, "Data pointer was null!"};
+        if (data == nullptr) return {status_type::UNEXPECTED, "Data pointer was null!"};
         if (!is_in_buffer_range(address, bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested upload range is out of range in buffer '{0}'", buffer_name)};
 
         GLuint temp_buffer;
@@ -302,22 +302,12 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status shader_state::get_binding_slot(const std::string_view& name, binding_block_location& out_location) const
+    status shader_state::upload_parameter(const shader_parameter& parameter)
     {
-        if (!binding_block_locations.contains(std::string(name))) return {status_type::UNKNOWN_NAME, std::format("Shader does not contain a binding called '{0}'", name)};
-        out_location = binding_block_locations.at(std::string(name));
-        return status_type::SUCCESS;
-    }
-
-    status shader_state::write_parameter(const shader_parameter& parameter) const
-    {
-        ZoneScoped;
-        TracyGpuZone("[Stardraw] Write shader parameter")
-        const shader_parameter_value& value = parameter.value;
-        const shader_parameter_location& location = parameter.location;
-
-        if (location == invalid_shader_paramter_location) return {status_type::UNKNOWN_NAME, "Shader parameter location not found in shader"};
-
+        if (parameter.location == invalid_shader_paramter_location) return {status_type::UNKNOWN, "Shader parameter location not found in shader"};
+        const auto existing_param = std::ranges::find(parameter_store, parameter);
+        if (existing_param == parameter_store.end()) parameter_store.push_back(parameter);
+        else parameter_store.emplace(existing_param, parameter);
         return status_type::SUCCESS;
     }
 
@@ -345,19 +335,12 @@ namespace stardraw::gl45
                 break;
             }
 
-            const std::string source = converted_sources[idx];
+            const std::string& source = converted_sources[idx];
             GLuint compiled_stage;
             const status compile_status = compile_shader_stage(source, shader_type, compiled_stage);
             if (is_status_error(compile_status))
             {
                 stages_compile_status = compile_status;
-                break;
-            }
-
-            const status load_interface_status = load_interface_locations(stage);
-            if (is_status_error(load_interface_status))
-            {
-                stages_compile_status = load_interface_status;
                 break;
             }
 
@@ -402,33 +385,6 @@ namespace stardraw::gl45
         }
 
         return 0;
-    }
-
-    status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id)
-    {
-        const GLuint program = glCreateProgram();
-        if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
-
-        for (const GLuint shader : stages)
-        {
-            if (shader != 0)
-                glAttachShader(program, shader);
-        }
-
-        glLinkProgram(program);
-
-        GLint success = GL_TRUE;
-        glGetProgramiv(program, GL_LINK_STATUS, &success);
-
-        if (success != GL_TRUE)
-        {
-            glDeleteProgram(program);
-            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
-        }
-
-        out_shader_id = program;
-
-        return status_type::SUCCESS;
     }
 
     status shader_state::remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources)
@@ -527,6 +483,33 @@ namespace stardraw::gl45
         return result_status;
     }
 
+    status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id)
+    {
+        const GLuint program = glCreateProgram();
+        if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
+
+        for (const GLuint shader : stages)
+        {
+            if (shader != 0)
+                glAttachShader(program, shader);
+        }
+
+        glLinkProgram(program);
+
+        GLint success = GL_TRUE;
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+        if (success != GL_TRUE)
+        {
+            glDeleteProgram(program);
+            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
+        }
+
+        out_shader_id = program;
+
+        return status_type::SUCCESS;
+    }
+
     status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id)
     {
         const GLuint shader = glCreateShader(type);
@@ -561,66 +544,6 @@ namespace stardraw::gl45
         if (success != GL_TRUE)
         {
             return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
-        }
-
-        return status_type::SUCCESS;
-    }
-
-    [[nodiscard]] status shader_state::add_binding_block(const std::string& name, const GLenum binding_type, const uint32_t slot)
-    {
-        if (binding_block_locations.contains(name))
-        {
-            const binding_block_location& existing = binding_block_locations[name];
-            if (existing.type != binding_type || existing.slot != slot)
-            {
-                return {status_type::DUPLICATE_NAME, std::format("Aliasing binding block in shader! More than one block named '{0}'", name)};
-            }
-            return status_type::SUCCESS;
-        }
-
-        binding_block_locations[std::string(name)] = {binding_type, slot};
-        return status_type::SUCCESS;
-    }
-
-    status shader_state::add_parameter_block(const std::string& name)
-    {
-        parameter_blocks[name] = parameter_block_info {};
-        return status_type::SUCCESS;
-    }
-
-    status shader_state::load_interface_locations(const shader_stage& stage)
-    {
-        slang::ShaderReflection* reflection = shader_reflection_of(stage.program);
-        slang::TypeLayoutReflection* globals = reflection->getGlobalParamsTypeLayout();
-        for (uint32_t idx = 0; idx < globals->getFieldCount(); idx++)
-        {
-            slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(idx);
-            const uint32_t slot = globals->getFieldBindingRangeOffset(idx);
-            const std::string name = root_param->getName();
-            const slang::TypeReflection::Kind kind = root_param->getType()->getKind();
-
-            switch (kind)
-            {
-                case slang::TypeReflection::Kind::ConstantBuffer:
-                {
-                    const status add_status = add_binding_block(name, GL_UNIFORM_BUFFER, slot);
-                    if (is_status_error(add_status)) return add_status;
-                    continue;
-                }
-                case slang::TypeReflection::Kind::ShaderStorageBuffer:
-                {
-                    const status add_status = add_binding_block(name, GL_SHADER_STORAGE_BUFFER, slot);
-                    if (is_status_error(add_status)) return add_status;
-                    continue;
-                }
-                case slang::TypeReflection::Kind::ParameterBlock:
-                {
-                    const status add_status = add_parameter_block(name);
-                    if (is_status_error(add_status)) return add_status;
-                    continue;
-                }
-                default: continue;
-            }
         }
 
         return status_type::SUCCESS;
@@ -680,6 +603,11 @@ namespace stardraw::gl45
         return true;
     }
 
+    bool vertex_specification_state::has_index_buffer() const
+    {
+        return index_buffer != 0;
+    }
+
     status vertex_specification_state::bind() const
     {
         ZoneScoped;
@@ -706,7 +634,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    draw_specification_state::draw_specification_state(const draw_specification_descriptor& descriptor) : shader_specification(descriptor.shader_specification), vertex_specification(descriptor.vertex_specification) {}
+    draw_specification_state::draw_specification_state(const draw_specification_descriptor& descriptor, bool has_index_buffer) : shader(descriptor.shader), vertex_specification(descriptor.vertex_specification), has_index_buffer(has_index_buffer) {}
 
     descriptor_type draw_specification_state::object_type() const
     {

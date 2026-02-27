@@ -7,9 +7,14 @@ namespace stardraw
 {
     struct shader_parameter_value
     {
+        enum class parameter_type
+        {
+            VALUE, ARRAY, OPAUQE_REFERENCE
+        };
+
         enum class value_type
         {
-            BOOL, FLOAT, DOUBLE, INT, UINT, FLOAT_MATRIX, DOUBLE_MATRIX, OPAQUE_REFERENCE
+            BOOL, FLOAT, DOUBLE, INT, UINT, FLOAT_MATRIX, DOUBLE_MATRIX, BUFFER_REFERENCE,
         };
 
         enum class vector_size_type
@@ -103,10 +108,10 @@ namespace stardraw
             };
         }
 
-        static shader_parameter_value opaque(const std::string& reference)
+        static shader_parameter_value buffer(const std::string& reference)
         {
             return shader_parameter_value {
-                value_type::OPAQUE_REFERENCE,
+                value_type::BUFFER_REFERENCE,
                 matrix_dimensions_type::_2x2,
                 vector_size_type::_1,
                 0,
@@ -115,10 +120,12 @@ namespace stardraw
             };
         }
 
+        bool operator==(const shader_parameter_value&) const = default;
+
         value_type type = value_type::FLOAT;
         matrix_dimensions_type matrix_size = matrix_dimensions_type::_2x2;
         vector_size_type vector_size = vector_size_type::_1;
-        uint32_t array_size = 0;
+        uint32_t num_values = 0;
         std::vector<uint8_t> bytes = {};
         std::string opaque_reference = "???";
 

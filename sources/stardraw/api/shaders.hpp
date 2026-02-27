@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-
 #include "types.hpp"
 
 namespace stardraw
@@ -30,17 +29,20 @@ namespace stardraw
         [[nodiscard]] shader_parameter_location field(const std::string_view& name) const;
         [[nodiscard]] bool operator==(const shader_parameter_location& other) const = default;
 
-        std::string root_param;
-        void* internal_ptr = nullptr;
+        void* root_ptr = nullptr;
+        void* offset_ptr = nullptr;
+        uint32_t root_idx = 0;
         uint32_t byte_address = 0;
-        uint32_t binding_set = 0;
-        uint32_t binding_slot = 0;
-        uint32_t binding_index = 0;
+        uint32_t binding_range = 0;
+        uint32_t binding_range_index = 0;
     };
 
     struct shader_program
     {
         [[nodiscard]] shader_parameter_location locate(const std::string_view& name) const;
+
+        //Number of bytes required to store all variables of a shader buffer. -1 indicates an unknown or unsized buffer.
+        [[nodiscard]] int64_t buffer_size(const std::string_view& name) const;
 
         void* data;
         uint32_t data_size;

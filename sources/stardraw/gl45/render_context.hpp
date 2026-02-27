@@ -33,14 +33,15 @@ namespace stardraw::gl45
 
         [[nodiscard]] status execute_command(const command* cmd);
 
-        [[nodiscard]] status execute_draw(const draw_command* cmd);
-        [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
-        [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd);
-        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd);
+        [[nodiscard]] status execute_draw(const draw_command* cmd) const;
+        [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd) const;
+        [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd) const;
+        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd) const;
 
         [[nodiscard]] status execute_buffer_upload(const buffer_upload_command* cmd);
         [[nodiscard]] status execute_buffer_copy(const buffer_copy_command* cmd);
 
+        [[nodiscard]] status execute_draw_config(const draw_config_command* cmd);
         [[nodiscard]] static status execute_config_blending(const blending_config_command* cmd);
         [[nodiscard]] static status execute_config_stencil(const stencil_config_command* cmd);
         [[nodiscard]] static status execute_config_scissor(const scissor_config_command* cmd);
@@ -50,19 +51,21 @@ namespace stardraw::gl45
 
         [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
 
-        [[nodiscard]] status execute_shader_parameters_upload(const shader_parameters_upload_command* cmd);
+        [[nodiscard]] status execute_shader_parameters_upload(const shader_config_command* cmd);
 
         [[nodiscard]] status create_object(const descriptor* descriptor);
 
         [[nodiscard]] status create_buffer_state(const buffer_descriptor* descriptor);
         [[nodiscard]] status create_shader_state(const shader_descriptor* descriptor);
 
-        [[nodiscard]] status create_shader_specification_state(const shader_specification_descriptor* descriptor);
         [[nodiscard]] status create_vertex_specification_state(const vertex_specification_descriptor* descriptor);
         [[nodiscard]] status create_draw_specification_state(const draw_specification_descriptor* descriptor);
-        [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source, bool requires_index_buffer);
-        [[nodiscard]] status bind_shader_specification_state(const object_identifier& source);
-        [[nodiscard]] status bind_draw_specification_state(const object_identifier& source, bool requres_index_buffer);
+        [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source);
+        [[nodiscard]] status bind_draw_specification_state(const object_identifier& source);
+
+        [[nodiscard]] status bind_shader(const object_identifier& source);
+        [[nodiscard]] status bind_shader_buffer_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
+        [[nodiscard]] status bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
 
         template <typename state_type, descriptor_type object_type>
         [[nodiscard]] state_type* find_gl_state(const object_identifier& identifier)
@@ -95,11 +98,6 @@ namespace stardraw::gl45
             return find_gl_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
         }
 
-        [[nodiscard]] inline shader_specification_state* find_gl_shader_specification_state(const object_identifier& identifier)
-        {
-            return find_gl_state<shader_specification_state, descriptor_type::SHADER_SPECIFICATION>(identifier);
-        }
-
         [[nodiscard]] inline draw_specification_state* find_gl_draw_specification_state(const object_identifier& identifier)
         {
             return find_gl_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
@@ -109,5 +107,6 @@ namespace stardraw::gl45
         std::unordered_map<std::string, command_list> command_lists;
         std::unordered_map<uint64_t, object_state*> objects;
         std::unordered_map<std::string, signal_state> signals;
+        const draw_specification_state* active_draw_specification = nullptr;
     };
 }

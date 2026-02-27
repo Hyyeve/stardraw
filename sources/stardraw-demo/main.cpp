@@ -58,7 +58,7 @@ std::array triangle = {
 };
 
 uniform_block uniforms = {
-    1, 1.0f, 1, 0.5f, 0.5, 0.5, 0.5
+    1, 1.0f, 1, 1.0f, 0.5, 0.5, 0.5
 };
 
 int main()
@@ -69,9 +69,14 @@ int main()
 
     render_context* ctx = wind->get_render_context();
 
+    const std::vector<shader_stage> shader_stages = load_shader();
+
+    const uint32_t param_buffer_size = frag_shader->buffer_size("structured");
+
     status object_state_status = ctx->create_objects({
             buffer_descriptor("vertices", 100),
             buffer_descriptor("uniforms", 100),
+            buffer_descriptor("param-buffer", param_buffer_size * 2),
             vertex_specification_descriptor(
                 "vertex-spec",
                 {
@@ -79,19 +84,16 @@ int main()
                     {"vertices", vertex_data_type::FLOAT4_F32},
                 }
             ),
-            shader_descriptor("shader", load_shader()),
-            shader_specification_descriptor("shader-spec", "shader", {{"uniforms", "uniforms"}}),
-            draw_specification_descriptor("draw-spec", "vertex-spec", "shader-spec"),
+            shader_descriptor("shader", shader_stages),
+            draw_specification_descriptor("draw-spec", "vertex-spec", "shader"),
         }
     );
-
-    shader_parameter_location test_loc = frag_shader->locate("params").field("tex");
 
     status made_commands = ctx->create_command_buffer(
         "main",
         {
             clear_window_command(clear_window_mode::ALL),
-            draw_command("draw-spec", draw_mode::TRIANGLES, 3),
+            draw_command(draw_mode::TRIANGLES, 3),
         }
     );
 
@@ -99,13 +101,14 @@ int main()
 
     status init_status = ctx->execute_temp_command_buffer({
         buffer_upload_command("vertices", 0, sizeof(vertex) * 3, &triangle),
-        buffer_upload_command("uniforms", 0, sizeof(uniform_block), uniform_mem),
         blending_config_command(blending_configs::ALPHA),
-        shader_parameters_upload_command(
+        shader_config_command(
             "shader",
             {
-                {frag_shader->locate("params").field("tint"), shader_parameter_value::vector(1.0f, 1.0f, 1.0f, 1.0f)}
+                {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
+                {frag_shader->locate("structured").index(1).field("tint"), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
             }),
+        draw_config_command("draw-spec"),
     });
 
     free(uniform_mem);
