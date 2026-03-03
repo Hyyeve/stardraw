@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stardraw/api/descriptors.hpp"
+#include "stardraw/api/memory_transfer.hpp"
 #include "stardraw/gl45/gl_headers.hpp"
 
 namespace stardraw::gl45
@@ -97,5 +98,32 @@ namespace stardraw::gl45
     struct signal_state
     {
         GLsync sync_point;
+    };
+
+    class gl_memory_transfer_handle final : public memory_transfer_handle
+    {
+    public:
+        status transfer(void* data) override
+        {
+            if (current_status != memory_transfer_status::READY) return {status_type::INVALID, "Transfer has already been called on this handle!"};
+            current_status = memory_transfer_status::TRANSFERRING;
+            memcpy(transfer_buffer_ptr, data, transfer_size);
+            current_status = memory_transfer_status::COMPLETE;
+            return status_type::SUCCESS;
+        }
+        memory_transfer_status transfer_status() override
+        {
+            return current_status;
+        }
+
+        ~gl_memory_transfer_handle() override = default;
+
+        void* transfer_buffer_ptr = nullptr;
+        GLuint transfer_buffer_id = 0;
+        uint64_t transfer_buffer_address = 0;
+        uint64_t transfer_destination_address = 0;
+        uint64_t transfer_size = 0;
+        GLsync* sync_ptr = nullptr;
+        std::atomic<stardraw::memory_transfer_status> current_status = memory_transfer_status::READY;
     };
 }

@@ -150,36 +150,17 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::execute_buffer_upload(const buffer_upload_command* cmd)
-    {
-        ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute buffer upload cmd");
-
-        buffer_state* buffer_state = find_gl_buffer_state(cmd->buffer);
-        if (buffer_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in pipeline", cmd->buffer.name) };
-        if (!buffer_state->is_valid()) return{ status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", cmd->buffer.name) };
-
-        switch (cmd->upload_type)
-        {
-            case buffer_upload_type::UNSAFE_DIRECT: return buffer_state->upload_data_direct(cmd->upload_address, cmd->upload_data, cmd->upload_bytes);
-            case buffer_upload_type::SAFE_STREAMING: return buffer_state->upload_data_staged(cmd->upload_address, cmd->upload_data, cmd->upload_bytes);
-            case buffer_upload_type::SAFE_ONE_TIME: return buffer_state->upload_data_temp_copy(cmd->upload_address, cmd->upload_data, cmd->upload_bytes);
-        }
-
-        return  { status_type::UNSUPPORTED, "Uknowmn buffer upload type" };
-    }
-
     status render_context::execute_buffer_copy(const buffer_copy_command* cmd)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute buffer copy cmd");
 
-        const buffer_state* source_state = find_gl_buffer_state(cmd->source_buffer);
-        if (source_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in pipeline", cmd->source_buffer.name) };
+        const buffer_state* source_state = find_buffer_state(cmd->source_buffer);
+        if (source_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", cmd->source_buffer.name) };
         if (!source_state->is_valid()) return{ status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", cmd->source_buffer.name) };
 
-        const buffer_state* dest_state = find_gl_buffer_state(cmd->dest_buffer);
-        if (dest_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in pipeline", cmd->dest_buffer.name) };
+        const buffer_state* dest_state = find_buffer_state(cmd->dest_buffer);
+        if (dest_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", cmd->dest_buffer.name) };
         if (!dest_state->is_valid()) return{ status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", cmd->dest_buffer.name) };
 
         if (!source_state->is_in_buffer_range(cmd->source_address, cmd->bytes)) return {status_type::RANGE_OVERFLOW, std::format("Requested copy range is out of range in buffer '{0}'", cmd->source_buffer.name)};
@@ -379,9 +360,11 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute shader parameters upload cmd");
-        shader_state* shader = find_gl_shader_state(cmd->shader);
+        shader_state* shader = find_shader_state(cmd->shader);
         if (shader == nullptr) return { status_type::UNKNOWN, std::format("Referenced shader object '{0}' not found in context (referenced by shader parameters upload command)", cmd->shader.name) };
         if (!shader->is_valid()) return {status_type::INVALID, std::format("Shader object '{0}' is in an invalid state (referenced by shader parameters upload command)", cmd->shader.name) };
+
+        if (cmd->erase_previous) shader->clear_parameters();
 
         for (const shader_parameter& parameter : cmd->parameters)
         {
@@ -389,6 +372,19 @@ namespace stardraw::gl45
             if (is_status_error(write_status)) return write_status;
         }
 
+        return status_type::SUCCESS;
+    }
+
+    status render_context::execute_signal(const signal_command* cmd)
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute signal creation cmd");
+        if (signals.contains(cmd->signal_name))
+        {
+            glDeleteSync(signals[cmd->signal_name].sync_point);
+        }
+
+        signals[cmd->signal_name] = { glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)};
         return status_type::SUCCESS;
     }
 }

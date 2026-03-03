@@ -80,7 +80,7 @@ namespace stardraw::gl45
             if (is_status_error(result)) return result;
         }
 
-        return status_type::SUCCESS;
+        return status_from_last_gl_error();
     }
 
     [[nodiscard]] status render_context::execute_temp_command_buffer(const command_list&& commands)
@@ -94,7 +94,7 @@ namespace stardraw::gl45
             if (is_status_error(result)) return result;
         }
 
-        return status_type::SUCCESS;
+        return status_from_last_gl_error();
     }
 
     [[nodiscard]] status render_context::create_command_buffer(const std::string_view& name, const command_list&& commands)
@@ -122,19 +122,19 @@ namespace stardraw::gl45
             if (is_status_error(create_status)) return create_status;
         }
 
-        return status_type::SUCCESS;
+        return status_from_last_gl_error();
     }
 
-    [[nodiscard]] status render_context::delete_object(const std::string_view& name)
+    [[nodiscard]] status render_context::delete_object(const descriptor_type type, const std::string_view& name)
     {
         const object_identifier identifier = object_identifier(name);
-        if (!objects.contains(identifier.hash)) return status_type::NOTHING_TO_DO;
+        if (!objects.contains(type)) return status_type::NOTHING_TO_DO;
+        if (!objects[type].contains(identifier.hash)) return status_type::NOTHING_TO_DO;
 
-        const object_state* state = objects[identifier.hash];
-        objects.erase(identifier.hash);
-        delete state;
+        delete objects[type][identifier.hash];
+        objects[type].erase(identifier.hash);
 
-        return status_type::SUCCESS;
+        return status_from_last_gl_error();
     }
 
     [[nodiscard]] signal_status render_context::check_signal(const std::string_view& name)
@@ -163,11 +163,113 @@ namespace stardraw::gl45
         }
     }
 
-    [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
+    status render_context::prepare_memory_transfer(const memory_transfer_info& info, memory_transfer_handle** out_handle)
     {
-        const buffer_state* buffer_state = find_gl_buffer_state(source);
-        if (buffer_state == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' exists in context", source.name)};
-        return buffer_state->bind_to(target);
+        switch (info.target_type)
+        {
+            case memory_transfer_target_type::BUFFER:
+            {
+                buffer_state* buffer = find_buffer_state(object_identifier(info.target));
+                if (buffer == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", info.target)};
+                if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", info.target)};
+
+                switch (info.transfer_type)
+                {
+                    case memory_transfer_type::STREAMING_UPLOAD:
+                    {
+                        memory_transfer_handle* handle;
+                        status prepare_status = buffer->prepare_upload_data_streaming(info.address, info.bytes, &handle);
+                        if (is_status_error(prepare_status)) return prepare_status;
+                        memory_transfers[handle] = info;
+                        *out_handle = handle;
+                        return status_type::SUCCESS;
+                    }
+                    case memory_transfer_type::CHUNKED_UPLOAD:
+                    {
+                        memory_transfer_handle* handle;
+                        status prepare_status = buffer->prepare_upload_data_chunked(info.address, info.bytes, &handle);
+                        if (is_status_error(prepare_status)) return prepare_status;
+                        memory_transfers[handle] = info;
+                        *out_handle = handle;
+                        return status_type::SUCCESS;
+                    }
+                    case memory_transfer_type::UNCHECKED_UPLOAD:
+                    {
+                        memory_transfer_handle* handle;
+                        status prepare_status = buffer->prepare_upload_data_unchecked(info.address, info.bytes, &handle);
+                        if (is_status_error(prepare_status)) return prepare_status;
+                        memory_transfers[handle] = info;
+                        *out_handle = handle;
+                        return status_type::SUCCESS;
+                    }
+                    default: return {status_type::UNIMPLEMENTED};
+                }
+            }
+
+            default: return {status_type::UNIMPLEMENTED};
+        }
+    }
+
+    status render_context::flush_memory_transfer(memory_transfer_handle* handle)
+    {
+        if (!memory_transfers.contains(handle)) return {status_type::UNKNOWN, "Memory transfer handle not recognized - did you create it with a different context?"};
+        const memory_transfer_info info = memory_transfers[handle];
+        memory_transfers.erase(handle);
+
+        switch (info.target_type)
+        {
+            case memory_transfer_target_type::BUFFER:
+            {
+                const buffer_state* buffer = find_buffer_state(object_identifier(info.target));
+                if (buffer == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", info.target)};
+                if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", info.target)};
+                switch (info.transfer_type)
+                {
+                    case memory_transfer_type::STREAMING_UPLOAD: return buffer->flush_upload_data_streaming(handle);
+                    case memory_transfer_type::CHUNKED_UPLOAD: return buffer->flush_upload_data_chunked(handle);
+                    case memory_transfer_type::UNCHECKED_UPLOAD: return buffer->flush_upload_data_unchecked(handle);
+
+                    default: return {status_type::UNIMPLEMENTED};
+                }
+            }
+
+            default: return {status_type::UNIMPLEMENTED};
+        }
+    }
+
+    status render_context::status_from_last_gl_error()
+    {
+        GLenum latest_status = glGetError();
+        if (latest_status == GL_NO_ERROR) return status_type::SUCCESS;
+
+        std::vector<GLenum> errors;
+        while (latest_status != GL_NO_ERROR)
+        {
+            errors.push_back(latest_status);
+            latest_status = glGetError();
+        }
+
+        std::string error_string = "???";
+        switch (errors[0])
+        {
+            case GL_INVALID_ENUM: error_string = "Invalid enum (probably stardraw bug)";
+                break;
+            case GL_INVALID_OPERATION: error_string = "Invalid operation (probably stardraw bug)";
+                break;
+            case GL_INVALID_VALUE: error_string = "Invalid value (probably stardraw bug)";
+                break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: error_string = "Invalid framebuffer operation (probably stardraw bug)";
+                break;
+            case GL_OUT_OF_MEMORY: error_string = "Out of memory";
+                break;
+            case GL_STACK_OVERFLOW: error_string = "Stack overflow (this is definitely a stardraw bug!)";
+                break;
+            case GL_STACK_UNDERFLOW: error_string = "Stack underflow (this is definitely a stardraw bug!)";
+                break;
+            default: error_string = "Unknown error";
+                break;
+        }
+        return {status_type::BACKEND_ERROR, std::format("Operations generated {0} GL errors. First error triggered: {1}", errors.size(), error_string)};
     }
 
     [[nodiscard]] status render_context::execute_command(const command* cmd)
@@ -193,13 +295,13 @@ namespace stardraw::gl45
             case command_type::CONFIG_DEPTH_TEST: return execute_config_depth_test(dynamic_cast<const depth_test_config_command*>(cmd));
             case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const depth_range_config_command*>(cmd));
 
-            case command_type::BUFFER_UPLOAD: return execute_buffer_upload(dynamic_cast<const buffer_upload_command*>(cmd));
             case command_type::BUFFER_COPY: return execute_buffer_copy(dynamic_cast<const buffer_copy_command*>(cmd));
-            case command_type::BUFFER_DOWNLOAD: return status_type::UNIMPLEMENTED; //TODO
 
             case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window_command*>(cmd));
             case command_type::CLEAR_BUFFER: return status_type::UNIMPLEMENTED; //TODO
             case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const shader_config_command*>(cmd));
+            case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal_command*>(cmd));
+            case command_type::TEXTURE_COPY: break; //TODO
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};
@@ -207,11 +309,6 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::create_object(const descriptor* descriptor)
     {
-        if (objects.contains(descriptor->identifier().hash))
-        {
-            return {status_type::DUPLICATE, std::format("An object with name {0} already exists (or there is a hash collision)", descriptor->identifier().name)};
-        }
-
         const descriptor_type type = descriptor->type();
         switch (type)
         {
@@ -219,6 +316,8 @@ namespace stardraw::gl45
             case descriptor_type::SHADER: return create_shader_state(dynamic_cast<const shader_descriptor*>(descriptor));
             case descriptor_type::VERTEX_SPECIFICATION: return create_vertex_specification_state(dynamic_cast<const vertex_specification_descriptor*>(descriptor));
             case descriptor_type::DRAW_SPECIFICATION: return create_draw_specification_state(dynamic_cast<const draw_specification_descriptor*>(descriptor));
+            case descriptor_type::TEXTURE: return create_texture_state(dynamic_cast<const texture_descriptor*>(descriptor));
+            case descriptor_type::TEXTURE_SAMPLER: return create_texture_sampler_state(dynamic_cast<const texture_sampler_descriptor*>(descriptor));
         }
         return status_type::UNIMPLEMENTED;
     }
@@ -233,9 +332,7 @@ namespace stardraw::gl45
             return create_status;
         }
 
-        objects[descriptor->identifier().hash] = buffer;
-
-        return status_type::SUCCESS;
+        return record_object_state(descriptor->identifier(), buffer);
     }
 
     status render_context::create_shader_state(const shader_descriptor* descriptor)
@@ -248,8 +345,25 @@ namespace stardraw::gl45
             return shader_create_status;
         }
 
-        objects[descriptor->identifier().hash] = shader;
-        return status_type::SUCCESS;
+        return record_object_state(descriptor->identifier(), shader);
+    }
+
+    status render_context::create_texture_state(const texture_descriptor* descriptor)
+    {
+        status texture_create_status = status_type::SUCCESS;
+        texture_state* texture = new texture_state(*descriptor, texture_create_status);
+        if (is_status_error(texture_create_status))
+        {
+            delete texture;
+            return texture_create_status;
+        }
+
+        return record_object_state(descriptor->identifier(), texture);
+    }
+
+    status render_context::create_texture_sampler_state(const texture_sampler_descriptor* descriptor)
+    {
+        return status_type::UNIMPLEMENTED;
     }
 
     status render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
@@ -275,11 +389,16 @@ namespace stardraw::gl45
             buffer_slots[buffer_name] = buffer_slot;
             buffer_names.push_back(buffer_name);
 
-            buffer_state* buffer_state = find_gl_buffer_state(object_identifier(buffer_name));
+            buffer_state* buffer_state = find_buffer_state(object_identifier(buffer_name));
             if (buffer_state == nullptr)
             {
                 delete vertex_spec;
-                return {status_type::UNKNOWN, std::format("No buffer named '{0}' found while creating vertex specification '{1}'", buffer_name, descriptor->identifier().name)};
+                return {status_type::UNKNOWN, std::format("No buffer'{0}' found while creating vertex specification '{1}'", buffer_name, descriptor->identifier().name)};
+            }
+            if (!buffer_state->is_valid())
+            {
+                delete vertex_spec;
+                return {status_type::INVALID, std::format("Can't create vertex specification '{1}', buffer '{0}' is in an invalid state!", buffer_name, descriptor->identifier().name)};
             }
             buffer_states[buffer_name] = buffer_state;
             buffer_slot++;
@@ -331,7 +450,7 @@ namespace stardraw::gl45
 
         if (!descriptor->index_buffer.empty())
         {
-            const buffer_state* index_buffer_state = find_gl_buffer_state(object_identifier(descriptor->index_buffer));
+            const buffer_state* index_buffer_state = find_buffer_state(object_identifier(descriptor->index_buffer));
             if (index_buffer_state == nullptr)
             {
                 delete vertex_spec;
@@ -353,32 +472,29 @@ namespace stardraw::gl45
             return {status_type::BACKEND_ERROR, std::format("Creating vertex specification '{0}' resulted in an invalid object", descriptor->identifier().name)};
         }
 
-        objects[descriptor->identifier().hash] = vertex_spec;
-
-        return status_type::SUCCESS;
+        return record_object_state(descriptor->identifier(), vertex_spec);
     }
 
     status render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
     {
-        const vertex_specification_state* vertex_spec = find_gl_vertex_specification_state(object_identifier(descriptor->vertex_specification));
+        const vertex_specification_state* vertex_spec = find_vertex_specification_state(object_identifier(descriptor->vertex_specification));
         if (!vertex_spec)
         {
             return {status_type::UNKNOWN, std::format("Referenced vertex specification '{0}' not found in context", descriptor->vertex_specification)};
         }
 
-        if (!find_gl_shader_state(object_identifier(descriptor->shader)))
+        if (!find_shader_state(object_identifier(descriptor->shader)))
         {
             return {status_type::UNKNOWN, std::format("Referenced shader '{0}' not found in context", descriptor->shader)};
         }
 
         //draw specification is a thin wrapper that references shader and vertex specifications
-        objects[descriptor->identifier().hash] = new draw_specification_state(*descriptor, vertex_spec->has_index_buffer());
-        return status_type::SUCCESS;
+        return record_object_state(descriptor->identifier(), new draw_specification_state(*descriptor, vertex_spec->has_index_buffer()));
     }
 
     status render_context::bind_vertex_specification_state(const object_identifier& source)
     {
-        const vertex_specification_state* state = find_gl_vertex_specification_state(source);
+        const vertex_specification_state* state = find_vertex_specification_state(source);
         if (state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", source.name)};
         if (!state->is_valid()) return {status_type::INVALID, std::format("Vertex specification object '{0}' is in an invalid state", source.name)};
         return state->bind();
@@ -386,7 +502,7 @@ namespace stardraw::gl45
 
     status render_context::bind_draw_specification_state(const object_identifier& source)
     {
-        const draw_specification_state* state = find_gl_draw_specification_state(source);
+        const draw_specification_state* state = find_draw_specification_state(source);
         if (state == nullptr) return {status_type::UNKNOWN, std::format("Draw specification object '{0}' not found in context", source.name)};
 
         status vertex_specification_bind = bind_vertex_specification_state(state->vertex_specification);
@@ -400,19 +516,26 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
+    {
+        const buffer_state* buffer_state = find_buffer_state(source);
+        if (buffer_state == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' exists in context", source.name)};
+        return buffer_state->bind_to(target);
+    }
+
     status render_context::bind_shader(const object_identifier& source)
     {
-        shader_state* shader = find_gl_shader_state(source);
+        shader_state* shader = find_shader_state(source);
         if (shader == nullptr) return {status_type::UNKNOWN, std::format("Shader object '{0}' not found in context", source.name)};
         if (!shader->is_valid()) return {status_type::INVALID, std::format("Shader object '{0}' is in an invalid state", source.name)};
 
         status activate_status = shader->make_active();
         if (is_status_error(activate_status)) return activate_status;
 
-        for (const shader_parameter& param : shader->parameter_store)
+        for (shader_parameter& param : shader->parameter_store)
         {
             const shader_parameter_location& location = param.location;
-            const shader_parameter_value& value = param.value;
+            shader_parameter_value& value = param.value;
 
             status result_status = status_type::SUCCESS;
 
@@ -480,7 +603,7 @@ namespace stardraw::gl45
             }
         }
 
-        const buffer_state* buffer = find_gl_buffer_state(object_identifier(value.opaque_reference));
+        const buffer_state* buffer = find_buffer_state(object_identifier(value.opaque_reference));
         if (buffer == nullptr) return {status_type::UNKNOWN, std::format("Buffer object '{0}' not found in context (referenced by shader parameter)", value.opaque_reference)};
         if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer object '{0}' is in an invalid state (referenced by shader parameter)", value.opaque_reference)};
         status bind_status = buffer->bind_to_slot(binding_type, actual_slot);
@@ -489,7 +612,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status render_context::bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value)
+    status render_context::bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value)
     {
         const binding_location_info binding_info = vk_binding_for_location(location);
         const uint32_t actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
@@ -499,9 +622,15 @@ namespace stardraw::gl45
             return {status_type::INVALID, "Can't upload shader parameter; the shader does not have a backing buffer set for the given location!"};
         }
 
-        const buffer_state* buffer = find_gl_buffer_state(object_identifier(shader->bound_objects[actual_slot]));
-        if (buffer == nullptr) return {status_type::INVALID, "Can't upload shader parameter; the backing object for this location is not a data buffer! (?!)"};
+        return transfer_memory_immediate({shader->bound_objects[actual_slot], location.byte_address, value.bytes.size(), memory_transfer_type::STREAMING_UPLOAD}, value.bytes.data());
+    }
 
-        return buffer->upload_data_temp_copy(location.byte_address, value.bytes.data(), value.bytes.size());
+    status render_context::record_object_state(const object_identifier& identifier, object_state* state)
+    {
+        if (state == nullptr) return {status_type::UNEXPECTED, "Unexpected null state"};
+        if (!objects.contains(state->object_type())) objects[state->object_type()] = {};
+        if (objects[state->object_type()].contains(identifier.hash)) return {status_type::DUPLICATE, std::format("An object of this type with the name '{0}' already exists (or there is a hash collision)!", identifier.name)};
+        objects[state->object_type()][identifier.hash] = state;
+        return status_type::SUCCESS;
     }
 }

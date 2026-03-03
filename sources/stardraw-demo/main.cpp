@@ -74,8 +74,8 @@ int main()
     const uint32_t param_buffer_size = frag_shader->buffer_size("structured");
 
     status object_state_status = ctx->create_objects({
-            buffer_descriptor("vertices", 100),
-            buffer_descriptor("uniforms", 100),
+            buffer_descriptor("vertices", 300),
+            buffer_descriptor("uniforms", 300),
             buffer_descriptor("param-buffer", param_buffer_size * 2),
             vertex_specification_descriptor(
                 "vertex-spec",
@@ -98,20 +98,20 @@ int main()
     );
 
     void* uniform_mem = layout_shader_buffer_memory(uniforms_layout, &uniforms, sizeof(uniform_block));
+    free(uniform_mem);
+
+    status transfer_status = ctx->transfer_memory_immediate(memory_transfer_info::buffer_upload("vertices", 0, sizeof(vertex) * 3), &triangle);
 
     status init_status = ctx->execute_temp_command_buffer({
-        buffer_upload_command("vertices", 0, sizeof(vertex) * 3, &triangle),
         blending_config_command(blending_configs::ALPHA),
         shader_config_command(
             "shader",
             {
                 {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
-                {frag_shader->locate("structured").index(1).field("tint"), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
+                {frag_shader->locate("structured").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
             }),
         draw_config_command("draw-spec"),
     });
-
-    free(uniform_mem);
 
     while (true)
     {

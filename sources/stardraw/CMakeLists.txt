@@ -5,12 +5,14 @@ target_sources(stardraw PRIVATE
         internal/window.cpp
         internal/shaders.cpp
         internal/glfw_window.hpp internal/glfw_window.cpp
+        internal/simple_block_allocator.hpp internal/simple_block_allocator.cpp
 
         gl45/commands_impl.cpp
         gl45/render_context.hpp gl45/render_context.cpp
         gl45/object_states.hpp gl45/object_states.cpp
         gl45/types.hpp
         gl45/window.hpp gl45/window.cpp
+        gl45/staging_buffer_uploader.hpp gl45/staging_buffer_uploader.cpp
 
         vk13/Device.hpp vk13/Device.cpp
         vk13/simple_window.hpp vk13/simple_window.cpp

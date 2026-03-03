@@ -12,9 +12,10 @@ namespace stardraw
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
         CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW,
-        BUFFER_UPLOAD, BUFFER_COPY, BUFFER_DOWNLOAD,
+        BUFFER_COPY, TEXTURE_COPY,
         CLEAR_WINDOW, CLEAR_BUFFER,
         CONFIG_SHADER,
+        SIGNAL,
     };
 
     struct command
@@ -335,30 +336,6 @@ namespace stardraw
         uint32_t viewport_index;
     };
 
-    ///UNSAFE_DIRECT: Fastest, least memory cost, but can overwrite in-use data (does no syncing check)
-    ///SAFE_STREAMING: Slower, may increase buffer memory use (up to 2x base size max)
-    ///SAFE_ONE_TIME: Slowest, allocates temporary copy buffer for transferring
-    enum class buffer_upload_type : uint8_t
-    {
-        UNSAFE_DIRECT, SAFE_STREAMING, SAFE_ONE_TIME
-    };
-
-    struct buffer_upload_command final : command
-    {
-        explicit buffer_upload_command(const std::string_view& buffer, const uint64_t address, const uint64_t bytes, const void* const data, const buffer_upload_type upload_type = buffer_upload_type::SAFE_ONE_TIME) : buffer(buffer), upload_address(address), upload_bytes(bytes), upload_data(data), upload_type(upload_type) {}
-
-        [[nodiscard]] command_type type() const override
-        {
-            return command_type::BUFFER_UPLOAD;
-        }
-
-        object_identifier buffer;
-        uint64_t upload_address;
-        uint64_t upload_bytes;
-        const void* const upload_data;
-        buffer_upload_type upload_type;
-    };
-
     struct buffer_copy_command final : command
     {
         explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const uint64_t from_address, const uint64_t to_address, const uint64_t bytes) : source_buffer(source_buffer), dest_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
@@ -421,8 +398,8 @@ namespace stardraw
 
     struct shader_config_command final : command
     {
-        explicit shader_config_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters) : shader(shader), parameters(parameters) {}
-        explicit shader_config_command(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters) : shader(shader), parameters(parameters) {}
+        explicit shader_config_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
+        explicit shader_config_command(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -431,5 +408,18 @@ namespace stardraw
 
         object_identifier shader;
         std::vector<shader_parameter> parameters;
+        bool erase_previous;
+    };
+
+    struct signal_command final : command
+    {
+        explicit signal_command(const std::string_view& signal_name) : signal_name(signal_name) {}
+
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::SIGNAL;
+        }
+
+        std::string signal_name;
     };
 }

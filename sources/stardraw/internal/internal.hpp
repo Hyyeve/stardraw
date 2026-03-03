@@ -23,4 +23,5 @@ namespace stardraw
     slang::VariableLayoutReflection* slang_root_var_reflection(const shader_parameter_location& location);
     slang::ShaderReflection* slang_shader_reflection(const shader_program* program);
     binding_location_info vk_binding_for_location(const shader_parameter_location& location);
+
 }

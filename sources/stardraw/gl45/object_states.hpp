@@ -3,9 +3,11 @@
 #include <queue>
 #include <unordered_map>
 
+#include "staging_buffer_uploader.hpp"
 #include "types.hpp"
 #include "glad/glad.h"
 #include "stardraw/api/commands.hpp"
+#include "stardraw/api/memory_transfer.hpp"
 
 template <>
 struct std::hash<stardraw::shader_parameter_location>
@@ -32,9 +34,15 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_to_slot(const GLenum target, const GLuint slot) const;
         [[nodiscard]] status bind_to_slot(const GLenum target, const GLuint slot, const GLintptr address, const GLsizeiptr bytes) const;
 
-        [[nodiscard]] status upload_data_direct(const GLintptr address, const void* const data, const GLintptr bytes);
-        [[nodiscard]] status upload_data_staged(const GLintptr address, const void* const data, const GLintptr bytes);
-        [[nodiscard]] status upload_data_temp_copy(const GLintptr address, const void* const data, const GLintptr bytes) const;
+        [[nodiscard]] status prepare_upload_data_streaming(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
+        [[nodiscard]] status flush_upload_data_streaming(memory_transfer_handle* handle) const;
+
+        [[nodiscard]] status prepare_upload_data_chunked(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
+        [[nodiscard]] status flush_upload_data_chunked(memory_transfer_handle* handle) const;
+
+        [[nodiscard]] status prepare_upload_data_unchecked(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
+        [[nodiscard]] static status flush_upload_data_unchecked(const memory_transfer_handle* handle);
+
 
         [[nodiscard]] status copy_data(const GLuint source_buffer_id, const GLintptr read_address, const GLintptr write_address, const GLintptr bytes) const;
 
@@ -43,16 +51,10 @@ namespace stardraw::gl45
         [[nodiscard]] GLuint gl_id() const;
 
     private:
-        struct upload_chunk
+        enum class upload_chunk_state
         {
-            GLintptr address;
-            GLintptr size;
-            GLsync fence;
+            RESERVED, TRANSFERRING
         };
-
-
-        [[nodiscard]] status prepare_staging_buffer(const GLsizeiptr size);
-        void update_staging_buffer_space();
 
         [[nodiscard]] status map_main_buffer();
 
@@ -60,13 +62,7 @@ namespace stardraw::gl45
         GLsizeiptr main_buffer_size = 0;
         void* main_buff_pointer = nullptr;
 
-        GLuint staging_buffer_id = 0;
-        GLsizeiptr staging_buffer_size = 0;
-        void* staging_buff_pointer = nullptr;
-
-        GLsizeiptr current_staging_buff_address = 0;
-        GLsizeiptr remaining_staging_buffer_space = 0;
-        std::queue<upload_chunk> upload_chunks;
+        staging_buffer_uploader staging_uploader;
 
         std::string buffer_name;
     };
@@ -80,19 +76,14 @@ namespace stardraw::gl45
             GLuint slot;
         };
 
-        struct parameter_block_info
-        {
-
-        };
-
         explicit shader_state(const shader_descriptor& desc, status& out_status);
-
         ~shader_state() override;
 
         [[nodiscard]] bool is_valid() const;
 
         [[nodiscard]] status make_active() const;
         [[nodiscard]] status upload_parameter(const shader_parameter& parameter);
+        void clear_parameters();
         [[nodiscard]] descriptor_type object_type() const override;
 
         std::vector<uint32_t> descriptor_set_binding_offsets;
@@ -134,7 +125,6 @@ namespace stardraw::gl45
             return descriptor_type::VERTEX_SPECIFICATION;
         }
 
-
         std::vector<GLuint> vertex_buffers;
         GLuint index_buffer = 0;
         GLuint vertex_array_id = 0;
@@ -149,5 +139,29 @@ namespace stardraw::gl45
         object_identifier shader;
         object_identifier vertex_specification;
         bool has_index_buffer;
+    };
+
+    class texture_state final : public object_state
+    {
+    public:
+        explicit texture_state(const texture_descriptor& desc, status& out_status);
+        explicit texture_state(const texture_state* original, const texture_descriptor& desc, status& out_status);
+        ~texture_state() override;
+
+        [[nodiscard]] bool is_valid() const;
+        [[nodiscard]] status is_view_compatible(const texture_descriptor& view_descriptor) const;
+        [[nodiscard]] status set_sampling_config(const texture_sampling_conifg& config) const;
+
+        [[nodiscard]] descriptor_type object_type() const override
+        {
+            return descriptor_type::TEXTURE;
+        }
+
+    private:
+        GLuint texture_id = 0;
+        uint32_t num_texture_mipmap_levels;
+        uint32_t num_texture_array_layers;
+        GLenum gl_texture_format;
+        GLenum gl_texture_target;
     };
 }

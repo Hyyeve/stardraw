@@ -47,6 +47,7 @@ namespace stardraw
         void* data;
         uint32_t data_size;
         void* internal_ptr;
+        graphics_api api;
     };
 
     struct shader_macro

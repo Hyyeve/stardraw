@@ -9,7 +9,7 @@ namespace stardraw
 {
     enum class descriptor_type : uint8_t
     {
-        BUFFER, SHADER, VERTEX_SPECIFICATION, DRAW_SPECIFICATION,
+        BUFFER, SHADER, TEXTURE, TEXTURE_SAMPLER, VERTEX_SPECIFICATION, DRAW_SPECIFICATION,
     };
 
     struct descriptor
@@ -52,6 +52,7 @@ namespace stardraw
 
     enum class vertex_data_type : uint8_t
     {
+        //Simple non-converting types (same representation in shader and buffer)
         UINT_U8, UNT2_U8, UINT3_U8, UINT4_U8,
         UINT_U16, UINT2_U16, UINT3_U16, UINT4_U16,
         UINT_U32, UINT2_U32, UINT3_U32, UINT4_U32,
@@ -60,14 +61,15 @@ namespace stardraw
         INT_I16, INT2_I16, INT3_I16, INT4_I16,
         INT_I32, INT2_I32, INT3_I32, INT4_I32,
 
+        FLOAT_F16, FLOAT2_F16, FLOAT3_F16, FLOAT4_F16,
+        FLOAT_F32, FLOAT2_F32, FLOAT3_F32, FLOAT4_F32,
+
+        //Normalized float types (floats in shader, interger types in buffer)
         FLOAT_U8_NORM, FLOAT2_U8_NORM, FLOAT3_U8_NORM, FLOAT4_U8_NORM,
         FLOAT_I8_NORM, FLOAT2_I8_NORM, FLOAT3_I8_NORM, FLOAT4_I8_NORM,
 
         FLOAT_U16_NORM, FLOAT2_U16_NORM, FLOAT3_U16_NORM, FLOAT4_U16_NORM,
         FLOAT_I16_NORM, FLOAT2_I16_NORM, FLOAT3_I16_NORM, FLOAT4_I16_NORM,
-        FLOAT_F16, FLOAT2_F16, FLOAT3_F16, FLOAT4_F16,
-
-        FLOAT_F32, FLOAT2_F32, FLOAT3_F32, FLOAT4_F32
     };
 
     struct vertex_data_binding
@@ -103,6 +105,7 @@ namespace stardraw
     struct draw_specification_descriptor final : descriptor
     {
         draw_specification_descriptor(const std::string_view& name, const std::string_view& vertex_specification, const std::string_view& shader) : descriptor(name), vertex_specification(vertex_specification), shader(shader) {}
+
         [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::DRAW_SPECIFICATION;
@@ -125,5 +128,191 @@ namespace stardraw
         std::vector<shader_stage> stages;
         const void* cache_ptr;
         const uint64_t cache_size;
+    };
+
+    enum class texture_data_type : uint8_t
+    {
+        //Depth / stencil formats
+        DEPTH_32, DEPTH_24, DEPTH_16,
+        DEPTH_32_STENCIL_8, DEPTH_24_STENCIL_8,
+        STENCIL_8,
+
+        //Standard 8-bit normalized formats (8-bit uint storage, 0-1 float reads)
+        R_8, RG_8, RGB_8, RGBA_8,
+        SRGB_8, SRGBA_8,
+
+        //Specific typed formats
+        R_U8, RG_U8, RGB_U8, RGBA_U8,
+        R_U16, RG_U16, RGB_U16, RGBA_U16,
+        R_U32, RG_U32, RGB_U32, RGBA_U32,
+
+        R_I8, RG_I8, RGB_I8, RGBA_I8,
+        R_I16, RG_I16, RGB_I16, RGBA_I16,
+        R_I32, RG_I32, RGB_I32, RGBA_I32,
+
+        R_F16, RG_F16, RGB_F16, RGBA_F16,
+        R_F32, RG_F32, RGB_F32, RGBA_F32,
+
+        //TODO: Support compressed textures?
+    };
+
+    enum class texture_shape : uint8_t
+    {
+        _1D,
+        _2D,
+        _3D,
+        CUBE_MAP,
+    };
+
+    enum class texture_msaa_level : uint8_t
+    {
+        NONE = 0, X4 = 4, X8 = 8, X16 = 16, X32 = 32,
+    };
+
+    struct texture_format
+    {
+        texture_data_type data_type;
+        texture_shape shape;
+        texture_msaa_level msaa;
+
+        //Number of mipmaps to allocate *including* the base (level 0) level. Must be >0
+        uint8_t mipmap_levels = 1;
+        uint32_t width;
+        uint32_t height;
+        uint32_t depth = 0;
+
+        //Number of texture layers. Must be a multiple of 6 for cubemaps, and at least 1 for all other texture types. >1 creates an array texture.
+        uint32_t texture_layers = 1;
+
+        //Exclusive to view textures:
+        uint8_t view_texture_base_mipmap = 0;
+        uint8_t view_texture_base_array_index = 0;
+
+        inline static texture_format create_1d(const uint32_t width, const texture_data_type = texture_data_type::RGBA_8, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1)
+        {
+            return {data_type, texture_shape::_1D, texture_msaa_level::NONE, mipmap_levels, width, 0, 0, 1, 0};
+        }
+
+        inline static texture_format create_1d_array(const uint32_t width, const uint32_t array_size, const texture_data_type = texture_data_type::RGBA_8, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1)
+        {
+            return {data_type, texture_shape::_1D, texture_msaa_level::NONE, mipmap_levels, width, 0, 0, array_size, 0};
+        }
+
+        inline static texture_format create_2d(const uint32_t width, const uint32_t height, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        {
+            return {data_type, texture_shape::_2D, msaa, mipmap_levels, width, height, 0, 1, 0};
+        }
+
+        inline static texture_format create_2d_array(const uint32_t width, const uint32_t height, const uint32_t array_size, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        {
+            return {data_type, texture_shape::_2D, msaa, mipmap_levels, width, height, 0, array_size, 0};
+        }
+
+        inline static texture_format create_3d(const uint32_t width, const uint32_t height, const uint32_t depth, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        {
+            return {data_type, texture_shape::_3D, msaa, mipmap_levels, width, height, depth, 1, 0};
+        }
+
+        inline static texture_format create_cube(const uint32_t width, const uint32_t height, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1)
+        {
+            return {data_type, texture_shape::CUBE_MAP, texture_msaa_level::NONE, mipmap_levels, width, height, 0, 6, 0};
+        }
+
+        inline static texture_format create_cube_array(const uint32_t width, const uint32_t height, const uint32_t num_cubemaps, const texture_data_type data_type = texture_data_type::RGBA_8, const uint8_t mipmap_levels = 1)
+        {
+            return {data_type, texture_shape::CUBE_MAP, texture_msaa_level::NONE, mipmap_levels, width, height, 0, num_cubemaps * 6, 0};
+        }
+    };
+
+    enum class texture_anisotropy_level : uint8_t
+    {
+        NONE = 1, X2 = 2, X4 = 4, X8 = 8, X16 = 16,
+    };
+
+    enum class texture_filtering_mode : uint8_t
+    {
+        NEAREST = 0, LINEAR = 1,
+    };
+
+    enum class texture_wrapping_mode : uint8_t
+    {
+        CLAMP, REPEAT, MIRROR, BORDER
+    };
+
+    enum class texture_border_color : uint8_t
+    {
+        INTEGER_BLACK,
+        INTEGER_WHITE,
+        INTEGER_TRANSPARENT,
+        FLOAT_BLACK,
+        FLOAT_WHITE,
+        FLOAT_TRANSPARENT,
+    };
+
+    enum class texture_swizzle
+    {
+        RED, GREEN, BLUE, ALPHA
+    };
+
+    struct texture_swizzle_mode
+    {
+        texture_swizzle swizzle_red = texture_swizzle::RED;
+        texture_swizzle swizzle_green = texture_swizzle::GREEN;
+        texture_swizzle swizzle_blue = texture_swizzle::BLUE;
+        texture_swizzle swizzle_alpha = texture_swizzle::ALPHA;
+    };
+
+    struct texture_sampling_conifg
+    {
+        texture_filtering_mode downscale_filter = texture_filtering_mode::LINEAR;
+        texture_filtering_mode upscale_filter = texture_filtering_mode::LINEAR;
+
+        texture_wrapping_mode wrapping_mode_x = texture_wrapping_mode::CLAMP;
+        texture_wrapping_mode wrapping_mode_y = texture_wrapping_mode::CLAMP;
+        texture_wrapping_mode wrapping_mode_z = texture_wrapping_mode::CLAMP;
+        texture_border_color border_color = texture_border_color::FLOAT_TRANSPARENT;
+
+        //Anisotropy is not *strictly* supported in all implementations without extensions, but availablity is near universal.
+        texture_anisotropy_level anisotropy_level = texture_anisotropy_level::X16;
+
+        texture_swizzle_mode swizzling = {};
+
+        texture_filtering_mode mipmap_filter = texture_filtering_mode::NEAREST;
+        uint32_t mipmap_min_level = 0;
+        uint32_t mipmap_max_level = 99;
+        float mipmap_bias = 0;
+    };
+
+    namespace texture_sampling_configs
+    {
+        constexpr texture_sampling_conifg linear = {};
+        constexpr texture_sampling_conifg nearest = {.downscale_filter = texture_filtering_mode::NEAREST, .upscale_filter = texture_filtering_mode::NEAREST};
+        constexpr texture_sampling_conifg none = {.downscale_filter = texture_filtering_mode::NEAREST, .upscale_filter = texture_filtering_mode::NEAREST, .anisotropy_level = texture_anisotropy_level::NONE, .mipmap_max_level = 0};
+    }
+
+    struct texture_descriptor final : descriptor
+    {
+        explicit texture_descriptor(const std::string_view& name, const texture_format& format, const texture_sampling_conifg& default_sampling_config, const std::string_view& as_view_of_texture = "") : descriptor(name), format(format), default_sampling_config(default_sampling_config), as_view_of(as_view_of_texture) {}
+
+        [[nodiscard]] descriptor_type type() const override
+        {
+            return descriptor_type::TEXTURE;
+        }
+
+        texture_format format;
+        texture_sampling_conifg default_sampling_config;
+        std::string as_view_of;
+    };
+
+    struct texture_sampler_descriptor final : descriptor
+    {
+        texture_sampler_descriptor(const std::string_view& name, const texture_sampling_conifg& smapler_config) : descriptor(name), smapler_config(smapler_config) {}
+
+        [[nodiscard]] descriptor_type type() const override
+        {
+            return descriptor_type::TEXTURE_SAMPLER;
+        }
+
+        texture_sampling_conifg smapler_config;
     };
 }

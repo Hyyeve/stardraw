@@ -298,6 +298,7 @@ namespace stardraw
                 return {status_type::BACKEND_ERROR, std::format("Slang shader data for '{0}' failed with unknown error", linked_set_name)};
             }
 
+            result->api = api;
             result->data_size = shader_blob->getBufferSize();
             result->data = malloc(result->data_size);
             memcpy(result->data, shader_blob->getBufferPointer(), result->data_size);
@@ -316,7 +317,6 @@ namespace stardraw
             result->internal_ptr = layout;
         }
 
-        *out_shader_program = result;
         return status_type::SUCCESS;
     }
 
