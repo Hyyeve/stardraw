@@ -4,12 +4,12 @@
 #include "shaders.hpp"
 #include "shader_parameter_value.hpp"
 #include "stardraw/api/types.hpp"
-#include "starlib/types/polymorphic_ptr.hpp"
-#include "starlib/types/sized_numerics.hpp"
+#include "starlib/types/polymorphic.hpp"
+#include "starlib/types/starlib_stdint.hpp"
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class command_type : u8
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
@@ -26,7 +26,7 @@ namespace stardraw
         [[nodiscard]] virtual command_type type() const = 0;
     };
 
-    typedef std::vector<polymorphic_ptr<command>> command_list;
+    typedef std::vector<starlib::polymorphic<command>> command_list;
 
     enum class draw_mode : u8
     {

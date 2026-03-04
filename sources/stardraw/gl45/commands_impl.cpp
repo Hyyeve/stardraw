@@ -6,7 +6,7 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     inline GLenum gl_draw_mode(const draw_mode mode)
     {
         switch (mode)

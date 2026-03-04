@@ -7,7 +7,7 @@
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class cursor_mode
     {
         NORMAL, HIDDEN, CAPTURED, CONFINED,

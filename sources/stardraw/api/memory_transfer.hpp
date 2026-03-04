@@ -2,7 +2,7 @@
 #include "types.hpp"
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class memory_transfer_type : u8
     {
         UNCHECKED_UPLOAD, //Fastest upload, but not syncronization safe. Use if doing your own syncronization checks.

@@ -3,11 +3,11 @@
 #include <string>
 #include <string_view>
 
-#include "starlib/types/sized_numerics.hpp"
+#include "starlib/types/starlib_stdint.hpp"
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class graphics_api : u8
     {
         GL45,

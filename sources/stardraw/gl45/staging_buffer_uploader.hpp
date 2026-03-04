@@ -2,7 +2,7 @@
 #include "gl_headers.hpp"
 #include "types.hpp"
 #include "stardraw/api/types.hpp"
-#include "../../../libraries/starlib/sources/starlib/types/simple_block_allocator.hpp"
+#include "../../../libraries/starlib/sources/starlib/types/block_allocator.hpp"
 
 namespace stardraw::gl45
 {
@@ -25,7 +25,7 @@ namespace stardraw::gl45
         status allocate_new_staging_buffer(const u64 size);
 
         std::vector<upload_chunk*> chunks = {};
-        simple_block_allocator chunk_allocator = simple_block_allocator(0);
+        starlib::block_allocator chunk_allocator = starlib::block_allocator(0);
         std::unordered_map<GLuint, u32> staging_buffer_refcounts = {};
         GLuint active_staging_buffer_id = 0;
         GLbyte* active_staging_buffer_ptr = nullptr;

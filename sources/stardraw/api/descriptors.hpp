@@ -4,12 +4,12 @@
 
 #include "shaders.hpp"
 #include "types.hpp"
-#include "starlib/types/polymorphic_ptr.hpp"
-#include "starlib/types/sized_numerics.hpp"
+#include "starlib/types/polymorphic.hpp"
+#include "starlib/types/starlib_stdint.hpp"
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class descriptor_type : u8
     {
         BUFFER, SHADER, TEXTURE, TEXTURE_SAMPLER, VERTEX_SPECIFICATION, DRAW_SPECIFICATION,
@@ -32,7 +32,7 @@ namespace stardraw
         return ident;
     }
 
-    typedef std::vector<polymorphic_ptr<descriptor>> descriptor_list;
+    typedef std::vector<starlib::polymorphic<descriptor>> descriptor_list;
 
     ///NOTE: Buffer memory storage cannot be guarenteed on OpenGL, but SYSRAM guarentees it will be possible to write into the buffer directly.
     enum class buffer_memory_storage : u8

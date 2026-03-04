@@ -8,7 +8,7 @@
 #include <tracy/TracyOpenGL.hpp>
 
 #include "gl_headers.hpp"
-#include "../../../libraries/starlib/sources/starlib/types/simple_block_allocator.hpp"
+#include "../../../libraries/starlib/sources/starlib/types/block_allocator.hpp"
 
 namespace stardraw::gl45
 {
@@ -64,7 +64,7 @@ namespace stardraw::gl45
             const GLenum status = glClientWaitSync(chunk->fence, 0, 0);
             if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) return false;
 
-            if (chunk->staging_buffer_id == active_staging_buffer_id) chunk_allocator.deallocate(chunk->address);
+            if (chunk->staging_buffer_id == active_staging_buffer_id) chunk_allocator.free(chunk->address);
 
             staging_buffer_refcounts[chunk->staging_buffer_id]--;
             if (staging_buffer_refcounts[chunk->staging_buffer_id] <= 0 && chunk->staging_buffer_id != active_staging_buffer_id)

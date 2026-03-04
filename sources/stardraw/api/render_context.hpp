@@ -8,7 +8,7 @@
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     class render_context;
     class async_upload_handle;
 

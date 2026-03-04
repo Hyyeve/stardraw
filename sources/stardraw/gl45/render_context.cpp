@@ -74,7 +74,7 @@ namespace stardraw::gl45
         if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN;
         const command_list& refren = command_lists[std::string(name)];
 
-        for (const polymorphic_ptr<command>& cmd : refren)
+        for (const starlib::polymorphic<command>& cmd : refren)
         {
             const status result = execute_command(cmd.ptr());
             if (is_status_error(result)) return result;
@@ -88,7 +88,7 @@ namespace stardraw::gl45
         status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return context_status;
 
-        for (const polymorphic_ptr<command>& cmd : commands)
+        for (const starlib::polymorphic<command>& cmd : commands)
         {
             const status result = execute_command(cmd.ptr());
             if (is_status_error(result)) return result;
@@ -116,7 +116,7 @@ namespace stardraw::gl45
         status context_status = parent_window->make_gl_context_active();
         if (is_status_error(context_status)) return context_status;
 
-        for (const polymorphic_ptr<descriptor>& descriptor : descriptors)
+        for (const starlib::polymorphic<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());
             if (is_status_error(create_status)) return create_status;

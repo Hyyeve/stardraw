@@ -8,7 +8,7 @@ struct std::hash<stardraw::shader_parameter_location>
 {
     std::size_t operator()(const stardraw::shader_parameter_location& key) const noexcept
     {
-        return hash<u32>()(key.binding_range_index + key.binding_range + key.byte_address + key.root_idx);
+        return hash<starlib_stdint::u32>()(key.binding_range_index + key.binding_range + key.byte_address + key.root_idx);
     }
 };
 

@@ -4,7 +4,7 @@
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     struct shader_parameter_value
     {
         enum class parameter_type

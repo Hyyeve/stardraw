@@ -1,11 +1,11 @@
 #pragma once
 #include <vector>
 #include "types.hpp"
-#include "starlib/types/sized_numerics.hpp"
+#include "starlib/types/starlib_stdint.hpp"
 
 namespace stardraw
 {
-    using namespace starlib;
+    using namespace starlib_stdint;
     enum class shader_stage_type
     {
         VERTEX, TESSELATION_CONTROL, TESSELATION_EVAL, GEOMETRY, FRAGMENT, COMPUTE
