@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include <string>
 #include <string_view>
 
@@ -8,14 +7,10 @@
 namespace stardraw
 {
     using namespace starlib_stdint;
+
     enum class graphics_api : u8
     {
         GL45,
-    };
-
-    enum class signal_status : u8
-    {
-        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
     };
 
     enum class status_type : u8
@@ -34,25 +29,29 @@ namespace stardraw
 
         status_type type;
         std::string message;
-    };
 
-    inline bool is_status_error(const status& status)
-    {
-        switch (status.type)
+        inline bool is_error() const
         {
-            case status_type::NOTHING_TO_DO:
-            case status_type::SUCCESS: return false;
-            default: return true;
+            switch (type)
+            {
+                case status_type::NOTHING_TO_DO:
+                case status_type::SUCCESS: return false;
+                default: return true;
+            }
         }
-    }
+    };
 
     struct object_identifier
     {
-        explicit object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
+        object_identifier() : object_identifier("???") {}
+        // ReSharper disable once CppNonExplicitConvertingConstructor
+        object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
+        // ReSharper disable once CppNonExplicitConvertingConstructor
+        object_identifier(const char* string) : hash(std::hash<std::string>()(std::string(string))), name(string) {}
+
+        bool operator==(const object_identifier&) const = default;
+
         u64 hash;
         std::string name;
     };
-
-
 }
-

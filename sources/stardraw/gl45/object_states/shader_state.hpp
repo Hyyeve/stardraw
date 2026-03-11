@@ -2,10 +2,11 @@
 #include <format>
 #include <queue>
 #include <unordered_map>
+#include <unordered_set>
 
-#include "../staging_buffer_uploader.hpp"
-#include "../types.hpp"
+#include "../common.hpp"
 #include "stardraw/api/commands.hpp"
+#include "../memory_barrier_controller.hpp"
 
 namespace stardraw::gl45
 {
@@ -19,6 +20,13 @@ namespace stardraw::gl45
             GLuint slot;
         };
 
+        struct object_binding
+        {
+            object_identifier identifier;
+            bool write_access = false;
+            GLbitfield read_barriers = 0;
+        };
+
         explicit shader_state(const shader_descriptor& desc, status& out_status);
         ~shader_state() override;
 
@@ -27,15 +35,19 @@ namespace stardraw::gl45
         [[nodiscard]] status make_active() const;
         [[nodiscard]] status upload_parameter(const shader_parameter& parameter);
         void clear_parameters();
+
+        void flag_barriers(memory_barrier_controller& barrier_controller) const;
+
         [[nodiscard]] descriptor_type object_type() const override;
+        void barrier_objects_if_needed(memory_barrier_controller& barrier_controller) const;
 
         std::vector<u32> descriptor_set_binding_offsets;
         std::vector<shader_parameter> parameter_store;
-        std::unordered_map<u32, std::string> bound_objects;
+        std::unordered_map<u32, object_binding> bound_objects;
+
     private:
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);
 
-        [[nodiscard]] static GLenum gl_shader_type(shader_stage_type stage);
         [[nodiscard]] status remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources);
 
         [[nodiscard]] static status link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id);

@@ -1,8 +1,7 @@
 #pragma once
+#include "common.hpp"
 #include "gl_headers.hpp"
-#include "types.hpp"
-#include "stardraw/api/types.hpp"
-#include "../../../libraries/starlib/sources/starlib/types/block_allocator.hpp"
+#include "starlib/types/block_allocator.hpp"
 
 namespace stardraw::gl45
 {

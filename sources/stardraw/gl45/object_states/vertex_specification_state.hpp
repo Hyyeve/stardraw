@@ -1,6 +1,6 @@
 #pragma once
 #include "../gl_headers.hpp"
-#include "../types.hpp"
+#include "../common.hpp"
 #include "stardraw/api/commands.hpp"
 namespace stardraw::gl45
 {
@@ -8,23 +8,29 @@ namespace stardraw::gl45
     {
     public:
 
+        struct vertex_buffer_binding
+        {
+            object_identifier identifier;
+            GLuint id;
+        };
+
         explicit vertex_specification_state();
         ~vertex_specification_state() override;
 
         [[nodiscard]] bool is_valid() const;
-        [[nodiscard]] bool has_index_buffer() const;
 
         [[nodiscard]] status bind() const;
-        [[nodiscard]] status attach_vertex_buffer(const GLuint slot, const GLuint id, const GLintptr offset, const GLsizei stride);
-        [[nodiscard]] status attach_index_buffer(GLuint index_buffer_id);
+        [[nodiscard]] status attach_vertex_buffer(const object_identifier& identifier, const GLuint slot, const GLuint id, const GLintptr offset, const GLsizei stride);
+        [[nodiscard]] status attach_index_buffer(const object_identifier& identifier, GLuint index_buffer_id);
 
         [[nodiscard]] descriptor_type object_type() const override
         {
             return descriptor_type::VERTEX_SPECIFICATION;
         }
 
-        std::vector<GLuint> vertex_buffers;
-        GLuint index_buffer = 0;
+        std::vector<vertex_buffer_binding> vertex_buffers;
+        vertex_buffer_binding index_buffer = {};
+        bool has_index_buffer = false;
         GLuint vertex_array_id = 0;
     };
 }

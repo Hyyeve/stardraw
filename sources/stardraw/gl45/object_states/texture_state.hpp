@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../gl_headers.hpp"
-#include "../types.hpp"
+#include "../common.hpp"
 #include "stardraw/api/commands.hpp"
 #include "starlib/math/glm.hpp"
 
@@ -24,7 +24,7 @@ namespace stardraw::gl45
 
         [[nodiscard]] bool is_valid() const;
         [[nodiscard]] status bind_to_texture_slot(u32 slot) const;
-        [[nodiscard]] status bind_to_image_slot(u32 slot, u32 mipmap_level, u32 array_layer, bool entire_array, shader_parameter_value::image_texture_access access) const;
+        [[nodiscard]] status bind_to_image_slot(u32 slot, u32 mipmap_level, u32 array_layer, bool entire_array, GLenum access) const;
         [[nodiscard]] static bool is_view_format_compatible(GLenum source_format, GLenum view_format);
         [[nodiscard]] static bool is_view_target_compatible(GLenum source_target, GLenum view_target);
         [[nodiscard]] status is_view_compatible(const texture_descriptor& view_descriptor) const;
@@ -36,21 +36,23 @@ namespace stardraw::gl45
             return descriptor_type::TEXTURE;
         }
 
+        object_identifier root_data_store_texture;
     private:
-        u64 compute_bytes_in_transfer(const texture_memory_transfer_info& info) const;
+        [[nodiscard]] u64 compute_bytes_in_transfer(const texture_memory_transfer_info& info) const;
         status initalize_and_validate_texture_descriptor(const texture_descriptor& desc);
 
+
         GLuint gl_texture_id = 0;
-        GLenum gl_texture_target;
-        GLenum gl_texture_format;
+        GLenum gl_texture_target = 0;
+        GLenum gl_texture_format = 0;
 
-        glm::vec<3, u32> size;
-        u32 num_texture_mipmap_levels;
-        u32 num_texture_array_layers;
-        u32 num_texture_msaa_samples;
-        u32 bytes_per_pixel;
+        glm::vec<3, u32> size = {0, 0, 0};
+        u32 num_texture_mipmap_levels = 0;
+        u32 num_texture_array_layers = 0;
+        u32 num_texture_msaa_samples = 0;
+        u32 bytes_per_pixel = 0;
 
-        texture_shape shape;
-        texture_data_type data_type;
+        texture_shape shape = texture_shape::_2D;
+        texture_data_type data_type = texture_data_type::R_8;
     };
 }

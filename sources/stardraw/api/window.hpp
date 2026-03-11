@@ -2,8 +2,8 @@
 #include <functional>
 #include <string>
 
+#include "common.hpp"
 #include "render_context.hpp"
-#include "types.hpp"
 
 namespace stardraw
 {
@@ -23,7 +23,19 @@ namespace stardraw
         u32 height = 720;
 
         bool transparent_framebuffer = false;
-        bool debug_graphics_context = false;
+
+        ///Toggle whether the backend graphics API validation features should be used.
+        ///If enabled, stardraw will be able to detect and report additional data from the backend api.
+        ///You probably want to enable this during development.
+        bool enable_backend_validation = false;
+
+        ///Toggle whether stardraw's api validation should be used.
+        ///If disabled, any stardraw call that would return a non-success value will cause undefined behaviour and in many cases crash the application.
+        ///You probably don't want to disable this unless you are *very* confident that the minor performance increase is worth it.
+        bool enable_stardraw_validation = true;
+
+        ///Callback that will be passed additional validation messages that are not returned via statuses.
+        std::function<void(const std::string message)> validation_message_callback;
     };
 
     struct fullscreen_window_config

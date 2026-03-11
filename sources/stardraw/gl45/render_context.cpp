@@ -2,74 +2,21 @@
 #include "window.hpp"
 
 #include <format>
-#include <slang-com-helper.h>
 
+#include "api_conversion.hpp"
 #include "stardraw/internal/internal.hpp"
 
 namespace stardraw::gl45
 {
-    std::tuple<GLenum, GLuint, bool, bool> gl_vertex_element_data_type(const vertex_data_type& type)
+    render_context::render_context(window* window, const bool api_validation, const bool backend_validation) : parent_window(window), api_validation_enabled(api_validation), backend_validation_enabled(backend_validation)
     {
-        switch (type)
-        {
-            case vertex_data_type::UINT_U8: return {GL_UNSIGNED_BYTE, 1, false, true};
-            case vertex_data_type::UINT2_U8: return {GL_UNSIGNED_BYTE, 2, false, true};
-            case vertex_data_type::UINT3_U8: return {GL_UNSIGNED_BYTE, 3, false, true};
-            case vertex_data_type::UINT4_U8: return {GL_UNSIGNED_BYTE, 4, false, true};
-            case vertex_data_type::UINT_U16: return {GL_UNSIGNED_SHORT, 1, false, true};
-            case vertex_data_type::UINT2_U16: return {GL_UNSIGNED_SHORT, 2, false, true};
-            case vertex_data_type::UINT3_U16: return {GL_UNSIGNED_SHORT, 3, false, true};
-            case vertex_data_type::UINT4_U16: return {GL_UNSIGNED_SHORT, 4, false, true};
-            case vertex_data_type::UINT_U32: return {GL_UNSIGNED_INT, 1, false, true};
-            case vertex_data_type::UINT2_U32: return {GL_UNSIGNED_INT, 2, false, true};
-            case vertex_data_type::UINT3_U32: return {GL_UNSIGNED_INT, 3, false, true};
-            case vertex_data_type::UINT4_U32: return {GL_UNSIGNED_INT, 4, false, true};
-            case vertex_data_type::INT_I8: return {GL_BYTE, 1, false, true};
-            case vertex_data_type::INT2_I8: return {GL_BYTE, 2, false, true};
-            case vertex_data_type::INT3_I8: return {GL_BYTE, 3, false, true};
-            case vertex_data_type::INT4_I8: return {GL_BYTE, 4, false, true};
-            case vertex_data_type::INT_I16: return {GL_SHORT, 1, false, true};
-            case vertex_data_type::INT2_I16: return {GL_SHORT, 2, false, true};
-            case vertex_data_type::INT3_I16: return {GL_SHORT, 3, false, true};
-            case vertex_data_type::INT4_I16: return {GL_SHORT, 4, false, true};
-            case vertex_data_type::INT_I32: return {GL_INT, 1, false, true};
-            case vertex_data_type::INT2_I32: return {GL_INT, 2, false, true};
-            case vertex_data_type::INT3_I32: return {GL_INT, 3, false, true};
-            case vertex_data_type::INT4_I32: return {GL_INT, 4, false, true};
-            case vertex_data_type::FLOAT_U8_NORM: return {GL_UNSIGNED_BYTE, 1, true, false};
-            case vertex_data_type::FLOAT2_U8_NORM: return {GL_UNSIGNED_BYTE, 2, true, false};
-            case vertex_data_type::FLOAT3_U8_NORM: return {GL_UNSIGNED_BYTE, 3, true, false};
-            case vertex_data_type::FLOAT4_U8_NORM: return {GL_UNSIGNED_BYTE, 4, true, false};
-            case vertex_data_type::FLOAT_I8_NORM: return {GL_BYTE, 1, true, false};
-            case vertex_data_type::FLOAT2_I8_NORM: return {GL_BYTE, 2, true, false};
-            case vertex_data_type::FLOAT3_I8_NORM: return {GL_BYTE, 3, true, false};
-            case vertex_data_type::FLOAT4_I8_NORM: return {GL_BYTE, 4, true, false};
-            case vertex_data_type::FLOAT_U16_NORM: return {GL_UNSIGNED_SHORT, 1, true, false};
-            case vertex_data_type::FLOAT2_U16_NORM: return {GL_UNSIGNED_SHORT, 2, true, false};
-            case vertex_data_type::FLOAT3_U16_NORM: return {GL_UNSIGNED_SHORT, 3, true, false};
-            case vertex_data_type::FLOAT4_U16_NORM: return {GL_UNSIGNED_SHORT, 4, true, false};
-            case vertex_data_type::FLOAT_I16_NORM: return {GL_SHORT, 1, true, false};
-            case vertex_data_type::FLOAT2_I16_NORM: return {GL_SHORT, 2, true, false};
-            case vertex_data_type::FLOAT3_I16_NORM: return {GL_SHORT, 3, true, false};
-            case vertex_data_type::FLOAT4_I16_NORM: return {GL_SHORT, 4, true, false};
-            case vertex_data_type::FLOAT_F16: return {GL_HALF_FLOAT, 1, false, false};
-            case vertex_data_type::FLOAT2_F16: return {GL_HALF_FLOAT, 2, false, false};
-            case vertex_data_type::FLOAT3_F16: return {GL_HALF_FLOAT, 3, false, false};
-            case vertex_data_type::FLOAT4_F16: return {GL_HALF_FLOAT, 4, false, false};
-            case vertex_data_type::FLOAT_F32: return {GL_FLOAT, 1, false, false};
-            case vertex_data_type::FLOAT2_F32: return {GL_FLOAT, 2, false, false};
-            case vertex_data_type::FLOAT3_F32: return {GL_FLOAT, 3, false, false};
-            case vertex_data_type::FLOAT4_F32: return {GL_FLOAT, 4, false, false};
-        }
-        return {-1, -1, false, false};
-    }
 
-    render_context::render_context(window* window) : parent_window(window) {}
+    }
 
     [[nodiscard]] status render_context::execute_command_buffer(const std::string_view& name)
     {
         status context_status = parent_window->make_gl_context_active();
-        if (is_status_error(context_status)) return context_status;
+        if (context_status.is_error()) return context_status;
 
         //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
         if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN;
@@ -78,7 +25,7 @@ namespace stardraw::gl45
         for (const starlib::polymorphic<command>& cmd : refren)
         {
             const status result = execute_command(cmd.ptr());
-            if (is_status_error(result)) return result;
+            if (result.is_error()) return result;
         }
 
         return status_from_last_gl_error();
@@ -87,12 +34,12 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::execute_temp_command_buffer(const command_list&& commands)
     {
         status context_status = parent_window->make_gl_context_active();
-        if (is_status_error(context_status)) return context_status;
+        if (context_status.is_error()) return context_status;
 
         for (const starlib::polymorphic<command>& cmd : commands)
         {
             const status result = execute_command(cmd.ptr());
-            if (is_status_error(result)) return result;
+            if (result.is_error()) return result;
         }
 
         return status_from_last_gl_error();
@@ -115,12 +62,12 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::create_objects(const descriptor_list&& descriptors)
     {
         status context_status = parent_window->make_gl_context_active();
-        if (is_status_error(context_status)) return context_status;
+        if (context_status.is_error()) return context_status;
 
         for (const starlib::polymorphic<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());
-            if (is_status_error(create_status)) return create_status;
+            if (create_status.is_error()) return create_status;
         }
 
         return status_from_last_gl_error();
@@ -146,7 +93,7 @@ namespace stardraw::gl45
     [[nodiscard]] signal_status render_context::wait_signal(const std::string_view& name, const u64 timeout)
     {
         const status context_status = parent_window->make_gl_context_active();
-        if (is_status_error(context_status)) return signal_status::CONTEXT_ERROR;
+        if (context_status.is_error()) return signal_status::CONTEXT_ERROR;
 
         if (!signals.contains(std::string(name)))
         {
@@ -166,9 +113,9 @@ namespace stardraw::gl45
 
     status render_context::prepare_buffer_memory_transfer(const buffer_memory_transfer_info& info, memory_transfer_handle** out_handle)
     {
-        buffer_state* buffer = find_buffer_state(object_identifier(info.target));
-        if (buffer == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", info.target)};
-        if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", info.target)};
+        buffer_state* buffer;
+        const status find_status = find_buffer_state(info.target, &buffer);
+        if (find_status.is_error()) return find_status;
 
         switch (info.transfer_type)
         {
@@ -176,7 +123,7 @@ namespace stardraw::gl45
             {
                 memory_transfer_handle* handle;
                 status prepare_status = buffer->prepare_upload_data_streaming(info.address, info.bytes, &handle);
-                if (is_status_error(prepare_status)) return prepare_status;
+                if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
                 *out_handle = handle;
                 return status_type::SUCCESS;
@@ -185,7 +132,7 @@ namespace stardraw::gl45
             {
                 memory_transfer_handle* handle;
                 status prepare_status = buffer->prepare_upload_data_chunked(info.address, info.bytes, &handle);
-                if (is_status_error(prepare_status)) return prepare_status;
+                if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
                 *out_handle = handle;
                 return status_type::SUCCESS;
@@ -194,7 +141,7 @@ namespace stardraw::gl45
             {
                 memory_transfer_handle* handle;
                 status prepare_status = buffer->prepare_upload_data_unchecked(info.address, info.bytes, &handle);
-                if (is_status_error(prepare_status)) return prepare_status;
+                if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
                 *out_handle = handle;
                 return status_type::SUCCESS;
@@ -209,9 +156,12 @@ namespace stardraw::gl45
         const buffer_memory_transfer_info info = buffer_transfers[handle];
         buffer_transfers.erase(handle);
 
-        const buffer_state* buffer = find_buffer_state(object_identifier(info.target));
-        if (buffer == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", info.target)};
-        if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", info.target)};
+        buffer_state* buffer;
+        const status find_status = find_buffer_state(info.target, &buffer);
+        if (find_status.is_error()) return find_status;
+
+        mem_barrier_controller.barrier_if_needed(info.target, GL_BUFFER_UPDATE_BARRIER_BIT);
+
         switch (info.transfer_type)
         {
             case buffer_memory_transfer_info::type::UPLOAD_STREAMING: return buffer->flush_upload_data_streaming(handle);
@@ -224,13 +174,13 @@ namespace stardraw::gl45
 
     status render_context::prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle)
     {
-        const texture_state* texture = find_texture_state(object_identifier(info.target));
-        if (texture == nullptr) return {status_type::UNKNOWN, std::format("No texture with name '{0}' in context", info.target)};
-        if (!texture->is_valid()) return {status_type::INVALID, std::format("Texture '{0}' is in an invalid state", info.target)};
+        texture_state* texture;
+        status find_status = find_texture_state(object_identifier(info.target), &texture);
+        if (find_status.is_error()) return find_status;
 
         memory_transfer_handle* handle;
         status prepare_status = texture->prepare_upload(info, &handle);
-        if (is_status_error(prepare_status)) return prepare_status;
+        if (prepare_status.is_error()) return prepare_status;
         texture_transfers[handle] = info;
         *out_handle = handle;
         return status_type::SUCCESS;
@@ -242,9 +192,12 @@ namespace stardraw::gl45
         const texture_memory_transfer_info info = texture_transfers[handle];
         texture_transfers.erase(handle);
 
-        const texture_state* texture = find_texture_state(object_identifier(info.target));
-        if (texture == nullptr) return {status_type::UNKNOWN, std::format("No texture with name '{0}' in context", info.target)};
-        if (!texture->is_valid()) return {status_type::INVALID, std::format("Texture '{0}' is in an invalid state", info.target)};
+        texture_state* texture;
+        status find_status = find_texture_state(info.target, &texture);
+        if (find_status.is_error()) return find_status;
+
+        mem_barrier_controller.barrier_if_needed(info.target, GL_TEXTURE_UPDATE_BARRIER_BIT);
+
         return texture->flush_upload(info, handle);
     }
 
@@ -307,12 +260,12 @@ namespace stardraw::gl45
             case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const depth_range_config_command*>(cmd));
 
             case command_type::BUFFER_COPY: return execute_buffer_copy(dynamic_cast<const buffer_copy_command*>(cmd));
+            case command_type::TEXTURE_COPY: return execute_texture_copy(dynamic_cast<const texture_copy_command*>(cmd));
 
             case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window_command*>(cmd));
             case command_type::CLEAR_BUFFER: return status_type::UNIMPLEMENTED; //TODO
             case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const shader_config_command*>(cmd));
             case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal_command*>(cmd));
-            case command_type::TEXTURE_COPY: break; //TODO
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};
@@ -350,7 +303,7 @@ namespace stardraw::gl45
     {
         status shader_create_status = status_type::SUCCESS;
         shader_state* shader = new shader_state(*descriptor, shader_create_status);
-        if (is_status_error(shader_create_status))
+        if (shader_create_status.is_error())
         {
             delete shader;
             return shader_create_status;
@@ -363,7 +316,7 @@ namespace stardraw::gl45
     {
         status texture_create_status = status_type::SUCCESS;
         texture_state* texture = new texture_state(*descriptor, texture_create_status);
-        if (is_status_error(texture_create_status))
+        if (texture_create_status.is_error())
         {
             delete texture;
             return texture_create_status;
@@ -395,21 +348,17 @@ namespace stardraw::gl45
         GLuint buffer_slot = 0;
         for (const vertex_data_binding& element : format.bindings)
         {
-            const std::string& buffer_name = element.buffer;
+            const std::string& buffer_name = element.buffer.name;
             if (buffer_slots.contains(buffer_name)) continue;
             buffer_slots[buffer_name] = buffer_slot;
             buffer_names.push_back(buffer_name);
 
-            buffer_state* buffer_state = find_buffer_state(object_identifier(buffer_name));
-            if (buffer_state == nullptr)
+            buffer_state* buffer_state;
+            const status find_status = find_buffer_state(object_identifier(buffer_name), &buffer_state);
+            if (find_status.is_error())
             {
                 delete vertex_spec;
-                return {status_type::UNKNOWN, std::format("No buffer'{0}' found while creating vertex specification '{1}'", buffer_name, descriptor->identifier().name)};
-            }
-            if (!buffer_state->is_valid())
-            {
-                delete vertex_spec;
-                return {status_type::INVALID, std::format("Can't create vertex specification '{1}', buffer '{0}' is in an invalid state!", buffer_name, descriptor->identifier().name)};
+                return find_status;
             }
             buffer_states[buffer_name] = buffer_state;
             buffer_slot++;
@@ -422,10 +371,10 @@ namespace stardraw::gl45
         for (u32 idx = 0; idx < format.bindings.size(); idx++)
         {
             const vertex_data_binding& elem = format.bindings[idx];
-            GLsizeiptr& offset = buffer_strides[buffer_slots[elem.buffer]];
+            GLsizeiptr& offset = buffer_strides[buffer_slots[elem.buffer.name]];
 
             glEnableVertexArrayAttrib(vao_id, idx);
-            glVertexArrayAttribBinding(vao_id, idx, buffer_slots[elem.buffer]);
+            glVertexArrayAttribBinding(vao_id, idx, buffer_slots[elem.buffer.name]);
             if (elem.instance_divisor > 0)
             {
                 glVertexArrayBindingDivisor(vao_id, idx, elem.instance_divisor);
@@ -452,27 +401,28 @@ namespace stardraw::gl45
         for (const std::string& vertex_buffer : buffer_names)
         {
             const buffer_state* buffer_state = buffer_states[vertex_buffer];
-            const status attach_status = vertex_spec->attach_vertex_buffer(buffer_slots[vertex_buffer], buffer_state->gl_id(), 0, buffer_strides[buffer_slots[vertex_buffer]]);
+            const status attach_status = vertex_spec->attach_vertex_buffer(object_identifier(vertex_buffer), buffer_slots[vertex_buffer], buffer_state->gl_id(), 0, buffer_strides[buffer_slots[vertex_buffer]]);
 
-            if (is_status_error(attach_status))
+            if (attach_status.is_error())
             {
                 delete vertex_spec;
                 return attach_status;
             }
         }
 
-        if (!descriptor->index_buffer.empty())
+        if (descriptor->has_index_buffer)
         {
-            const buffer_state* index_buffer_state = find_buffer_state(object_identifier(descriptor->index_buffer));
-            if (index_buffer_state == nullptr)
+            buffer_state* index_buffer_state;
+            const status find_status = find_buffer_state(descriptor->index_buffer, &index_buffer_state);
+            if (find_status.is_error())
             {
                 delete vertex_spec;
-                return {status_type::UNKNOWN, std::format("No buffer named '{0}' found while creating vertex specification '{1}'", descriptor->index_buffer, descriptor->identifier().name)};
+                return {status_type::UNKNOWN, std::format("No buffer named '{0}' found while creating vertex specification '{1}'", descriptor->index_buffer.name, descriptor->identifier().name)};
             }
 
-            const status attach_status = vertex_spec->attach_index_buffer(index_buffer_state->gl_id());
+            const status attach_status = vertex_spec->attach_index_buffer(descriptor->index_buffer, index_buffer_state->gl_id());
 
-            if (is_status_error(attach_status))
+            if (attach_status.is_error())
             {
                 delete vertex_spec;
                 return attach_status;
@@ -490,39 +440,37 @@ namespace stardraw::gl45
 
     status render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
     {
-        const vertex_specification_state* vertex_spec = find_vertex_specification_state(object_identifier(descriptor->vertex_specification));
-        if (!vertex_spec)
-        {
-            return {status_type::UNKNOWN, std::format("Referenced vertex specification '{0}' not found in context", descriptor->vertex_specification)};
-        }
+        vertex_specification_state* vertex_spec;
+        const status v_find_status = find_vertex_specification_state(descriptor->vertex_specification, &vertex_spec);
+        if (v_find_status.is_error()) return v_find_status;
 
-        if (!find_shader_state(object_identifier(descriptor->shader)))
-        {
-            return {status_type::UNKNOWN, std::format("Referenced shader '{0}' not found in context", descriptor->shader)};
-        }
+        shader_state* shader;
+        status find_status = find_shader_state(descriptor->shader, &shader);
+        if (find_status.is_error()) return find_status;
 
         //draw specification is a thin wrapper that references shader and vertex specifications
-        return record_object_state(descriptor->identifier(), new draw_specification_state(*descriptor, vertex_spec->has_index_buffer()));
+        return record_object_state(descriptor->identifier(), new draw_specification_state(*descriptor, vertex_spec->has_index_buffer));
     }
 
     status render_context::bind_vertex_specification_state(const object_identifier& source)
     {
-        const vertex_specification_state* state = find_vertex_specification_state(source);
-        if (state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", source.name)};
-        if (!state->is_valid()) return {status_type::INVALID, std::format("Vertex specification object '{0}' is in an invalid state", source.name)};
-        return state->bind();
+        vertex_specification_state* vertex_spec;
+        const status v_find_status = find_vertex_specification_state(source, &vertex_spec);
+        if (v_find_status.is_error()) return v_find_status;
+        return vertex_spec->bind();
     }
 
     status render_context::bind_draw_specification_state(const object_identifier& source)
     {
-        const draw_specification_state* state = find_draw_specification_state(source);
-        if (state == nullptr) return {status_type::UNKNOWN, std::format("Draw specification object '{0}' not found in context", source.name)};
+        draw_specification_state* state;
+        const status find_status = find_draw_specification_state(source, &state);
+        if (find_status.is_error()) return find_status;
 
         status vertex_specification_bind = bind_vertex_specification_state(state->vertex_specification);
-        if (is_status_error(vertex_specification_bind)) return vertex_specification_bind;
+        if (vertex_specification_bind.is_error()) return vertex_specification_bind;
 
         status shader_bind = bind_shader(state->shader);
-        if (is_status_error(shader_bind)) return shader_bind;
+        if (shader_bind.is_error()) return shader_bind;
 
         active_draw_specification = state;
 
@@ -531,19 +479,20 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
     {
-        const buffer_state* buffer_state = find_buffer_state(source);
-        if (buffer_state == nullptr) return {status_type::UNKNOWN, std::format("No buffer with name '{0}' exists in context", source.name)};
+        buffer_state* buffer_state;
+        const status find_status = find_buffer_state(source, &buffer_state);
+        if (find_status.is_error()) return find_status;
         return buffer_state->bind_to(target);
     }
 
     status render_context::bind_shader(const object_identifier& source)
     {
-        shader_state* shader = find_shader_state(source);
-        if (shader == nullptr) return {status_type::UNKNOWN, std::format("Shader object '{0}' not found in context", source.name)};
-        if (!shader->is_valid()) return {status_type::INVALID, std::format("Shader object '{0}' is in an invalid state", source.name)};
+        shader_state* shader;
+        status find_status = find_shader_state(source, &shader);
+        if (find_status.is_error()) return find_status;
 
         status activate_status = shader->make_active();
-        if (is_status_error(activate_status)) return activate_status;
+        if (activate_status.is_error()) return activate_status;
 
         for (shader_parameter& param : shader->parameter_store)
         {
@@ -576,7 +525,7 @@ namespace stardraw::gl45
                 }
             }
 
-            if (is_status_error(result_status)) return result_status;
+            if (result_status.is_error()) return result_status;
         }
 
         return status_type::SUCCESS;
@@ -594,7 +543,6 @@ namespace stardraw::gl45
         }
 
         texture_shape resource_shape;
-        bool is_array;
 
         switch (binding_info.binding_type->getKind())
         {
@@ -603,19 +551,19 @@ namespace stardraw::gl45
                 const u32 shape = binding_info.binding_type->getResourceShape() & ~SlangResourceShape::SLANG_TEXTURE_COMBINED_FLAG;
                 switch (shape)
                 {
-                    case SlangResourceShape::SLANG_TEXTURE_1D_ARRAY: is_array = true;
+                    case SlangResourceShape::SLANG_TEXTURE_1D_ARRAY:
                     case SlangResourceShape::SLANG_TEXTURE_1D:
                     {
                         resource_shape = texture_shape::_1D;
                         break;
                     }
-                    case SlangResourceShape::SLANG_TEXTURE_2D_ARRAY: is_array = true;
+                    case SlangResourceShape::SLANG_TEXTURE_2D_ARRAY:
                     case SlangResourceShape::SLANG_TEXTURE_2D:
                     {
                         resource_shape = texture_shape::_2D;
                         break;
                     }
-                    case SlangResourceShape::SLANG_TEXTURE_CUBE_ARRAY: is_array = true;
+                    case SlangResourceShape::SLANG_TEXTURE_CUBE_ARRAY:
                     case SlangResourceShape::SLANG_TEXTURE_CUBE:
                     {
                         resource_shape = texture_shape::CUBE_MAP;
@@ -639,27 +587,28 @@ namespace stardraw::gl45
             }
         }
 
-        const texture_state* texture = find_texture_state(object_identifier(value.opaque_reference));
-        if (texture == nullptr) return {status_type::UNKNOWN, std::format("Texture object '{0}' not found in context (referenced by shader parameter)", value.opaque_reference)};
-        if (!texture->is_valid()) return {status_type::INVALID, std::format("Texture object '{0}' is in an invalid state (referenced by shader parameter)", value.opaque_reference)};
-        if (texture->get_shape() != resource_shape) return {status_type::INVALID, std::format("Texture object '{0}' can't be bound to this location - wrong texture shape!", value.opaque_reference)};
+        texture_state* texture;
+        status find_status = find_texture_state(value.opaque_reference, &texture);
+        if (find_status.is_error()) return find_status;
+        if (texture->get_shape() != resource_shape) return {status_type::INVALID, std::format("Texture object '{0}' can't be bound to this location - wrong texture shape!", value.opaque_reference.name)};
 
         status bind_status = status_type::SUCCESS;
+        const SlangResourceAccess access = binding_info.binding_type->getResourceAccess();
+        GLenum gl_access = GL_READ_WRITE;
+        if (access == SLANG_RESOURCE_ACCESS_READ) gl_access = GL_READ_ONLY;
+        else if (access == SLANG_RESOURCE_ACCESS_WRITE) gl_access = GL_WRITE_ONLY;
+
         if (as_image)
         {
-            const SlangResourceAccess access = binding_info.binding_type->getResourceAccess();
-            if (access == SlangResourceAccess::SLANG_RESOURCE_ACCESS_READ && value.image_access == shader_parameter_value::image_texture_access::WRITE_ONLY) return {status_type::INVALID, std::format("Can't bind texture object '{0}' as image texture - binding location has readonly access, but parameter access is writeonly", value.opaque_reference)};
-            if (access == SlangResourceAccess::SLANG_RESOURCE_ACCESS_WRITE && value.image_access == shader_parameter_value::image_texture_access::READ_ONLY) return {status_type::INVALID, std::format("Can't bind texture object '{0}' as image texture - binding location has writeonly access, but parameter access is readonly", value.opaque_reference)};
-            if (access == SlangResourceAccess::SLANG_RESOURCE_ACCESS_READ_WRITE && value.image_access != shader_parameter_value::image_texture_access::READ_WRITE) return {status_type::INVALID, std::format("Can't bind texture object '{0}' as image texture - binding location has readwrite access, but parameter access is not readwrite", value.opaque_reference)};
-            bind_status = texture->bind_to_image_slot(actual_slot, value.image_texture_mipmap, value.image_texture_layer, value.image_texture_array, value.image_access);
+            bind_status = texture->bind_to_image_slot(actual_slot, value.image_texture_mipmap, value.image_texture_layer, value.image_texture_array, gl_access);
         }
         else
         {
             bind_status = texture->bind_to_texture_slot(actual_slot);
         }
 
-        if (is_status_error(bind_status)) return bind_status;
-        shader->bound_objects[actual_slot] = value.opaque_reference;
+        if (bind_status.is_error()) return bind_status;
+        shader->bound_objects[actual_slot] = { value.opaque_reference, as_image && gl_access != GL_READ_ONLY, GL_TEXTURE_FETCH_BARRIER_BIT };
         return status_type::SUCCESS;
     }
 
@@ -668,6 +617,7 @@ namespace stardraw::gl45
         const binding_location_info binding_info = vk_binding_for_location(location);
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
         GLenum binding_type = 0;
+        SlangResourceAccess access;
 
         //To bind a buffer, we make sure the location is *explicitly* pointed at the buffer variable, not something contained inside the buffer.
         if (binding_info.binding_type != location.offset_ptr)
@@ -681,24 +631,26 @@ namespace stardraw::gl45
             case slang::TypeReflection::Kind::ConstantBuffer:
             {
                 binding_type = GL_UNIFORM_BUFFER;
+                access = SLANG_RESOURCE_ACCESS_READ;
                 break;
             }
 
             case slang::TypeReflection::Kind::ShaderStorageBuffer:
             {
                 binding_type = GL_SHADER_STORAGE_BUFFER;
+                access = SLANG_RESOURCE_ACCESS_READ_WRITE;
                 break;
             }
 
             case slang::TypeReflection::Kind::Resource:
             {
                 const SlangResourceShape shape = binding_info.binding_type->getResourceShape();
+                access = binding_info.binding_type->getResourceAccess();
                 if (shape == SLANG_STRUCTURED_BUFFER || shape == SLANG_BYTE_ADDRESS_BUFFER)
                 {
                     binding_type = GL_SHADER_STORAGE_BUFFER;
                     break;
                 }
-
                 //fallthrough to unsupported
             }
             default:
@@ -707,12 +659,15 @@ namespace stardraw::gl45
             }
         }
 
-        const buffer_state* buffer = find_buffer_state(object_identifier(value.opaque_reference));
-        if (buffer == nullptr) return {status_type::UNKNOWN, std::format("Buffer object '{0}' not found in context (referenced by shader parameter)", value.opaque_reference)};
-        if (!buffer->is_valid()) return {status_type::INVALID, std::format("Buffer object '{0}' is in an invalid state (referenced by shader parameter)", value.opaque_reference)};
+        buffer_state* buffer;
+        const status find_status = find_buffer_state(object_identifier(value.opaque_reference), &buffer);
+        if (find_status.is_error()) return find_status;
+
         status bind_status = buffer->bind_to_slot(binding_type, actual_slot);
-        if (is_status_error(bind_status)) return bind_status;
-        shader->bound_objects[actual_slot] = value.opaque_reference;
+        const GLbitfield read_barrier = (binding_type == GL_SHADER_STORAGE_BUFFER ? GL_SHADER_STORAGE_BARRIER_BIT : GL_UNIFORM_BARRIER_BIT);
+        const bool has_write_access = access != SLANG_RESOURCE_ACCESS_READ;
+        shader->bound_objects[actual_slot] = { value.opaque_reference, has_write_access, read_barrier };
+        if (bind_status.is_error()) return bind_status;
         return status_type::SUCCESS;
     }
 
@@ -726,7 +681,7 @@ namespace stardraw::gl45
             return {status_type::INVALID, "Can't upload shader parameter; the shader does not have a backing buffer set for the given location!"};
         }
 
-        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot], location.byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
+        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
     }
 
     status render_context::record_object_state(const object_identifier& identifier, object_state* state)

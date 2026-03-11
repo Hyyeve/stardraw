@@ -1,5 +1,5 @@
 #pragma once
-#include "../types.hpp"
+#include "../common.hpp"
 namespace stardraw::gl45
 {
     class draw_specification_state final : public object_state

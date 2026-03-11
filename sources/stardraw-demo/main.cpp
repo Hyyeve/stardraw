@@ -1,6 +1,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 #include "stardraw/api/shaders.hpp"
 #include "stardraw/api/window.hpp"
@@ -64,7 +65,17 @@ uniform_block uniforms = {
 int main()
 {
     window* wind;
-    stardraw::status wind_status = window::create({.api = graphics_api::GL45, .transparent_framebuffer = true}, &wind);
+    stardraw::status wind_status = window::create(
+        {
+            .api = graphics_api::GL45,
+            .transparent_framebuffer = true,
+            .enable_backend_validation = true,
+            .validation_message_callback = [](const std::string message)
+            {
+                std::cout << message << std::endl;
+            }
+        }, &wind);
+
     wind->set_title("Meow!");
 
     render_context* ctx = wind->get_render_context();
@@ -118,7 +129,7 @@ int main()
             {
                 {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
                 {frag_shader->locate("structured").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
-                {frag_shader->locate("texture"), shader_parameter_value::image_read_write("tex")}
+                {frag_shader->locate("texture"), shader_parameter_value::image("tex")}
             }),
         draw_config_command("draw-spec"),
     });

@@ -1,7 +1,8 @@
 #include "shader_state.hpp"
 #include <format>
+#include <ranges>
 #include <spirv_glsl.hpp>
-
+#include "stardraw/gl45/api_conversion.hpp"
 #include "stardraw/internal/internal.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
@@ -33,6 +34,8 @@ namespace stardraw::gl45
 
     status shader_state::make_active() const
     {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Make shader active")
         if (!is_valid()) return {status_type::BACKEND_ERROR, "Shader object not valid!"};
         glUseProgram(shader_program_id);
         return status_type::SUCCESS;
@@ -52,24 +55,40 @@ namespace stardraw::gl45
         parameter_store.clear();
     }
 
+    void shader_state::flag_barriers(memory_barrier_controller& barrier_controller) const
+    {
+        for (const object_binding& bound_object : bound_objects | std::views::values)
+        {
+            if (!bound_object.write_access) continue;
+            barrier_controller.flag_barriers(bound_object.identifier);
+        }
+    }
+
     descriptor_type shader_state::object_type() const
     {
         return descriptor_type::SHADER;
+    }
+
+    void shader_state::barrier_objects_if_needed(memory_barrier_controller& barrier_controller) const
+    {
+        for (const object_binding& bound_object : bound_objects | std::views::values)
+        {
+            barrier_controller.barrier_if_needed(bound_object.identifier, bound_object.read_barriers);
+        }
     }
 
     status shader_state::create_from_stages(const std::vector<shader_stage>& stages)
     {
         std::vector<std::string> converted_sources;
         status convert_status = remap_spirv_stages(stages, converted_sources);
-        if (is_status_error(convert_status)) return convert_status;
+        if (convert_status.is_error()) return convert_status;
 
         status stages_compile_status = status_type::SUCCESS;
         std::vector<GLuint> shader_stages;
         for (u32 idx = 0; idx < stages.size(); idx++)
         {
             const shader_stage& stage = stages[idx];
-
-            const GLenum shader_type = gl_shader_type(stage.type);
+            const GLenum shader_type = to_gl_shader_type(stage.type);
             if (shader_type == 0)
             {
                 stages_compile_status = {status_type::BACKEND_ERROR, "A provided shader stage is not supported on this API!"};
@@ -79,7 +98,7 @@ namespace stardraw::gl45
             const std::string& source = converted_sources[idx];
             GLuint compiled_stage;
             const status compile_status = compile_shader_stage(source, shader_type, compiled_stage);
-            if (is_status_error(compile_status))
+            if (compile_status.is_error())
             {
                 stages_compile_status = compile_status;
                 break;
@@ -88,7 +107,7 @@ namespace stardraw::gl45
             shader_stages.push_back(compiled_stage);
         }
 
-        if (is_status_error(stages_compile_status))
+        if (stages_compile_status.is_error())
         {
             for (const GLuint& compiled_stage : shader_stages)
             {
@@ -106,30 +125,17 @@ namespace stardraw::gl45
             glDeleteShader(shader);
         }
 
-        if (is_status_error(link_status)) return link_status;
+        if (link_status.is_error()) return link_status;
 
         shader_program_id = shader_program;
 
         return status_type::SUCCESS;
     }
 
-    GLenum shader_state::gl_shader_type(const shader_stage_type stage)
-    {
-        switch (stage)
-        {
-            case shader_stage_type::VERTEX: return GL_VERTEX_SHADER;
-            case shader_stage_type::TESSELATION_CONTROL: return GL_TESS_CONTROL_SHADER;
-            case shader_stage_type::TESSELATION_EVAL: return GL_TESS_EVALUATION_SHADER;
-            case shader_stage_type::GEOMETRY: return GL_GEOMETRY_SHADER;
-            case shader_stage_type::FRAGMENT: return GL_FRAGMENT_SHADER;
-            case shader_stage_type::COMPUTE: return GL_COMPUTE_SHADER;
-        }
-
-        return 0;
-    }
 
     status shader_state::remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources)
     {
+        ZoneScopedN("Convert Slang spirv to opengl-compatible GLSL");
         for (const shader_stage& stage : stages)
         {
             if (stage.program->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program is non-GL45!")};
@@ -237,6 +243,8 @@ namespace stardraw::gl45
 
     status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id)
     {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Link shader stages")
         const GLuint program = glCreateProgram();
         if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
 
@@ -264,6 +272,8 @@ namespace stardraw::gl45
 
     status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id)
     {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Compile shader stage")
         const GLuint shader = glCreateShader(type);
         if (shader == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateShader)"};
 

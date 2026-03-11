@@ -21,19 +21,14 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         if (vertex_array_id == 0) return false;
-        for (const GLuint buffer : vertex_buffers)
+        for (const vertex_buffer_binding& buffer : vertex_buffers)
         {
-            if (!glIsBuffer(buffer)) return false;
+            if (!glIsBuffer(buffer.id)) return false;
         }
 
-        if (index_buffer != 0 && !glIsBuffer(index_buffer)) return false;
+        if (has_index_buffer && !glIsBuffer(index_buffer.id)) return false;
 
         return true;
-    }
-
-    bool vertex_specification_state::has_index_buffer() const
-    {
-        return index_buffer != 0;
     }
 
     status vertex_specification_state::bind() const
@@ -44,21 +39,22 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status vertex_specification_state::attach_vertex_buffer(const GLuint slot, const GLuint id, const GLintptr offset, const GLsizei stride)
+    status vertex_specification_state::attach_vertex_buffer(const object_identifier& identifier, const GLuint slot, const GLuint id, const GLintptr offset, const GLsizei stride)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Attach vertex buffer to vertex specification");
         glVertexArrayVertexBuffer(vertex_array_id, slot, id, offset, stride);
-        vertex_buffers.push_back(id);
+        vertex_buffers.push_back({identifier, id});
         return status_type::SUCCESS;
     }
 
-    status vertex_specification_state::attach_index_buffer(const GLuint index_buffer_id)
+    status vertex_specification_state::attach_index_buffer(const object_identifier& identifier, const GLuint index_buffer_id)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Attach index buffer to vertex specification");
         glVertexArrayElementBuffer(vertex_array_id, index_buffer_id);
-        index_buffer = index_buffer_id;
+        has_index_buffer = true;
+        index_buffer = {identifier, index_buffer_id};
         return status_type::SUCCESS;
     }
 }

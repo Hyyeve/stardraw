@@ -1,5 +1,5 @@
 #pragma once
-#include "types.hpp"
+#include "stardraw/api/common.hpp"
 namespace stardraw
 {
     using namespace starlib_stdint;
@@ -18,7 +18,7 @@ namespace stardraw
             UPLOAD_CHUNK, //Slower upload, creates a single-use staging buffer. Use for large infrequent uploads.
         };
 
-        std::string target;
+        object_identifier target;
         u64 address;
         u64 bytes;
         type transfer_type = type::UPLOAD_CHUNK;
@@ -37,7 +37,7 @@ namespace stardraw
             R, RG, RGB, RGBA, DEPTH, STENCIL
         };
 
-        std::string target;
+        object_identifier target;
         u32 x = 0;
         u32 y = 0;
         u32 z = 0;

@@ -22,11 +22,6 @@ namespace stardraw
             _1, _2, _3, _4,
         };
 
-        enum class image_texture_access : u8
-        {
-            READ_ONLY, WRITE_ONLY, READ_WRITE
-        };
-
         enum class matrix_dimensions_type : u8
         {
             _2x2, _2x3, _2x4, _3x2, _3x3, _3x4, _4x2, _4x3, _4x4
@@ -121,7 +116,7 @@ namespace stardraw
                 vector_size_type::_1,
                 0,
                 {},
-                reference,
+                object_identifier(reference),
             };
         }
 
@@ -133,11 +128,11 @@ namespace stardraw
                 vector_size_type::_1,
                 0,
                 {},
-                reference,
+                object_identifier(reference),
             };
         }
 
-        static shader_parameter_value image(const std::string& reference, const image_texture_access access, const u32 mipmap = 0, const u32 layer = 0, const bool array = false)
+        static shader_parameter_value image(const std::string& reference, const u32 mipmap = 0, const u32 layer = 0, const bool array = false)
         {
             return shader_parameter_value {
                 value_type::IMAGE_REFERENCE,
@@ -145,27 +140,11 @@ namespace stardraw
                 vector_size_type::_1,
                 0,
                 {},
-                reference,
-                access,
+                object_identifier(reference),
                 mipmap,
                 layer,
                 array
             };
-        }
-
-        static shader_parameter_value image_read_write(const std::string& reference, const u32 mipmap = 0, const u32 layer = 0, const bool array = false)
-        {
-            return image(reference, image_texture_access::READ_WRITE, mipmap, layer, array);
-        }
-
-        static shader_parameter_value image_read_only(const std::string& reference, const u32 mipmap = 0, const u32 layer = 0, const bool array = false)
-        {
-            return image(reference, image_texture_access::READ_ONLY, mipmap, layer, array);
-        }
-
-        static shader_parameter_value image_write_only(const std::string& reference, const u32 mipmap = 0, const u32 layer = 0, const bool array = false)
-        {
-            return image(reference, image_texture_access::WRITE_ONLY, mipmap, layer, array);
         }
 
         bool operator==(const shader_parameter_value&) const = default;
@@ -175,8 +154,7 @@ namespace stardraw
         vector_size_type vector_size = vector_size_type::_1;
         u32 num_values = 0;
         std::vector<u8> bytes = {};
-        std::string opaque_reference = "???";
-        image_texture_access image_access = image_texture_access::READ_WRITE;
+        object_identifier opaque_reference;
         u32 image_texture_mipmap = 0;
         u32 image_texture_layer = 0;
         bool image_texture_array = false;

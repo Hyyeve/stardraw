@@ -1,6 +1,6 @@
 #pragma once
+#include "../common.hpp"
 #include "../staging_buffer_uploader.hpp"
-#include "../types.hpp"
 #include "glad/glad.h"
 namespace stardraw::gl45
 {
@@ -47,6 +47,6 @@ namespace stardraw::gl45
 
         staging_buffer_uploader staging_uploader;
 
-        std::string buffer_name;
+        object_identifier buffer_identifier;
     };
 }

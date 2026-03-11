@@ -8,7 +8,7 @@
 #include <tracy/TracyOpenGL.hpp>
 
 #include "gl_headers.hpp"
-#include "../../../libraries/starlib/sources/starlib/types/block_allocator.hpp"
+#include "starlib/types/block_allocator.hpp"
 
 namespace stardraw::gl45
 {
@@ -20,7 +20,7 @@ namespace stardraw::gl45
         if (!has_space)
         {
             status new_buffer_status = allocate_new_staging_buffer(std::min(std::max(bytes, active_staging_buffer_size) * 3, max_staging_buffer_size));
-            if (is_status_error(new_buffer_status)) return new_buffer_status;
+            if (new_buffer_status.is_error()) return new_buffer_status;
             has_space = chunk_allocator.try_allocate(bytes, chunk_address);
         }
 

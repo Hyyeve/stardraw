@@ -2,16 +2,12 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "types.hpp"
 #include "object_states/buffer_state.hpp"
 #include "object_states/draw_specification_state.hpp"
 #include "object_states/shader_state.hpp"
 #include "object_states/texture_state.hpp"
 #include "object_states/vertex_specification_state.hpp"
-
-#include "stardraw/api/commands.hpp"
 #include "stardraw/api/render_context.hpp"
-#include "stardraw/api/types.hpp"
 
 namespace stardraw::gl45
 {
@@ -20,8 +16,7 @@ namespace stardraw::gl45
     class render_context final : public stardraw::render_context
     {
     public:
-        explicit render_context(window* window);
-
+        explicit render_context(window* window, bool api_validation, bool backend_validation);
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
         [[nodiscard]] status create_command_buffer(const std::string_view& name, const command_list&& commands) override;
@@ -38,15 +33,15 @@ namespace stardraw::gl45
         [[nodiscard]] status prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) override;
         [[nodiscard]] status flush_texture_memory_transfer(memory_transfer_handle* handle) override;
     private:
-        [[nodiscard]] static status status_from_last_gl_error();
 
 
         [[nodiscard]] status execute_command(const command* cmd);
-        [[nodiscard]] status execute_draw(const draw_command* cmd) const;
-        [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd) const;
-        [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd) const;
-        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd) const;
+        [[nodiscard]] status execute_draw(const draw_command* cmd);
+        [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
+        [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd);
+        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd);
         [[nodiscard]] status execute_buffer_copy(const buffer_copy_command* cmd);
+        [[nodiscard]] status execute_texture_copy(const texture_copy_command* cmd);
         [[nodiscard]] status execute_draw_config(const draw_config_command* cmd);
         [[nodiscard]] static status execute_config_blending(const blending_config_command* cmd);
         [[nodiscard]] static status execute_config_stencil(const stencil_config_command* cmd);
@@ -74,7 +69,8 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_shader_buffer_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
         [[nodiscard]] status bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value);
 
-        status record_object_state(const object_identifier& identifier, object_state* state);
+        [[nodiscard]] status record_object_state(const object_identifier& identifier, object_state* state);
+        [[nodiscard]] static status status_from_last_gl_error();
 
         template <typename state_type, descriptor_type object_type>
         [[nodiscard]] state_type* find_object_state(const object_identifier& identifier)
@@ -93,29 +89,50 @@ namespace stardraw::gl45
             return nullptr;
         }
 
-        [[nodiscard]] inline buffer_state* find_buffer_state(const object_identifier& identifier)
+        [[nodiscard]] inline status find_buffer_state(const object_identifier& identifier, buffer_state** out_state)
         {
-            return find_object_state<buffer_state, descriptor_type::BUFFER>(identifier);
+            *out_state = find_object_state<buffer_state, descriptor_type::BUFFER>(identifier);
+            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", identifier.name) };
+            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", identifier.name) };
+            return status_type::SUCCESS;
         }
 
-        [[nodiscard]] inline shader_state* find_shader_state(const object_identifier& identifier)
+        [[nodiscard]] inline status find_shader_state(const object_identifier& identifier, shader_state** out_state)
         {
-            return find_object_state<shader_state, descriptor_type::SHADER>(identifier);
+            *out_state = find_object_state<shader_state, descriptor_type::SHADER>(identifier);
+            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No shader with name '{0}' in context", identifier.name) };
+            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Shader '{0}' is in an invalid state", identifier.name) };
+            return status_type::SUCCESS;
         }
 
-        [[nodiscard]] inline texture_state* find_texture_state(const object_identifier& identifier)
+        [[nodiscard]] inline status find_texture_state(const object_identifier& identifier, texture_state** out_state)
         {
-            return find_object_state<texture_state, descriptor_type::TEXTURE>(identifier);
+            *out_state = find_object_state<texture_state, descriptor_type::TEXTURE>(identifier);
+            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No texture with name '{0}' in context", identifier.name) };
+            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Texture '{0}' is in an invalid state", identifier.name) };
+            if ((*out_state)->root_data_store_texture != identifier)
+            {
+                texture_state* root_state;
+                const status root_status = find_texture_state((*out_state)->root_data_store_texture, &root_state);
+                if (root_status.is_error()) return root_status;
+            }
+
+            return status_type::SUCCESS;
         }
 
-        [[nodiscard]] inline vertex_specification_state* find_vertex_specification_state(const object_identifier& identifier)
+        [[nodiscard]] inline status find_vertex_specification_state(const object_identifier& identifier, vertex_specification_state** out_state)
         {
-            return find_object_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
+            *out_state = find_object_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
+            if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", identifier.name)};
+            if (!(*out_state)->is_valid()) return {status_type::INVALID, std::format("Vertex specification object '{0}' is in an invalid state", identifier.name)};
+            return status_type::SUCCESS;
         }
 
-        [[nodiscard]] inline draw_specification_state* find_draw_specification_state(const object_identifier& identifier)
+        [[nodiscard]] inline status find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state)
         {
-            return find_object_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
+            *out_state = find_object_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
+            if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", identifier.name)};
+            return status_type::SUCCESS;
         }
 
         window* parent_window;
@@ -124,6 +141,9 @@ namespace stardraw::gl45
         std::unordered_map<std::string, signal_state> signals;
         std::unordered_map<memory_transfer_handle*, buffer_memory_transfer_info> buffer_transfers;
         std::unordered_map<memory_transfer_handle*, texture_memory_transfer_info> texture_transfers;
+        memory_barrier_controller mem_barrier_controller;
         const draw_specification_state* active_draw_specification = nullptr;
+        bool api_validation_enabled;
+        bool backend_validation_enabled;
     };
 }

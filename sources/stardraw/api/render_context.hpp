@@ -3,14 +3,18 @@
 #include <string_view>
 
 #include "commands.hpp"
+#include "common.hpp"
 #include "descriptors.hpp"
 #include "memory_transfer.hpp"
 
 namespace stardraw
 {
     using namespace starlib_stdint;
-    class render_context;
-    class async_upload_handle;
+
+    enum class signal_status : u8
+    {
+        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
+    };
 
     class render_context
     {
@@ -40,7 +44,7 @@ namespace stardraw
         {
             memory_transfer_handle* transfer_handle;
             status prepare_status = prepare_buffer_memory_transfer(info, &transfer_handle);
-            if (is_status_error(prepare_status)) return prepare_status;
+            if (prepare_status.is_error()) return prepare_status;
             transfer_handle->transfer(data);
             return flush_buffer_memory_transfer(transfer_handle);
         }
@@ -58,7 +62,7 @@ namespace stardraw
         {
             memory_transfer_handle* transfer_handle;
             status prepare_status = prepare_texture_memory_transfer(info, &transfer_handle);
-            if (is_status_error(prepare_status)) return prepare_status;
+            if (prepare_status.is_error()) return prepare_status;
             transfer_handle->transfer(data);
             return flush_texture_memory_transfer(transfer_handle);
         }

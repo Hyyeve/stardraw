@@ -3,7 +3,6 @@
 #include <utility>
 
 #include "shaders.hpp"
-#include "types.hpp"
 #include "starlib/types/polymorphic.hpp"
 #include "starlib/types/starlib_stdint.hpp"
 
@@ -21,16 +20,14 @@ namespace stardraw
         virtual ~descriptor() = default;
 
         [[nodiscard]] virtual descriptor_type type() const = 0;
-        [[nodiscard]] const object_identifier& identifier() const;
+        [[nodiscard]] const inline object_identifier& identifier() const
+        {
+            return ident;
+        }
 
     private:
         object_identifier ident;
     };
-
-    inline const object_identifier& descriptor::identifier() const
-    {
-        return ident;
-    }
 
     typedef std::vector<starlib::polymorphic<descriptor>> descriptor_list;
 
@@ -81,7 +78,7 @@ namespace stardraw
 
         vertex_data_type type;
         u32 instance_divisor;
-        std::string buffer;
+        object_identifier buffer;
     };
 
     struct vertex_data_layout
@@ -94,7 +91,7 @@ namespace stardraw
 
     struct vertex_specification_descriptor final : descriptor
     {
-        constexpr vertex_specification_descriptor(const std::string_view& name, vertex_data_layout layout, const std::string_view& index_buffer = "") : descriptor(name), layout(std::move(layout)), index_buffer(index_buffer) {}
+        constexpr vertex_specification_descriptor(const std::string_view& name, vertex_data_layout layout, const std::string_view& index_buffer = "") : descriptor(name), layout(std::move(layout)), index_buffer(index_buffer), has_index_buffer(!index_buffer.empty()) {}
 
         [[nodiscard]] descriptor_type type() const override
         {
@@ -102,7 +99,8 @@ namespace stardraw
         }
 
         vertex_data_layout layout;
-        std::string index_buffer;
+        object_identifier index_buffer;
+        bool has_index_buffer;
     };
 
     struct draw_specification_descriptor final : descriptor
@@ -114,8 +112,8 @@ namespace stardraw
             return descriptor_type::DRAW_SPECIFICATION;
         }
 
-        std::string vertex_specification;
-        std::string shader;
+        object_identifier vertex_specification;
+        object_identifier shader;
     };
 
     struct shader_descriptor final : descriptor
@@ -304,7 +302,7 @@ namespace stardraw
 
         texture_format format;
         texture_sampling_conifg default_sampling_config;
-        std::string as_view_of;
+        object_identifier as_view_of;
     };
 
     struct texture_sampler_descriptor final : descriptor

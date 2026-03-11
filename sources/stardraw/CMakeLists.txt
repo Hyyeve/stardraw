@@ -6,11 +6,17 @@ target_sources(stardraw PRIVATE
         internal/shaders.cpp
         internal/glfw_window.hpp internal/glfw_window.cpp
 
-        gl45/commands_impl.cpp
+        gl45/gl_headers.hpp
+        gl45/common.hpp
+        gl45/api_conversion.hpp
+        gl45/common.hpp
         gl45/render_context.hpp gl45/render_context.cpp
-        gl45/types.hpp
         gl45/window.hpp gl45/window.cpp
+
+        gl45/commands.cpp
+        gl45/memory_barrier_controller.hpp
         gl45/staging_buffer_uploader.hpp gl45/staging_buffer_uploader.cpp
+
         gl45/object_states/buffer_state.hpp gl45/object_states/buffer_state.cpp
         gl45/object_states/draw_specification_state.hpp gl45/object_states/draw_specification_state.cpp
         gl45/object_states/shader_state.hpp gl45/object_states/shader_state.cpp
@@ -23,7 +29,7 @@ target_sources(stardraw PRIVATE
 
 target_sources(stardraw PUBLIC FILE_SET HEADERS BASE_DIRS ${H_SOURCES_ROOT} FILES
         api/render_context.hpp
-        api/types.hpp
+        api/common.hpp
         api/descriptors.hpp
         api/commands.hpp
         api/window.hpp

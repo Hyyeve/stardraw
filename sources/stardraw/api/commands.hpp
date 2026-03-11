@@ -1,9 +1,9 @@
 #pragma once
 #include <string_view>
 
+#include "common.hpp"
 #include "shaders.hpp"
 #include "shader_parameter_value.hpp"
-#include "stardraw/api/types.hpp"
 #include "starlib/types/polymorphic.hpp"
 #include "starlib/types/starlib_stdint.hpp"
 
@@ -84,13 +84,14 @@ namespace stardraw
 
     struct draw_indirect_command final : command
     {
-        draw_indirect_command(const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0) : mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
 
+        object_identifier indirect_buffer;
         draw_mode mode;
         u32 draw_count;
         u32 indirect_offset;
@@ -98,13 +99,14 @@ namespace stardraw
 
     struct draw_indexed_indirect_command final : command
     {
-        draw_indexed_indirect_command(const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indexed_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
 
+        object_identifier indirect_buffer;
         draw_mode mode;
         draw_indexed_index_type index_type;
         u32 draw_count;
@@ -340,15 +342,15 @@ namespace stardraw
 
     struct buffer_copy_command final : command
     {
-        explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const u64 from_address, const u64 to_address, const u64 bytes) : source_buffer(source_buffer), dest_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
+        explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const u64 from_address, const u64 to_address, const u64 bytes) : read_buffer(source_buffer), write_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::BUFFER_COPY;
         }
 
-        object_identifier source_buffer;
-        object_identifier dest_buffer;
+        object_identifier read_buffer;
+        object_identifier write_buffer;
         u64 source_address;
         u64 dest_address;
         u64 bytes;

@@ -1,6 +1,8 @@
 #pragma once
+#include <string_view>
 #include <vector>
-#include "types.hpp"
+
+#include "common.hpp"
 #include "starlib/types/starlib_stdint.hpp"
 
 namespace stardraw
