@@ -8,6 +8,7 @@
 #include "../starwin/api/window.hpp"
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
+#include "starlib/general/random.hpp"
 using namespace stardraw;
 using namespace starwin;
 

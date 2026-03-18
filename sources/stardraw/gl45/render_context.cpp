@@ -261,6 +261,9 @@ namespace stardraw::gl45
             case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const shader_config_command*>(cmd));
             case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal_command*>(cmd));
             case command_type::PRESENT: return execute_present(dynamic_cast<const present_command*>(cmd));
+            case command_type::COMPUTE_DISPATCH: return execute_compute_dispatch(dynamic_cast<const compute_dispatch_command*>(cmd));
+            case command_type::COMPUTE_DISPATCH_INDIRECT: return execute_compute_dispatch_indirect(dynamic_cast<const compute_dispatch_indirect_command*>(cmd));
+            case command_type::CONFIG_VIEWPORTS: return execute_config_viewports(dynamic_cast<const configure_viewports_command*>(cmd));
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};

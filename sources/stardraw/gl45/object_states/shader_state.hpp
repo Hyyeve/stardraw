@@ -33,6 +33,8 @@ namespace stardraw::gl45
         [[nodiscard]] bool is_valid() const;
 
         [[nodiscard]] status make_active() const;
+        [[nodiscard]] status dispatch_compute(u32 groups_x, u32 groups_y, u32 groups_z) const;
+        [[nodiscard]] status dispatch_compute_indirect(u64 indirect_offset) const;
         [[nodiscard]] status upload_parameter(const shader_parameter& parameter);
         void clear_parameters();
 
@@ -44,6 +46,7 @@ namespace stardraw::gl45
         std::vector<u32> descriptor_set_binding_offsets;
         std::vector<shader_parameter> parameter_store;
         std::unordered_map<u32, object_binding> bound_objects;
+        bool has_compute_stage = false;
 
     private:
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);

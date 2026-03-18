@@ -47,7 +47,10 @@ namespace stardraw::gl45
         [[nodiscard]] static status execute_config_face_cull(const face_cull_config_command* cmd);
         [[nodiscard]] static status execute_config_depth_test(const depth_test_config_command* cmd);
         [[nodiscard]] static status execute_config_depth_range(const depth_range_config_command* cmd);
+        [[nodiscard]] status execute_config_viewports(const configure_viewports_command* cmd) const;
         [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
+        [[nodiscard]] status execute_compute_dispatch(const compute_dispatch_command* cmd);
+        [[nodiscard]] status execute_compute_dispatch_indirect(const compute_dispatch_indirect_command* cmd);
         [[nodiscard]] status execute_present(const present_command* cmd) const;
         [[nodiscard]] status execute_shader_parameters_upload(const shader_config_command* cmd);
         [[nodiscard]] status execute_signal(const signal_command* cmd);

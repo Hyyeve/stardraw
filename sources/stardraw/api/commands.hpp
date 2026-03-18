@@ -14,9 +14,10 @@ namespace stardraw
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
         CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW,
+        CONFIG_VIEWPORTS,
         BUFFER_COPY, TEXTURE_COPY,
         CLEAR_WINDOW, CLEAR_BUFFER,
-        CONFIG_SHADER,
+        CONFIG_SHADER, COMPUTE_DISPATCH, COMPUTE_DISPATCH_INDIRECT,
         SIGNAL,
         PRESENT,
     };
@@ -91,7 +92,7 @@ namespace stardraw
     ///Does *not* use index data. See draw_indexed_indirect_command for that.
     struct draw_indirect_command final : command
     {
-        draw_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_index = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_index(indirect_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -101,14 +102,14 @@ namespace stardraw
         object_identifier indirect_buffer;
         draw_mode mode;
         u32 draw_count;
-        u32 indirect_offset;
+        u32 indirect_index;
     };
 
     ///Draws some triangles, using an indirect draw command buffer. A valid draw specification must have been configured to provide the shader and vertex data
     ///*Requires* index data. For non-indexed drawing, see draw_indirect_command.
     struct draw_indexed_indirect_command final : command
     {
-        draw_indexed_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
+        draw_indexed_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_index = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_index(indirect_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -119,7 +120,7 @@ namespace stardraw
         draw_mode mode;
         draw_indexed_index_type index_type;
         u32 draw_count;
-        u32 indirect_offset;
+        u32 indirect_index;
     };
 
     ///Sets the active draw specification. A valid draw specification must be set prior to calling any draw commands.
@@ -419,10 +420,7 @@ namespace stardraw
     };
 
     ///Updates shader parameter data
-    ///Note: command will not take effect until the next time the draw specification is configured.
-    ///Note: shader parameter data *overwrites* the relevant data in the buffers bound to the shader,
-    /// whenever a draw specification using the shader is configured.
-    ///You can unset parameters by setting the erase flag and not providing new values for parameters you want to unset.
+    ///Note: shader parameter data *overwrites* the relevant data in the buffers bound to the shader.
     struct shader_config_command final : command
     {
         explicit shader_config_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
@@ -496,5 +494,57 @@ namespace stardraw
         {
             return command_type::PRESENT;
         }
+    };
+
+    ///Dispatches a compute shader with the given group numbers
+    struct compute_dispatch_command final : command
+    {
+        compute_dispatch_command(const std::string_view& shader, const u32 groups_x, const u32 groups_y, const u32 groups_z) : groups_x(groups_x), groups_y(groups_y), groups_z(groups_z), shader(shader) {}
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::COMPUTE_DISPATCH;
+        }
+
+        u32 groups_x;
+        u32 groups_y;
+        u32 groups_z;
+        object_identifier shader;
+    };
+
+    ///Dispatches a compute shader multiple times indirectly
+    struct compute_dispatch_indirect_command final : command
+    {
+        compute_dispatch_indirect_command(const std::string_view& shader, const std::string_view& indirect_buffer, const u32 indirect_index = 0) : shader(shader), indirect_buffer(indirect_buffer), indirect_index(indirect_index) {}
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::COMPUTE_DISPATCH_INDIRECT;
+        }
+
+        object_identifier shader;
+        object_identifier indirect_buffer;
+        u32 indirect_index;
+    };
+
+    struct viewport_config
+    {
+        float x;
+        float y;
+        float width;
+        float height;
+    };
+
+    ///Configures the active drawing viewports
+    struct configure_viewports_command final : command
+    {
+        explicit configure_viewports_command(const std::initializer_list<viewport_config> viewports, const u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
+        explicit configure_viewports_command(const std::vector<viewport_config>& viewports, const u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
+
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::CONFIG_VIEWPORTS;
+        }
+
+        u32 first_viewport_index;
+        std::vector<viewport_config> viewports;
     };
 }

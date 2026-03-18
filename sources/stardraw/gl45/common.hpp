@@ -23,6 +23,13 @@ namespace stardraw::gl45
         i32 vertex_begin;
         u32 instance_begin;
     };
+
+    struct dispatch_compute_indirect_params {
+        u32  num_groups_x;
+        u32  num_groups_y;
+        u32  num_groups_z;
+    };
+
     #pragma pack(pop)
 
     class object_state

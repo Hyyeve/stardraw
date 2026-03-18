@@ -94,7 +94,7 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glMultiDrawArraysIndirect(to_gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_offset * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
+        glMultiDrawArraysIndirect(to_gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
         shader->flag_barriers(mem_barrier_controller);
         return status_type::SUCCESS;
     }
@@ -125,7 +125,7 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glMultiDrawElementsIndirect(to_gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_offset * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
+        glMultiDrawElementsIndirect(to_gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
         shader->flag_barriers(mem_barrier_controller);
 
         return status_type::SUCCESS;
@@ -262,6 +262,20 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    status render_context::execute_config_viewports(const configure_viewports_command* cmd) const
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute config viewport cmd");
+
+        for (u32 idx = 0; idx < cmd->viewports.size(); idx++)
+        {
+            const viewport_config& config = cmd->viewports[idx];
+            glViewportIndexedf(cmd->first_viewport_index + idx, config.x, config.y, config.width, config.height);
+        }
+
+        return status_type::SUCCESS;
+    }
+
     status render_context::execute_clear_window(const clear_window_command* cmd)
     {
         ZoneScoped;
@@ -274,6 +288,51 @@ namespace stardraw::gl45
         glClear(to_gl_clear_mask(cmd->mode));
 
         return status_type::SUCCESS;
+    }
+
+    status render_context::execute_compute_dispatch(const compute_dispatch_command* cmd)
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute compute shader dispatch");
+
+        shader_state* shader;
+        status find_status = find_shader_state(cmd->shader, &shader);
+        if (find_status.is_error()) return find_status;
+
+        status bind_status = bind_shader(cmd->shader);
+        if (bind_status.is_error()) return bind_status;
+
+        shader->barrier_objects_if_needed(mem_barrier_controller);
+        status result_status = shader->dispatch_compute(cmd->groups_x, cmd->groups_y, cmd->groups_z);
+        shader->flag_barriers(mem_barrier_controller);
+
+        return result_status;
+    }
+
+    status render_context::execute_compute_dispatch_indirect(const compute_dispatch_indirect_command* cmd)
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute compute shader dispatch indirect");
+
+        buffer_state* buffer;
+        status find_buffer_status = find_buffer_state(cmd->indirect_buffer, &buffer);
+        if (find_buffer_status.is_error()) return find_buffer_status;
+
+        status bind_buffer_status = buffer->bind_to(GL_DISPATCH_INDIRECT_BUFFER);
+        if (bind_buffer_status.is_error()) return bind_buffer_status;
+
+        shader_state* shader;
+        status find_status = find_shader_state(cmd->shader, &shader);
+        if (find_status.is_error()) return find_status;
+
+        status bind_status = bind_shader(cmd->shader);
+        if (bind_status.is_error()) return bind_status;
+
+        shader->barrier_objects_if_needed(mem_barrier_controller);
+        status result_status = shader->dispatch_compute_indirect(cmd->indirect_index * sizeof(dispatch_compute_indirect_params));
+        shader->flag_barriers(mem_barrier_controller);
+
+        return result_status;
     }
 
     status render_context::execute_present(const present_command* cmd) const

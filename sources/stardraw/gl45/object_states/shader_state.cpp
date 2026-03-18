@@ -41,6 +41,28 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    status shader_state::dispatch_compute(u32 groups_x, u32 groups_y, u32 groups_z) const
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Shader compute dispatch")
+        if (!has_compute_stage) return {status_type::INVALID, "Attempting to dispatch compute with a shader that doesn't have a compute stage!"};
+        status activate_status = make_active();
+        if (activate_status.is_error()) return activate_status;
+        glDispatchCompute(groups_x, groups_y, groups_z);
+        return status_type::SUCCESS;
+    }
+
+    status shader_state::dispatch_compute_indirect(const u64 indirect_offset) const
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Shader compute dispatch (indirect)")
+        if (!has_compute_stage) return {status_type::INVALID, "Attempting to dispatch compute with a shader that doesn't have a compute stage!"};
+        status activate_status = make_active();
+        if (activate_status.is_error()) return activate_status;
+        glDispatchComputeIndirect(static_cast<GLintptr>(indirect_offset));
+        return status_type::SUCCESS;
+    }
+
     status shader_state::upload_parameter(const shader_parameter& parameter)
     {
         ZoneScoped;
@@ -93,6 +115,10 @@ namespace stardraw::gl45
         for (u32 idx = 0; idx < stages.size(); idx++)
         {
             const shader_stage& stage = stages[idx];
+            if (stage.type == shader_stage_type::COMPUTE)
+            {
+                has_compute_stage = true;
+            }
             const GLenum shader_type = to_gl_shader_type(stage.type);
             if (shader_type == 0)
             {
