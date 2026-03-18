@@ -12,54 +12,66 @@ namespace starwin
         current_text += starlib::stringify_utf32(codepoint);
     }
 
-    void virtual_keyboard_input::press_key(const i32 key)
+    void virtual_keyboard_input::press_key(const u32 id)
     {
-        key_map[key] = 1;
+        key_map[id] = 1;
+        last_pressed_id = id;
     }
 
-    void virtual_keyboard_input::release_key(const i32 key)
+    void virtual_keyboard_input::release_key(const u32 id)
     {
-        key_map[key] = -1;
+        key_map[id] = -1;
+        last_released_id = id;
     }
 
-    bool keyboard_input::is_pressed(const i32 key)
+    bool keyboard_input::is_pressed(const u32 id)
     {
-        return key_map[key] > 0;
+        return key_map[id] > 0;
     }
 
-    bool keyboard_input::is_released(const i32 key)
+    bool keyboard_input::is_released(const u32 id)
     {
-        return key_map[key] < 0;
+        return key_map[id] < 0;
     }
 
-    bool keyboard_input::was_pressed_this_frame(const i32 key)
+    bool keyboard_input::was_pressed_this_frame(const u32 id)
     {
-        return get_frame_count(key) == 1;
+        return get_frame_count(id) == 1;
     }
 
-    bool keyboard_input::was_released_this_frame(const i32 key)
+    bool keyboard_input::was_released_this_frame(const u32 id)
     {
-        return get_frame_count(key) == -1;
+        return get_frame_count(id) == -1;
     }
 
-    i32 keyboard_input::get_frame_count(const i32 key)
+    i32 keyboard_input::get_frame_count(const u32 id)
     {
-        return key_map[key];
+        return key_map[id];
     }
 
-    i32 keyboard_input::get_pressed_frames(const i32 key)
+    u32 keyboard_input::get_pressed_frames(const u32 id)
     {
-        return std::max(0, get_frame_count(key));
+        return std::max(0, get_frame_count(id));
     }
 
-    i32 keyboard_input::get_released_frames(const i32 key)
+    u32 keyboard_input::get_released_frames(const u32 id)
     {
-        return std::max(0, -get_frame_count(key));
+        return std::max(0, -get_frame_count(id));
     }
 
     std::string keyboard_input::get_typed_text() const
     {
         return current_text;
+    }
+
+    i32 keyboard_input::get_last_pressed_this_frame() const
+    {
+        return last_pressed_id;
+    }
+
+    i32 keyboard_input::get_last_released_this_frame() const
+    {
+        return last_released_id;
     }
 
     void virtual_keyboard_input::advance_frame()
@@ -72,5 +84,7 @@ namespace starwin
         }
 
         current_text.clear();
+        last_released_id = -1;
+        last_pressed_id = -1;
     }
 }

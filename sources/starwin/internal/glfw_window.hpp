@@ -16,8 +16,8 @@ namespace starwin
 
         [[nodiscard]] keyboard_input* keyboard() override;
 
-        [[nodiscard]] u32 get_key_id(stardraw_keycodes::keycode keycode) override;
-        [[nodiscard]] std::string get_key_name(u32 key_id) override;
+        [[nodiscard]] u32 keycode_to_id(starlib_keycodes::keycode keycode) override;
+        [[nodiscard]] std::string id_to_name(u32 id) override;
 
         [[nodiscard]] mouse_input* mouse() override;
 
@@ -106,11 +106,11 @@ namespace starwin
         static void mouse_position_event(GLFWwindow* window, const f64 x, const f64 y);
         static void joystick_connection_event(const i32 id, const i32 event);
 
-        void on_key_event(const i32 scancode, const i32 action, const i32 mods);
-        void on_char_event(const u32 codepoint);
-        void on_mouse_button_event(const i32 button, const i32 action, i32 mods);
-        void on_mouse_scroll_event(const f64 x_offset, const f64 y_offset);
-        void on_mouse_position_event(const f64 x, const f64 y);
+        void on_key_event(const i32 scancode, const i32 action, const i32 mods) const;
+        void on_char_event(const u32 codepoint) const;
+        void on_mouse_button_event(const i32 button, const i32 action, i32 mods) const;
+        void on_mouse_scroll_event(const f64 x_offset, const f64 y_offset) const;
+        void on_mouse_position_event(const f64 x, const f64 y) const;
         void on_joystick_connection_event(const i32 id, const i32 event);
     };
 }

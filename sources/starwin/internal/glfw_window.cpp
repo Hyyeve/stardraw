@@ -7,6 +7,16 @@
 
 namespace starwin
 {
+    using namespace starlib_keycodes;
+
+    constexpr static u32 non_keyboard_id_bit = (1ul << 31ul);
+    constexpr static u32 mouse_button_id_offset = 0;
+    constexpr static u32 controller_button_id_offset = 20;
+    constexpr static u32 controller_axis_id_offset = 40;
+
+    static std::unordered_map<u32, std::string> nonprintable_keyname_map;
+    static bool has_init_nonprintable_map;
+
     static bool has_loaded_glfw;
 
     void check_load_glfw()
@@ -17,21 +27,112 @@ namespace starwin
         }
     }
 
+    void init_nonprintable_keyname_map(window_input* input)
+    {
+        const std::vector<std::tuple<starlib_keycodes::keycode, std::string>> unprintables = {
+            {keycode::space, "space"}, {keycode::left_alt, "left_alt"},
+            {keycode::right_alt, "right_alt"}, {keycode::escape, "esc"},
+            {keycode::enter, "enter"}, {keycode::tab, "tab"},
+            {keycode::backspace, "backspace"}, {keycode::insert, "insert"},
+            {keycode::del, "delete"}, {keycode::left, "left_arrow"},
+            {keycode::right, "right_arrow"}, {keycode::up, "up_arrow"},
+            {keycode::down, "down_arrow"}, {keycode::page_up, "page_up"},
+            {keycode::page_down, "page_down"}, {keycode::home, "home"},
+            {keycode::end, "end"}, {keycode::caps_lock, "capslock"},
+            {keycode::scroll_lock, "scroll_lock"},
+            {keycode::num_lock, "numlock"}, {keycode::print_screen, "printscreen"},
+            {keycode::pause, "pause"}, {keycode::f1, "f1"},
+            {keycode::f2, "f2"}, {keycode::f3, "f3"},
+            {keycode::f4, "f4"}, {keycode::f5, "f5"},
+            {keycode::f6, "f6"}, {keycode::f7, "f7"},
+            {keycode::f8, "f8"}, {keycode::f9, "f9"},
+            {keycode::f10, "f10"}, {keycode::f11, "f11"},
+            {keycode::f12, "f12"}, {keycode::f13, "f13"},
+            {keycode::f14, "f14"}, {keycode::f15, "f15"},
+            {keycode::f16, "f16"}, {keycode::f17, "f17"},
+            {keycode::f18, "f18"}, {keycode::f19, "f19"},
+            {keycode::f20, "f20"}, {keycode::f21, "f21"},
+            {keycode::f22, "f22"}, {keycode::f23, "f23"},
+            {keycode::f24, "f24"}, {keycode::f25, "f25"},
+            {keycode::numpad_0, "numpad_0"}, {keycode::numpad_1, "numpad_1"},
+            {keycode::numpad_2, "numpad_2"}, {keycode::numpad_3, "numpad_3"},
+            {keycode::numpad_4, "numpad_4"}, {keycode::numpad_5, "numpad_5"},
+            {keycode::numpad_6, "numpad_6"}, {keycode::numpad_7, "numpad_7"},
+            {keycode::numpad_8, "numpad_8"}, {keycode::numpad_9, "numpad_9"},
+            {keycode::numpad_decimal, "numpad_decimal"}, {keycode::numpad_divide, "numpad_divide"},
+            {keycode::numpad_multiply, "numpad_multiply"}, {keycode::numpad_subtract, "numpad_subtract"},
+            {keycode::numpad_add, "numpad_add"}, {keycode::numpad_enter, "numpad_enter"},
+            {keycode::numpad_equal, "numpad_equal"}, {keycode::left_shift, "left_shift"},
+            {keycode::left_control, "left_control"}, {keycode::left_alt, "left_alt"},
+            {keycode::left_super, "left_super"}, {keycode::right_shift, "right_shift"},
+            {keycode::right_control, "right_control"}, {keycode::right_alt, "right_alt"},
+            {keycode::right_super, "right_super"}, {keycode::menu, "menu"},
+        };
+
+        for (const auto& [keycode, name] : unprintables)
+        {
+            nonprintable_keyname_map[input->keycode_to_id(keycode)] = name;
+        }
+    }
+
     static std::unordered_set<glfw_window*> all_windows;
+
+    glfw_window_input::~glfw_window_input() {}
 
     keyboard_input* glfw_window_input::keyboard()
     {
         return &keyboard_hardware;
     }
 
-    u32 glfw_window_input::get_key_id(stardraw_keycodes::keycode keycode)
+    u32 glfw_window_input::keycode_to_id(starlib_keycodes::keycode keycode)
     {
+        if (static_cast<u32>(keycode) < 60) return static_cast<u32>(keycode) | non_keyboard_id_bit; //Mouse buttons, gamepad buttons
         return glfwGetKeyScancode(static_cast<int>(keycode));
     }
 
-    std::string glfw_window_input::get_key_name(const u32 key_id)
+    std::string glfw_window_input::id_to_name(const u32 id)
     {
-        return glfwGetKeyName(GLFW_KEY_UNKNOWN, key_id);
+        if (!(id & non_keyboard_id_bit))
+        {
+            if (!has_init_nonprintable_map) init_nonprintable_keyname_map(this);
+            if (nonprintable_keyname_map.contains(id)) return nonprintable_keyname_map[id];
+
+            const char* str = glfwGetKeyName(GLFW_KEY_UNKNOWN, id);
+            return str != nullptr ? std::string(str) : "unknown";
+        }
+
+        switch (id)
+        {
+            case 0: return "mouse_left";
+            case 1: return "mouse_right";
+            case 2: return "mouse_middle";
+            case 3: return "mouse_side_1";
+            case 4: return "mouse_side_2";
+            case 5: return "mouse_side_3";
+            case 6: return "mouse_side_4";
+            case 7: return "mouse_side_5";
+
+            case 20: return "gamepad_a";
+            case 21: return "gamepad_b";
+            case 22: return "gamepad_x";
+            case 23: return "gamepad_y";
+
+            case 24: return "left_bumper";
+            case 25: return "right_bumper";
+
+            case 26: return "select";
+            case 27: return "start";
+            case 28: return "home";
+
+            case 29: return "left_joystick_click";
+            case 30: return "right_joystick_click";
+
+            case 31: return "dpad_up";
+            case 32: return "dpad_right";
+            case 33: return "dpad_down";
+            case 34: return "dpad_left";
+            default: return "unknown";
+        }
     }
 
     mouse_input* glfw_window_input::mouse()
@@ -86,8 +187,6 @@ namespace starwin
         return false;
     }
 
-    glfw_window_input::~glfw_window_input() {}
-
     u32 glfw_window_input::connect_controller(const i32 id)
     {
         ZoneScoped;
@@ -120,6 +219,12 @@ namespace starwin
     void glfw_window_input::poll_controllers()
     {
         ZoneScoped;
+
+        const u32 dpad_left_id = keycode_to_id(starlib_keycodes::keycode::dpad_left);
+        const u32 dpad_right_id = keycode_to_id(starlib_keycodes::keycode::dpad_right);
+        const u32 dpad_down_id = keycode_to_id(starlib_keycodes::keycode::dpad_down);
+        const u32 dpad_up_id = keycode_to_id(starlib_keycodes::keycode::dpad_up);
+
         for (i32 idx = 0; idx < 16; idx++)
         {
             if (!glfwJoystickPresent(idx)) continue;
@@ -131,52 +236,24 @@ namespace starwin
             {
                 for (i32 axis = 0; axis <= GLFW_GAMEPAD_AXIS_LAST; axis++)
                 {
-                    controller.set_axis(axis, gamepad_state.axes[axis]);
+                    const u32 axis_id = axis + controller_axis_id_offset | non_keyboard_id_bit;
+                    controller.set_axis(axis_id, gamepad_state.axes[axis]);
                 }
 
                 for (i32 button = 0; button <= GLFW_GAMEPAD_BUTTON_LAST; button++)
                 {
                     const bool pressed = gamepad_state.buttons[button] == GLFW_PRESS;
+                    const u32 button_id = button + controller_button_id_offset | non_keyboard_id_bit; //Offset to align with keycodes enum
 
-                    if (pressed && !controller.is_pressed(button)) controller.press_button(button);
-                    else if (!pressed && controller.is_pressed(button)) controller.release_button(button);
+                    if (pressed && !controller.is_pressed(button_id)) controller.press_button(button_id);
+                    else if (!pressed && controller.is_pressed(button_id)) controller.release_button(button_id);
 
-                    virtual_controller_input::dpad dpad_direction = virtual_controller_input::dpad::UP;
-                    bool is_dpad = false;
-
-                    switch (button)
-                    {
-                        case GLFW_GAMEPAD_BUTTON_DPAD_LEFT:
-                        {
-                            dpad_direction = virtual_controller_input::dpad::LEFT;
-                            is_dpad = true;
-                            break;
-                        }
-                        case GLFW_GAMEPAD_BUTTON_DPAD_RIGHT:
-                        {
-                            dpad_direction = virtual_controller_input::dpad::RIGHT;
-                            is_dpad = true;
-                            break;
-                        }
-                        case GLFW_GAMEPAD_BUTTON_DPAD_UP:
-                        {
-                            dpad_direction = virtual_controller_input::dpad::UP;
-                            is_dpad = true;
-                            break;
-                        }
-                        case GLFW_GAMEPAD_BUTTON_DPAD_DOWN:
-                        {
-                            dpad_direction = virtual_controller_input::dpad::DOWN;
-                            is_dpad = true;
-                            break;
-                        }
-                        default: break;
-                    }
+                    const bool is_dpad = button >= GLFW_GAMEPAD_BUTTON_DPAD_UP;
 
                     if (is_dpad)
                     {
-                        if (pressed && !controller.is_direction_pressed(0, dpad_direction)) controller.press_direction(0, dpad_direction);
-                        else if (!pressed && controller.is_direction_pressed(0, dpad_direction)) controller.release_direction(0, dpad_direction);
+                        if (pressed && !controller.is_dpad_pressed(button_id)) controller.press_dpad(button_id);
+                        else if (!pressed && controller.is_dpad_pressed(button_id)) controller.press_dpad(button_id);
                     }
                 }
             }
@@ -205,17 +282,17 @@ namespace starwin
                     const bool hat_left = hats[i] & GLFW_HAT_LEFT;
                     const bool hat_right = hats[i] & GLFW_HAT_RIGHT;
 
-                    if (hat_up && !controller.is_direction_pressed(i, virtual_controller_input::dpad::UP)) controller.press_direction(i, virtual_controller_input::dpad::UP);
-                    else if (!hat_up && controller.is_direction_pressed(i, virtual_controller_input::dpad::UP)) controller.release_direction(i, virtual_controller_input::dpad::UP);
+                    if (hat_up && !controller.is_dpad_pressed(dpad_up_id, i)) controller.press_dpad(dpad_up_id, i);
+                    else if (!hat_up && controller.is_dpad_pressed(dpad_up_id, i)) controller.release_dpad(dpad_up_id, i);
 
-                    if (hat_down && !controller.is_direction_pressed(i, virtual_controller_input::dpad::DOWN)) controller.press_direction(i, virtual_controller_input::dpad::DOWN);
-                    else if (!hat_down && controller.is_direction_pressed(i, virtual_controller_input::dpad::DOWN)) controller.release_direction(i, virtual_controller_input::dpad::DOWN);
+                    if (hat_down && !controller.is_dpad_pressed(dpad_down_id, i)) controller.press_dpad(dpad_down_id, i);
+                    else if (!hat_down && controller.is_dpad_pressed(dpad_down_id, i)) controller.release_dpad(dpad_down_id, i);
 
-                    if (hat_left && !controller.is_direction_pressed(i, virtual_controller_input::dpad::LEFT)) controller.press_direction(i, virtual_controller_input::dpad::LEFT);
-                    else if (!hat_left && controller.is_direction_pressed(i, virtual_controller_input::dpad::LEFT)) controller.release_direction(i, virtual_controller_input::dpad::LEFT);
+                    if (hat_left && !controller.is_dpad_pressed(dpad_left_id, i)) controller.press_dpad(dpad_left_id, i);
+                    else if (!hat_left && controller.is_dpad_pressed(dpad_left_id, i)) controller.release_dpad(dpad_left_id, i);
 
-                    if (hat_right && !controller.is_direction_pressed(i, virtual_controller_input::dpad::RIGHT)) controller.press_direction(i, virtual_controller_input::dpad::RIGHT);
-                    else if (!hat_right && controller.is_direction_pressed(i, virtual_controller_input::dpad::RIGHT)) controller.release_direction(i, virtual_controller_input::dpad::RIGHT);
+                    if (hat_right && !controller.is_dpad_pressed(dpad_right_id, i)) controller.press_dpad(dpad_right_id, i);
+                    else if (!hat_right && controller.is_dpad_pressed(dpad_right_id, i)) controller.release_dpad(dpad_right_id, i);
                 }
             }
         }
@@ -635,35 +712,35 @@ namespace starwin
     void glfw_window::key_event(GLFWwindow* window, const i32 key, const i32 scancode, const i32 action, const i32 mods)
     {
         ZoneScoped;
-        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        const glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->on_key_event(scancode, action, mods);
     }
 
     void glfw_window::char_event(GLFWwindow* window, const u32 codepoint)
     {
         ZoneScoped;
-        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        const glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->on_char_event(codepoint);
     }
 
-    void glfw_window::mouse_button_event(GLFWwindow* window, const i32 button, const i32 action, i32 mods)
+    void glfw_window::mouse_button_event(GLFWwindow* window, const i32 button, const i32 action, const i32 mods)
     {
         ZoneScoped;
-        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        const glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->on_mouse_button_event(button, action, mods);
     }
 
     void glfw_window::mouse_scroll_event(GLFWwindow* window, const f64 x_offset, const f64 y_offset)
     {
         ZoneScoped;
-        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        const glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->on_mouse_scroll_event(x_offset, y_offset);
     }
 
     void glfw_window::mouse_position_event(GLFWwindow* window, const f64 x, const f64 y)
     {
         ZoneScoped;
-        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        const glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->on_mouse_position_event(x, y);
     }
 
@@ -676,7 +753,7 @@ namespace starwin
         }
     }
 
-    void glfw_window::on_key_event(const i32 scancode, const i32 action, const i32 mods)
+    void glfw_window::on_key_event(const i32 scancode, const i32 action, const i32 mods) const
     {
         ZoneScoped;
         virtual_keyboard_input* keyboard = get_keyboard_hardware();
@@ -696,41 +773,42 @@ namespace starwin
         }
     }
 
-    void glfw_window::on_char_event(const u32 codepoint)
+    void glfw_window::on_char_event(const u32 codepoint) const
     {
         ZoneScoped;
         virtual_keyboard_input* keyboard = get_keyboard_hardware();
         keyboard->type_character(codepoint);
     }
 
-    void glfw_window::on_mouse_button_event(const i32 button, const i32 action, i32 mods)
+    void glfw_window::on_mouse_button_event(const i32 button, const i32 action, i32 mods) const
     {
         ZoneScoped;
         virtual_mouse_input* mouse = get_mouse_hardware();
+        const u32 id = button + mouse_button_id_offset | non_keyboard_id_bit;
         switch (action)
         {
             case GLFW_PRESS:
             {
-                mouse->click(button);
+                mouse->click(id);
                 break;
             }
             case GLFW_RELEASE:
             {
-                mouse->release(button);
+                mouse->release(id);
                 break;
             }
             default: break;
         }
     }
 
-    void glfw_window::on_mouse_scroll_event(const f64 x_offset, const f64 y_offset)
+    void glfw_window::on_mouse_scroll_event(const f64 x_offset, const f64 y_offset) const
     {
         ZoneScoped;
         virtual_mouse_input* mouse = get_mouse_hardware();
         mouse->scroll_by({x_offset, y_offset});
     }
 
-    void glfw_window::on_mouse_position_event(const f64 x, const f64 y)
+    void glfw_window::on_mouse_position_event(const f64 x, const f64 y) const
     {
         ZoneScoped;
         virtual_mouse_input* mouse = get_mouse_hardware();

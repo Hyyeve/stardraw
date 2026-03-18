@@ -45,6 +45,8 @@ namespace starwin
         std::function<void(window* window, const bool maximised)> on_maximization_change;
         std::function<void(window* window, const bool focused)> on_focus_change;
 
+        //Input handling
+
         std::function<void(window* window, const u32 player_id)> on_controller_connect;
         std::function<void(window* window, const u32 player_id)> on_controller_disconnect;
 
@@ -84,8 +86,14 @@ namespace starwin
 
         [[nodiscard]] virtual keyboard_input* keyboard() = 0;
 
-        [[nodiscard]] virtual u32 get_key_id(stardraw_keycodes::keycode keycode) = 0;
-        [[nodiscard]] virtual std::string get_key_name(u32 key_id) = 0;
+        ///Convert a named keycode into an ID to use with device input functions
+        ///Note: Controllers with no mappings have arbitrary IDs for all buttons/axes/dpads, but IDs for these always start from 0.
+        [[nodiscard]] virtual u32 keycode_to_id(starlib_keycodes::keycode keycode) = 0;
+
+        ///Convert an ID to a string name. For printable characters, this is usually the character itself.
+        ///For other ids, this is a lowercase identifier
+        ///Ex: dpad_left, mouse_middle, gamepad_b ...
+        [[nodiscard]] virtual std::string id_to_name(u32 id) = 0;
 
         [[nodiscard]] virtual mouse_input* mouse() = 0;
         [[nodiscard]] virtual controller_input* controller(const u32 player_index) = 0;
@@ -104,7 +112,7 @@ namespace starwin
         virtual void poll_controllers() = 0;
 
         std::array<virtual_controller_input, 16> controller_hardware;
-        std::array<i32, 16> player_to_controller_map;
+        std::array<i32, 16> player_to_controller_map {};
         virtual_mouse_input mouse_hardware;
         virtual_keyboard_input keyboard_hardware;
 
