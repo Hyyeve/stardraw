@@ -1,4 +1,5 @@
 #pragma once
+
 #include "GLFW/glfw3.h"
 #include "starlib/types/status.hpp"
 #include "starwin/api/window.hpp"
@@ -6,10 +7,37 @@
 namespace starwin
 {
     using namespace starlib;
+
+    class glfw_window_input : public window_input
+    {
+    public:
+        glfw_window_input() = default;
+        ~glfw_window_input() override;
+
+        [[nodiscard]] keyboard_input* keyboard() override;
+
+        [[nodiscard]] u32 get_key_id(stardraw_keycodes::keycode keycode) override;
+        [[nodiscard]] std::string get_key_name(u32 key_id) override;
+
+        [[nodiscard]] mouse_input* mouse() override;
+
+        [[nodiscard]] controller_input* controller(const u32 player_index) override;
+
+        void reset_controllers() override;
+        void swap_players(const u32 player_index_a, const u32 player_index_b) override;
+        [[nodiscard]] bool controller_connected(const u32 player_index) const override;
+        [[nodiscard]] std::string controller_name(const u32 player_index) const override;
+        [[nodiscard]] bool controller_has_mappings(const u32 player_index) const override;
+
+    protected:
+        u32 connect_controller(i32 id) override;
+        u32 disconnect_controller(i32 id) override;
+        void poll_controllers() override;
+    };
+
     class glfw_window : public window
     {
     public:
-
         status set_title(const std::string& title) override;
         status set_icon(const u32 width, const u32 height, void* rgba8_pixels) override;
         status set_cursor_mode(const cursor_mode mode) override;
@@ -51,6 +79,7 @@ namespace starwin
 
     protected:
         glfw_window();
+        ~glfw_window() override;
 
         [[nodiscard]] status initialize_window(const window_config& config); //Handles non-graphics related config settings and initializes the handle and callbacks.
 
@@ -69,5 +98,19 @@ namespace starwin
         static void focused_event(GLFWwindow* window, i32 focused);
         static void redraw_event(GLFWwindow* window);
         static void framebuffer_resize_event(GLFWwindow* window, i32 width, i32 height);
+
+        static void key_event(GLFWwindow* window, const i32 key, i32 scancode, const i32 action, i32 mods);
+        static void char_event(GLFWwindow* window, const u32 codepoint);
+        static void mouse_button_event(GLFWwindow* window, const i32 button, const i32 action, i32 mods);
+        static void mouse_scroll_event(GLFWwindow* window, const f64 x_offset, const f64 y_offset);
+        static void mouse_position_event(GLFWwindow* window, const f64 x, const f64 y);
+        static void joystick_connection_event(const i32 id, const i32 event);
+
+        void on_key_event(const i32 scancode, const i32 action, const i32 mods);
+        void on_char_event(const u32 codepoint);
+        void on_mouse_button_event(const i32 button, const i32 action, i32 mods);
+        void on_mouse_scroll_event(const f64 x_offset, const f64 y_offset);
+        void on_mouse_position_event(const f64 x, const f64 y);
+        void on_joystick_connection_event(const i32 id, const i32 event);
     };
 }

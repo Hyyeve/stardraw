@@ -146,7 +146,6 @@ int main()
 
         status execute_status = ctx->execute_command_buffer("main");
 
-
         if (wind->is_close_requested())
         {
             delete wind;

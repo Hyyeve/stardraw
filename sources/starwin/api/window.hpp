@@ -1,7 +1,10 @@
 #pragma once
+#include <array>
 #include <functional>
 #include <string>
 
+#include "input.hpp"
+#include "starlib/general/keycode.hpp"
 #include "starlib/types/graphics.hpp"
 #include "starlib/types/status.hpp"
 
@@ -42,6 +45,9 @@ namespace starwin
         std::function<void(window* window, const bool maximised)> on_maximization_change;
         std::function<void(window* window, const bool focused)> on_focus_change;
 
+        std::function<void(window* window, const u32 player_id)> on_controller_connect;
+        std::function<void(window* window, const u32 player_id)> on_controller_disconnect;
+
         //Graphics callbacks
 
         ///NOTE: You should not use this for your main render loop.
@@ -69,6 +75,40 @@ namespace starwin
         u32 height;
         i32 position_x;
         i32 positoin_y;
+    };
+
+    class window_input
+    {
+    public:
+        virtual ~window_input() = default;
+
+        [[nodiscard]] virtual keyboard_input* keyboard() = 0;
+
+        [[nodiscard]] virtual u32 get_key_id(stardraw_keycodes::keycode keycode) = 0;
+        [[nodiscard]] virtual std::string get_key_name(u32 key_id) = 0;
+
+        [[nodiscard]] virtual mouse_input* mouse() = 0;
+        [[nodiscard]] virtual controller_input* controller(const u32 player_index) = 0;
+
+        virtual void reset_controllers() = 0;
+        virtual void swap_players(const u32 player_index_a, const u32 player_index_b) = 0;
+        [[nodiscard]] virtual bool controller_connected(const u32 player_index) const = 0;
+        [[nodiscard]] virtual std::string controller_name(const u32 player_index) const = 0;
+        [[nodiscard]] virtual bool controller_has_mappings(const u32 player_index) const = 0;
+
+    protected:
+        window_input() = default;
+
+        virtual u32 connect_controller(i32 id) = 0;
+        virtual u32 disconnect_controller(i32 id) = 0;
+        virtual void poll_controllers() = 0;
+
+        std::array<virtual_controller_input, 16> controller_hardware;
+        std::array<i32, 16> player_to_controller_map;
+        virtual_mouse_input mouse_hardware;
+        virtual_keyboard_input keyboard_hardware;
+
+        friend class window;
     };
 
     class window
@@ -130,6 +170,8 @@ namespace starwin
         [[nodiscard]] virtual bool is_close_requested() const = 0;
         [[nodiscard]] virtual bool is_focused() const = 0;
 
+        [[nodiscard]] virtual window_input* get_input();
+
         ///OPENGL Only: Get the GL api loader function
         [[nodiscard]] virtual gl_loader_func gl_get_loader_func() = 0;
 
@@ -139,5 +181,15 @@ namespace starwin
         [[nodiscard]] virtual status gl_apply_context() = 0;
 
         window_callbacks callbacks;
+    protected:
+
+        virtual_keyboard_input* get_keyboard_hardware() const;
+        virtual_mouse_input* get_mouse_hardware() const;
+        u32 connect_controller(i32 id) const;
+        u32 disconnect_controller(i32 id) const;
+        void poll_controllers() const;
+        void input_advance_frame() const;
+
+        window_input* input_devices = nullptr;
     };
 }

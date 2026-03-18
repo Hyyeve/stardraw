@@ -1,6 +1,8 @@
 #include "glfw_window.hpp"
 
 #include <format>
+#include <ranges>
+#include <unordered_set>
 #include <tracy/Tracy.hpp>
 
 namespace starwin
@@ -12,6 +14,210 @@ namespace starwin
         if (!has_loaded_glfw)
         {
             has_loaded_glfw = (glfwInit() == GLFW_TRUE);
+        }
+    }
+
+    static std::unordered_set<glfw_window*> all_windows;
+
+    keyboard_input* glfw_window_input::keyboard()
+    {
+        return &keyboard_hardware;
+    }
+
+    u32 glfw_window_input::get_key_id(stardraw_keycodes::keycode keycode)
+    {
+        return glfwGetKeyScancode(static_cast<int>(keycode));
+    }
+
+    std::string glfw_window_input::get_key_name(const u32 key_id)
+    {
+        return glfwGetKeyName(GLFW_KEY_UNKNOWN, key_id);
+    }
+
+    mouse_input* glfw_window_input::mouse()
+    {
+        return &mouse_hardware;
+    }
+
+    controller_input* glfw_window_input::controller(const u32 player_index)
+    {
+        if (player_to_controller_map[player_index] >= 0) return &controller_hardware[player_index];
+        return nullptr;
+    }
+
+    void glfw_window_input::reset_controllers()
+    {
+        ZoneScoped;
+        for (i32 i = 0; i < 16; i++)
+        {
+            player_to_controller_map[i] = -1;
+        }
+
+        for (i32 i = 0; i < 16; i++)
+        {
+            if (glfwJoystickPresent(i)) connect_controller(i);
+        }
+    }
+
+    void glfw_window_input::swap_players(const u32 player_index_a, const u32 player_index_b)
+    {
+        std::swap(player_to_controller_map[std::min(player_index_a, 15u)], player_to_controller_map[std::min(player_index_b, 15u)]);
+    }
+
+    bool glfw_window_input::controller_connected(const u32 player_index) const
+    {
+        if (player_index >= 16) return false;
+        return player_to_controller_map[player_index] >= 0;
+    }
+
+    std::string glfw_window_input::controller_name(const u32 player_index) const
+    {
+        ZoneScoped;
+        const i32 controller_id = player_to_controller_map[player_index];
+        if (controller_id < 0) return "Disconnected Controller";
+        if (glfwJoystickIsGamepad(controller_id)) return glfwGetGamepadName(controller_id);
+        return glfwGetJoystickName(controller_id);
+    }
+
+    bool glfw_window_input::controller_has_mappings(const u32 player_index) const
+    {
+        ZoneScoped;
+        if (player_to_controller_map[player_index] >= 0) return glfwJoystickIsGamepad(player_to_controller_map[player_index]);
+        return false;
+    }
+
+    glfw_window_input::~glfw_window_input() {}
+
+    u32 glfw_window_input::connect_controller(const i32 id)
+    {
+        ZoneScoped;
+        for (i32 i = 0; i < 16; i++)
+        {
+            if (player_to_controller_map[i] == -1)
+            {
+                player_to_controller_map[i] = id;
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    u32 glfw_window_input::disconnect_controller(const i32 id)
+    {
+        for (i32 i = 0; i < 16; i++)
+        {
+            if (player_to_controller_map[i] == id)
+            {
+                player_to_controller_map[i] = -1;
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    void glfw_window_input::poll_controllers()
+    {
+        ZoneScoped;
+        for (i32 idx = 0; idx < 16; idx++)
+        {
+            if (!glfwJoystickPresent(idx)) continue;
+            virtual_controller_input& controller = controller_hardware[idx];
+
+            GLFWgamepadstate gamepad_state;
+
+            if (glfwJoystickIsGamepad(idx) && glfwGetGamepadState(idx, &gamepad_state) == GLFW_TRUE)
+            {
+                for (i32 axis = 0; axis <= GLFW_GAMEPAD_AXIS_LAST; axis++)
+                {
+                    controller.set_axis(axis, gamepad_state.axes[axis]);
+                }
+
+                for (i32 button = 0; button <= GLFW_GAMEPAD_BUTTON_LAST; button++)
+                {
+                    const bool pressed = gamepad_state.buttons[button] == GLFW_PRESS;
+
+                    if (pressed && !controller.is_pressed(button)) controller.press_button(button);
+                    else if (!pressed && controller.is_pressed(button)) controller.release_button(button);
+
+                    virtual_controller_input::dpad dpad_direction = virtual_controller_input::dpad::UP;
+                    bool is_dpad = false;
+
+                    switch (button)
+                    {
+                        case GLFW_GAMEPAD_BUTTON_DPAD_LEFT:
+                        {
+                            dpad_direction = virtual_controller_input::dpad::LEFT;
+                            is_dpad = true;
+                            break;
+                        }
+                        case GLFW_GAMEPAD_BUTTON_DPAD_RIGHT:
+                        {
+                            dpad_direction = virtual_controller_input::dpad::RIGHT;
+                            is_dpad = true;
+                            break;
+                        }
+                        case GLFW_GAMEPAD_BUTTON_DPAD_UP:
+                        {
+                            dpad_direction = virtual_controller_input::dpad::UP;
+                            is_dpad = true;
+                            break;
+                        }
+                        case GLFW_GAMEPAD_BUTTON_DPAD_DOWN:
+                        {
+                            dpad_direction = virtual_controller_input::dpad::DOWN;
+                            is_dpad = true;
+                            break;
+                        }
+                        default: break;
+                    }
+
+                    if (is_dpad)
+                    {
+                        if (pressed && !controller.is_direction_pressed(0, dpad_direction)) controller.press_direction(0, dpad_direction);
+                        else if (!pressed && controller.is_direction_pressed(0, dpad_direction)) controller.release_direction(0, dpad_direction);
+                    }
+                }
+            }
+            else
+            {
+                i32 buttons_count;
+                const unsigned char* buttons = glfwGetJoystickButtons(idx, &buttons_count);
+                i32 axes_count;
+                const float* axes = glfwGetJoystickAxes(idx, &axes_count);
+                i32 hats_count;
+                const unsigned char* hats = glfwGetJoystickHats(idx, &hats_count);
+
+                for (i32 i = 0; i < buttons_count; i++)
+                {
+                    const bool pressed = buttons[i] == GLFW_PRESS;
+                    if (pressed && !controller.is_pressed(i)) controller.press_button(i);
+                    else if (!pressed && controller.is_pressed(i)) controller.release_button(i);
+                }
+
+                for (i32 i = 0; i < axes_count; i++) controller.set_axis(i, axes[i]);
+
+                for (i32 i = 0; i < hats_count; i++)
+                {
+                    const bool hat_up = hats[i] & GLFW_HAT_UP;
+                    const bool hat_down = hats[i] & GLFW_HAT_DOWN;
+                    const bool hat_left = hats[i] & GLFW_HAT_LEFT;
+                    const bool hat_right = hats[i] & GLFW_HAT_RIGHT;
+
+                    if (hat_up && !controller.is_direction_pressed(i, virtual_controller_input::dpad::UP)) controller.press_direction(i, virtual_controller_input::dpad::UP);
+                    else if (!hat_up && controller.is_direction_pressed(i, virtual_controller_input::dpad::UP)) controller.release_direction(i, virtual_controller_input::dpad::UP);
+
+                    if (hat_down && !controller.is_direction_pressed(i, virtual_controller_input::dpad::DOWN)) controller.press_direction(i, virtual_controller_input::dpad::DOWN);
+                    else if (!hat_down && controller.is_direction_pressed(i, virtual_controller_input::dpad::DOWN)) controller.release_direction(i, virtual_controller_input::dpad::DOWN);
+
+                    if (hat_left && !controller.is_direction_pressed(i, virtual_controller_input::dpad::LEFT)) controller.press_direction(i, virtual_controller_input::dpad::LEFT);
+                    else if (!hat_left && controller.is_direction_pressed(i, virtual_controller_input::dpad::LEFT)) controller.release_direction(i, virtual_controller_input::dpad::LEFT);
+
+                    if (hat_right && !controller.is_direction_pressed(i, virtual_controller_input::dpad::RIGHT)) controller.press_direction(i, virtual_controller_input::dpad::RIGHT);
+                    else if (!hat_right && controller.is_direction_pressed(i, virtual_controller_input::dpad::RIGHT)) controller.release_direction(i, virtual_controller_input::dpad::RIGHT);
+                }
+            }
         }
     }
 
@@ -284,13 +490,25 @@ namespace starwin
     status glfw_window::poll()
     {
         ZoneScoped;
+        input_advance_frame();
         glfwPollEvents();
+        poll_controllers();
+
         return status_from_last_glfw_error();
     }
 
     glfw_window::glfw_window()
     {
         check_load_glfw();
+        all_windows.emplace(this);
+        input_devices = new glfw_window_input();
+        input_devices->reset_controllers();
+    }
+
+    glfw_window::~glfw_window()
+    {
+        all_windows.erase(this);
+        delete input_devices;
     }
 
     status glfw_window::initialize_window(const window_config& config)
@@ -316,6 +534,13 @@ namespace starwin
         glfwSetWindowMaximizeCallback(handle, maximized_restored_event);
         glfwSetFramebufferSizeCallback(handle, framebuffer_resize_event);
 
+        glfwSetKeyCallback(handle, key_event);
+        glfwSetCharCallback(handle, char_event);
+        glfwSetMouseButtonCallback(handle, mouse_button_event);
+        glfwSetScrollCallback(handle, mouse_scroll_event);
+        glfwSetCursorPosCallback(handle, mouse_position_event);
+        glfwSetJoystickCallback(joystick_connection_event);
+
         return status_type::SUCCESS;
     }
 
@@ -325,7 +550,7 @@ namespace starwin
         const char* description;
         const i32 error_code = glfwGetError(&description);
         if (error_code == GLFW_NO_ERROR) return status_type::SUCCESS;
-        return status { status_type::BACKEND_ERROR, std::string(description) };
+        return status {status_type::BACKEND_ERROR, std::string(description)};
     }
 
     std::vector<GLFWmonitor*> glfw_window::get_monitors()
@@ -405,5 +630,127 @@ namespace starwin
         ZoneScoped;
         glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
         if (window == _this->handle) _this->callbacks.on_framebuffer_recreate(_this, width, height);
+    }
+
+    void glfw_window::key_event(GLFWwindow* window, const i32 key, const i32 scancode, const i32 action, const i32 mods)
+    {
+        ZoneScoped;
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->on_key_event(scancode, action, mods);
+    }
+
+    void glfw_window::char_event(GLFWwindow* window, const u32 codepoint)
+    {
+        ZoneScoped;
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->on_char_event(codepoint);
+    }
+
+    void glfw_window::mouse_button_event(GLFWwindow* window, const i32 button, const i32 action, i32 mods)
+    {
+        ZoneScoped;
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->on_mouse_button_event(button, action, mods);
+    }
+
+    void glfw_window::mouse_scroll_event(GLFWwindow* window, const f64 x_offset, const f64 y_offset)
+    {
+        ZoneScoped;
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->on_mouse_scroll_event(x_offset, y_offset);
+    }
+
+    void glfw_window::mouse_position_event(GLFWwindow* window, const f64 x, const f64 y)
+    {
+        ZoneScoped;
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->on_mouse_position_event(x, y);
+    }
+
+    void glfw_window::joystick_connection_event(const i32 id, const i32 event)
+    {
+        ZoneScoped;
+        for (glfw_window* window : all_windows)
+        {
+            window->on_joystick_connection_event(id, event);
+        }
+    }
+
+    void glfw_window::on_key_event(const i32 scancode, const i32 action, const i32 mods)
+    {
+        ZoneScoped;
+        virtual_keyboard_input* keyboard = get_keyboard_hardware();
+        switch (action)
+        {
+            case GLFW_PRESS:
+            {
+                keyboard->press_key(scancode);
+                break;
+            }
+            case GLFW_RELEASE:
+            {
+                keyboard->release_key(scancode);
+                break;
+            }
+            default: break;
+        }
+    }
+
+    void glfw_window::on_char_event(const u32 codepoint)
+    {
+        ZoneScoped;
+        virtual_keyboard_input* keyboard = get_keyboard_hardware();
+        keyboard->type_character(codepoint);
+    }
+
+    void glfw_window::on_mouse_button_event(const i32 button, const i32 action, i32 mods)
+    {
+        ZoneScoped;
+        virtual_mouse_input* mouse = get_mouse_hardware();
+        switch (action)
+        {
+            case GLFW_PRESS:
+            {
+                mouse->click(button);
+                break;
+            }
+            case GLFW_RELEASE:
+            {
+                mouse->release(button);
+                break;
+            }
+            default: break;
+        }
+    }
+
+    void glfw_window::on_mouse_scroll_event(const f64 x_offset, const f64 y_offset)
+    {
+        ZoneScoped;
+        virtual_mouse_input* mouse = get_mouse_hardware();
+        mouse->scroll_by({x_offset, y_offset});
+    }
+
+    void glfw_window::on_mouse_position_event(const f64 x, const f64 y)
+    {
+        ZoneScoped;
+        virtual_mouse_input* mouse = get_mouse_hardware();
+        i32 win_height = 0;
+        glfwGetWindowSize(handle, nullptr, &win_height); //doing this every single time the mouse is updated probably isn't great, but..
+        mouse->move_to({x, win_height - y});
+    }
+
+    void glfw_window::on_joystick_connection_event(const i32 id, const i32 event)
+    {
+        ZoneScoped;
+        if (event == GLFW_CONNECTED)
+        {
+            const u32 player_id = connect_controller(id);
+            if (player_id != -1) callbacks.on_controller_connect(this, player_id);
+        }
+        else if (event == GLFW_DISCONNECTED)
+        {
+            const u32 player_id = disconnect_controller(id);
+            if (player_id != -1) callbacks.on_controller_disconnect(this, player_id);
+        }
     }
 }
