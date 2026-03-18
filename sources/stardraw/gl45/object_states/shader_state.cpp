@@ -43,6 +43,7 @@ namespace stardraw::gl45
 
     status shader_state::upload_parameter(const shader_parameter& parameter)
     {
+        ZoneScoped;
         if (parameter.location == invalid_shader_paramter_location) return {status_type::UNKNOWN, "Shader parameter location not found in shader"};
         const auto existing_param = std::ranges::find(parameter_store, parameter);
         if (existing_param == parameter_store.end()) parameter_store.push_back(parameter);
@@ -52,11 +53,13 @@ namespace stardraw::gl45
 
     void shader_state::clear_parameters()
     {
+        ZoneScoped;
         parameter_store.clear();
     }
 
     void shader_state::flag_barriers(memory_barrier_controller& barrier_controller) const
     {
+        ZoneScoped;
         for (const object_binding& bound_object : bound_objects | std::views::values)
         {
             if (!bound_object.write_access) continue;
@@ -71,6 +74,7 @@ namespace stardraw::gl45
 
     void shader_state::barrier_objects_if_needed(memory_barrier_controller& barrier_controller) const
     {
+        ZoneScoped;
         for (const object_binding& bound_object : bound_objects | std::views::values)
         {
             barrier_controller.barrier_if_needed(bound_object.identifier, bound_object.read_barriers);
@@ -79,6 +83,7 @@ namespace stardraw::gl45
 
     status shader_state::create_from_stages(const std::vector<shader_stage>& stages)
     {
+        ZoneScoped;
         std::vector<std::string> converted_sources;
         status convert_status = remap_spirv_stages(stages, converted_sources);
         if (convert_status.is_error()) return convert_status;
@@ -298,6 +303,7 @@ namespace stardraw::gl45
 
     status shader_state::validate_program(const GLuint program)
     {
+        ZoneScoped;
         GLint success = GL_TRUE;
 
         glValidateProgram(program);
@@ -313,6 +319,7 @@ namespace stardraw::gl45
 
     std::string shader_state::get_shader_log(const GLuint shader)
     {
+        ZoneScoped;
         i32 log_length = 0;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
 
@@ -327,6 +334,7 @@ namespace stardraw::gl45
 
     std::string shader_state::get_program_log(const GLuint program)
     {
+        ZoneScoped;
         i32 log_length = 0;
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
 

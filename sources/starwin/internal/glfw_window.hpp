@@ -1,9 +1,11 @@
 #pragma once
 #include "GLFW/glfw3.h"
-#include "stardraw/api/window.hpp"
+#include "starlib/types/status.hpp"
+#include "starwin/api/window.hpp"
 
-namespace stardraw
+namespace starwin
 {
+    using namespace starlib;
     class glfw_window : public window
     {
     public:
@@ -42,20 +44,15 @@ namespace stardraw
         [[nodiscard]] bool is_close_requested() const override;
         [[nodiscard]] bool is_focused() const override;
 
-        void set_close_requested_callback(const std::function<void(window* window)> func) override;
-        void set_resized_callback(const std::function<void(window* window, const u32 width, const u32 height)> func) override;
-        void set_repositioned_callback(const std::function<void(window* window, const u32 x, const u32 y)> func) override;
-        void set_minimise_restore_callback(const std::function<void(window* window, const bool minimized)> func) override;
-        void set_maximise_restore_callback(const std::function<void(window* window, const bool maximised)> func) override;
-        void set_focus_callback(const std::function<void(window* window, const bool focused)> func) override;
-        void set_redraw_callback(const std::function<void(window* window)> func) override;
+        [[nodiscard]] gl_loader_func gl_get_loader_func() override;
+        [[nodiscard]] status gl_apply_context() override;
+
+        status poll() override;
 
     protected:
         glfw_window();
 
         [[nodiscard]] status initialize_window(const window_config& config); //Handles non-graphics related config settings and initializes the handle and callbacks.
-
-        virtual void on_framebuffer_resize(const u32 width, const u32 height) = 0;
 
         [[nodiscard]] static status status_from_last_glfw_error();
         [[nodiscard]] static std::vector<GLFWmonitor*> get_monitors();
@@ -72,13 +69,5 @@ namespace stardraw
         static void focused_event(GLFWwindow* window, i32 focused);
         static void redraw_event(GLFWwindow* window);
         static void framebuffer_resize_event(GLFWwindow* window, i32 width, i32 height);
-
-        std::function<void(window* window)> close_request_calback;
-        std::function<void(window* window, const u32 width, const u32 height)> resize_callback;
-        std::function<void(window* window, const u32 x, const u32 y)> reposition_callback;
-        std::function<void(window* window, const bool minimized)> minimise_restore_callback;
-        std::function<void(window* window, const bool maximised)> maximise_restore_callback;
-        std::function<void(window* window, const bool focused)> focus_callback;
-        std::function<void(window* window)> redraw_callback;
     };
 }

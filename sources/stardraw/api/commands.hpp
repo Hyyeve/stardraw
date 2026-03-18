@@ -18,6 +18,7 @@ namespace stardraw
         CLEAR_WINDOW, CLEAR_BUFFER,
         CONFIG_SHADER,
         SIGNAL,
+        PRESENT,
     };
 
     struct command
@@ -38,9 +39,11 @@ namespace stardraw
         UINT_32, UINT_16, UINT_8
     };
 
+    ///Draws some triangles! A valid draw specification must have been configured to provide the shader and vertex data
+    ///Does *not* use index data. See draw_indexed_command for that.
     struct draw_command final : command
     {
-        draw_command(const draw_mode mode, const u32 count, const u32 start_vertex = 0, const u32 instances = 1, const u32 start_instance = 0) : mode(mode), count(count), start_vertex(start_vertex), instances(instances), start_instance(start_instance) {}
+        draw_command(const draw_mode mode, const u32 vertex_count, const u32 start_vertex = 0, const u32 instance_count = 1, const u32 start_instance = 0) : mode(mode), count(vertex_count), start_vertex(start_vertex), instances(instance_count), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -58,6 +61,8 @@ namespace stardraw
         u32 start_instance = 0;
     };
 
+    ///Draws some triangles! A valid draw specification must have been configured to provide the shader and vertex/index data
+    ///*Requires* index data. For non-indexed drawing, see draw_command.
     struct draw_indexed_command final : command
     {
         draw_indexed_command(const draw_mode mode, const u32 count, const i32 vertex_index_offset = 0, const u32 start_index = 0, const u32 instances = 1, const u32 start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
@@ -82,6 +87,8 @@ namespace stardraw
         u32 start_instance;
     };
 
+    ///Draws some triangles, using an indirect draw command buffer. A valid draw specification must have been configured to provide the shader and vertex data
+    ///Does *not* use index data. See draw_indexed_indirect_command for that.
     struct draw_indirect_command final : command
     {
         draw_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
@@ -97,6 +104,8 @@ namespace stardraw
         u32 indirect_offset;
     };
 
+    ///Draws some triangles, using an indirect draw command buffer. A valid draw specification must have been configured to provide the shader and vertex data
+    ///*Requires* index data. For non-indexed drawing, see draw_indirect_command.
     struct draw_indexed_indirect_command final : command
     {
         draw_indexed_indirect_command(const std::string_view& indirect_buffer, const draw_mode mode, const u32 draw_count, const u32 indirect_source_offset = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_offset(indirect_source_offset) {}
@@ -113,6 +122,7 @@ namespace stardraw
         u32 indirect_offset;
     };
 
+    ///Sets the active draw specification. A valid draw specification must be set prior to calling any draw commands.
     struct draw_config_command final : command
     {
         explicit draw_config_command(const std::string& draw_specification) : draw_specification(draw_specification) {}
@@ -159,6 +169,7 @@ namespace stardraw
         constexpr stencil_config DISABLED = {.enabled = false };
     }
 
+    ///Configures the active stencil test state
     struct stencil_config_command final : command
     {
         explicit stencil_config_command(const stencil_config& config, const stencil_facing faces = stencil_facing::BOTH) : config(config), for_facing(faces) {}
@@ -235,6 +246,7 @@ namespace stardraw
         constexpr blending_config LIGHTEN = {blending_factor::ONE, blending_factor::ONE, blending_func::MAX};
     }
 
+    ///Configures the active blending state
     struct blending_config_command final : command
     {
         explicit blending_config_command(const blending_config& config, const u32 draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
@@ -268,6 +280,7 @@ namespace stardraw
         constexpr depth_test_config WRITE_UNCONDITIONALLY = {depth_test_func::ALWAYS};
     }
 
+    ///Configures the active depth test state
     struct depth_test_config_command final : command
     {
         explicit depth_test_config_command(const depth_test_config& config) : config(config) {}
@@ -280,6 +293,7 @@ namespace stardraw
         depth_test_config config;
     };
 
+    ///Configures the active depth range
     struct depth_range_config_command final : command
     {
         explicit depth_range_config_command(const f64 near, const f64 far, const u32 viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
@@ -299,6 +313,7 @@ namespace stardraw
         DISABLED, BACK, FRONT, BOTH
     };
 
+    ///Configures the active face culling
     struct face_cull_config_command final : command
     {
         explicit face_cull_config_command(const face_cull_mode& mode) : mode(mode) {}
@@ -327,6 +342,7 @@ namespace stardraw
         constexpr scissor_test_config DISABLED = {.enabled = false };
     }
 
+    ///Configures the active scissor test state
     struct scissor_config_command final : command
     {
         explicit scissor_config_command(const scissor_test_config& config, const u32 viewport_index = 0) : config(config), viewport_index(viewport_index) {}
@@ -340,6 +356,7 @@ namespace stardraw
         u32 viewport_index;
     };
 
+    ///Copies raw data between two buffers
     struct buffer_copy_command final : command
     {
         explicit buffer_copy_command(const std::string_view& source_buffer, const std::string_view& dest_buffer, const u64 from_address, const u64 to_address, const u64 bytes) : read_buffer(source_buffer), write_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
@@ -380,6 +397,7 @@ namespace stardraw
         constexpr clear_values_config DEFAULT = {};
     }
 
+    ///Clears the window/framebuffer to the given values. This command is NOT for clearing framebuffers.
     struct clear_window_command final : command
     {
         explicit clear_window_command(const clear_window_mode mode, const clear_values_config& config = clear_values_configs::DEFAULT) : mode(mode), config(config) {}
@@ -400,6 +418,11 @@ namespace stardraw
         bool operator==(const shader_parameter& parameter) const = default;
     };
 
+    ///Updates shader parameter data
+    ///Note: command will not take effect until the next time the draw specification is configured.
+    ///Note: shader parameter data *overwrites* the relevant data in the buffers bound to the shader,
+    /// whenever a draw specification using the shader is configured.
+    ///You can unset parameters by setting the erase flag and not providing new values for parameters you want to unset.
     struct shader_config_command final : command
     {
         explicit shader_config_command(const std::string_view& shader, const std::vector<shader_parameter>& parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
@@ -415,6 +438,7 @@ namespace stardraw
         bool erase_previous;
     };
 
+    ///Set a fence ('signal') that can be checked via the render context to determine when previous commands are finished.
     struct signal_command final : command
     {
         explicit signal_command(const std::string_view& signal_name) : signal_name(signal_name) {}
@@ -449,6 +473,7 @@ namespace stardraw
         u32 copy_layers = 1;
     };
 
+    ///Copies data between textures. Type conversion is NOT performed, raw values are transferred directly.
     struct texture_copy_command final : command
     {
         texture_copy_command(const std::string_view& read_texture, const std::string_view& write_texture, const texture_copy_info& copy_info) : read_texture(read_texture), write_texture(write_texture), copy_info(copy_info) {}
@@ -461,5 +486,15 @@ namespace stardraw
         object_identifier read_texture;
         object_identifier write_texture;
         texture_copy_info copy_info;
+    };
+
+    ///Marks the end of the frame.
+    ///It is undefined behaviour if you do not call this at the end of your frame rendering.
+    struct present_command final : command
+    {
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::PRESENT;
+        }
     };
 }

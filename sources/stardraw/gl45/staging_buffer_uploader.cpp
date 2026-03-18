@@ -14,6 +14,7 @@ namespace stardraw::gl45
 {
     status staging_buffer_uploader::allocate_upload(const u64 address, const u64 bytes, const u64 max_staging_buffer_size, gl_memory_transfer_handle** out_handle)
     {
+        ZoneScoped;
         clean_chunks();
         u64 chunk_address;
         bool has_space = chunk_allocator.try_allocate(bytes, chunk_address);
@@ -42,6 +43,7 @@ namespace stardraw::gl45
 
     status staging_buffer_uploader::flush_upload(const gl_memory_transfer_handle* handle)
     {
+        ZoneScoped;
         *handle->sync_ptr = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
         delete handle;
         return status_type::SUCCESS;
@@ -49,6 +51,7 @@ namespace stardraw::gl45
 
     staging_buffer_uploader::~staging_buffer_uploader()
     {
+        ZoneScoped;
         for (const auto& staging_buff : staging_buffer_refcounts | std::views::keys)
         {
             glDeleteBuffers(1, &staging_buff);

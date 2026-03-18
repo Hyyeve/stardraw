@@ -25,7 +25,7 @@ namespace stardraw::gl45
         [[nodiscard]] status flush_upload_data_chunked(memory_transfer_handle* handle) const;
 
         [[nodiscard]] status prepare_upload_data_unchecked(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
-        [[nodiscard]] static status flush_upload_data_unchecked(const memory_transfer_handle* handle);
+        [[nodiscard]] status flush_upload_data_unchecked(const memory_transfer_handle* handle);
 
         [[nodiscard]] status copy_data(const GLuint source_buffer_id, const GLintptr read_address, const GLintptr write_address, const GLintptr bytes) const;
 

@@ -16,7 +16,7 @@ namespace stardraw::gl45
     class render_context final : public stardraw::render_context
     {
     public:
-        explicit render_context(window* window, bool api_validation, bool backend_validation);
+        explicit render_context(const render_context_config& config, status& out_status);
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
         [[nodiscard]] status create_command_buffer(const std::string_view& name, const command_list&& commands) override;
@@ -27,14 +27,12 @@ namespace stardraw::gl45
         [[nodiscard]] signal_status check_signal(const std::string_view& name) override;
         [[nodiscard]] signal_status wait_signal(const std::string_view& name, u64 timeout) override;
 
-        [[nodiscard]] status prepare_buffer_memory_transfer(const buffer_memory_transfer_info& info, memory_transfer_handle** out_handle) override;
+        [[nodiscard]] status prepare_buffer_memory_transfer(const buffer_memory_transfer_info& info, memory_transfer_handle*& out_handle) override;
         [[nodiscard]] status flush_buffer_memory_transfer(memory_transfer_handle* handle) override;
 
-        [[nodiscard]] status prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) override;
+        [[nodiscard]] status prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle*& out_handle) override;
         [[nodiscard]] status flush_texture_memory_transfer(memory_transfer_handle* handle) override;
     private:
-
-
         [[nodiscard]] status execute_command(const command* cmd);
         [[nodiscard]] status execute_draw(const draw_command* cmd);
         [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
@@ -50,6 +48,7 @@ namespace stardraw::gl45
         [[nodiscard]] static status execute_config_depth_test(const depth_test_config_command* cmd);
         [[nodiscard]] static status execute_config_depth_range(const depth_range_config_command* cmd);
         [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
+        [[nodiscard]] status execute_present(const present_command* cmd) const;
         [[nodiscard]] status execute_shader_parameters_upload(const shader_config_command* cmd);
         [[nodiscard]] status execute_signal(const signal_command* cmd);
 
@@ -70,7 +69,7 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value);
 
         [[nodiscard]] status record_object_state(const object_identifier& identifier, object_state* state);
-        [[nodiscard]] static status status_from_last_gl_error();
+        [[nodiscard]] status status_from_last_gl_error() const;
 
         template <typename state_type, descriptor_type object_type>
         [[nodiscard]] state_type* find_object_state(const object_identifier& identifier)
@@ -135,7 +134,9 @@ namespace stardraw::gl45
             return status_type::SUCCESS;
         }
 
-        window* parent_window;
+        static void on_gl_error_static(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* user_param);
+        void on_gl_error(GLenum lenum, GLenum type, GLenum severity, const GLchar* message) const;
+
         std::unordered_map<std::string, command_list> command_lists;
         std::unordered_map<descriptor_type, std::unordered_map<u64, object_state*>> objects;
         std::unordered_map<std::string, signal_state> signals;
@@ -143,7 +144,8 @@ namespace stardraw::gl45
         std::unordered_map<memory_transfer_handle*, texture_memory_transfer_info> texture_transfers;
         memory_barrier_controller mem_barrier_controller;
         const draw_specification_state* active_draw_specification = nullptr;
-        bool api_validation_enabled;
         bool backend_validation_enabled;
+        std::function<void(const std::string message)> validation_message_callback;
     };
 }
+

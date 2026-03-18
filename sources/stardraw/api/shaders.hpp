@@ -3,11 +3,15 @@
 #include <vector>
 
 #include "common.hpp"
+#include "starlib/types/graphics.hpp"
 #include "starlib/types/starlib_stdint.hpp"
+#include "starlib/types/status.hpp"
 
 namespace stardraw
 {
     using namespace starlib_stdint;
+    using namespace starlib;
+
     enum class shader_stage_type
     {
         VERTEX, TESSELATION_CONTROL, TESSELATION_EVAL, GEOMETRY, FRAGMENT, COMPUTE

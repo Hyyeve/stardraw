@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stardraw/gl45/gl_headers.hpp"
+#include "tracy/Tracy.hpp"
 
 namespace stardraw::gl45
 {
@@ -9,6 +10,7 @@ namespace stardraw::gl45
     public:
         inline void barrier_if_needed(const object_identifier& object_id, const GLbitfield barrier_bits)
         {
+            ZoneScoped;
             if (!blocking.contains(object_id.hash)) return;
             const GLbitfield blocking_bits = blocking[object_id.hash] & barrier_bits;
             if (blocking_bits == 0) return;

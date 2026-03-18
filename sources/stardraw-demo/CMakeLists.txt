@@ -5,4 +5,5 @@ target_sources(stardraw-demo PRIVATE
 )
 
 target_link_libraries(stardraw-demo PRIVATE stardraw)
+target_link_libraries(stardraw-demo PRIVATE starwin)
 target_link_libraries(stardraw-demo PRIVATE slang::slang)

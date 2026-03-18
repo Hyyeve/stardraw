@@ -3,9 +3,13 @@
 #include <fstream>
 #include <iostream>
 
+#include "../../generated/win64-debug/_deps/tracy-src/public/tracy/Tracy.hpp"
+#include "../../generated/win64-debug/_deps/tracy-src/public/tracy/TracyOpenGL.hpp"
+#include "../starwin/api/window.hpp"
+#include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
-#include "stardraw/api/window.hpp"
 using namespace stardraw;
+using namespace starwin;
 
 shader_buffer_layout* uniforms_layout;
 shader_program* frag_shader;
@@ -65,20 +69,20 @@ uniform_block uniforms = {
 int main()
 {
     window* wind;
-    stardraw::status wind_status = window::create(
+    status wind_status = window::create(
         {
             .api = graphics_api::GL45,
             .transparent_framebuffer = true,
-            .enable_backend_validation = true,
-            .validation_message_callback = [](const std::string message)
-            {
-                std::cout << message << std::endl;
-            }
-        }, &wind);
+            .gl_debug_context = true,
+        }, wind);
 
     wind->set_title("Meow!");
 
-    render_context* ctx = wind->get_render_context();
+    render_context* ctx;
+    status ctx_status = render_context::create({
+        .api = graphics_api::GL45,
+        .gl_loader = wind->gl_get_loader_func(),
+    }, ctx);
 
     const std::vector<shader_stage> shader_stages = load_shader();
 
@@ -106,6 +110,7 @@ int main()
         {
             clear_window_command(clear_window_mode::ALL, {0., 0., 0., 0.}),
             draw_command(draw_mode::TRIANGLES, 3),
+            present_command(),
         }
     );
 
@@ -136,7 +141,8 @@ int main()
 
     while (true)
     {
-        wind->TEMP_UPDATE_WINDOW();
+        wind->refresh();
+        wind->poll();
 
         status execute_status = ctx->execute_command_buffer("main");
 

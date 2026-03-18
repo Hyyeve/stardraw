@@ -2,16 +2,14 @@ add_library(stardraw STATIC)
 
 target_sources(stardraw PRIVATE
 
-        internal/window.cpp
         internal/shaders.cpp
-        internal/glfw_window.hpp internal/glfw_window.cpp
+        internal/render_context.cpp
 
         gl45/gl_headers.hpp
         gl45/common.hpp
         gl45/api_conversion.hpp
         gl45/common.hpp
         gl45/render_context.hpp gl45/render_context.cpp
-        gl45/window.hpp gl45/window.cpp
 
         gl45/commands.cpp
         gl45/memory_barrier_controller.hpp
@@ -32,7 +30,6 @@ target_sources(stardraw PUBLIC FILE_SET HEADERS BASE_DIRS ${H_SOURCES_ROOT} FILE
         api/common.hpp
         api/descriptors.hpp
         api/commands.hpp
-        api/window.hpp
         api/shaders.hpp
         api/shader_parameter_value.hpp
 )
@@ -55,5 +52,4 @@ target_link_libraries(stardraw PRIVATE TracyClient)
 target_link_libraries(stardraw PRIVATE glad)
 target_link_libraries(stardraw PRIVATE slang::slang)
 target_link_libraries(stardraw PRIVATE Vulkan::Vulkan)
-target_link_libraries(stardraw PRIVATE glfw)
 target_link_libraries(stardraw PRIVATE spirv-cross-glsl)

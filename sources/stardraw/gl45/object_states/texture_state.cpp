@@ -10,6 +10,7 @@ namespace stardraw::gl45
 {
     bool is_sampling_config_valid_for_type(const texture_data_type type, const texture_sampling_conifg& sampling_config)
     {
+        ZoneScoped;
         const bool is_integer_type = is_texture_data_type_integer(type);
         if (!is_integer_type) return true;
 
@@ -285,6 +286,7 @@ namespace stardraw::gl45
 
     u64 texture_state::compute_bytes_in_transfer(const texture_memory_transfer_info& info) const
     {
+        ZoneScoped;
         switch (shape)
         {
             case texture_shape::_1D: return info.width * info.layers * bytes_per_pixel;
@@ -297,6 +299,7 @@ namespace stardraw::gl45
 
     status texture_state::initalize_and_validate_texture_descriptor(const texture_descriptor& desc)
     {
+        ZoneScoped;
         num_texture_mipmap_levels = desc.format.mipmap_levels;
         num_texture_array_layers = desc.format.layers;
         shape = desc.format.shape;
@@ -353,6 +356,7 @@ namespace stardraw::gl45
 
     inline void set_texture_border_color(const GLuint texture_id, const texture_border_color border_color)
     {
+        ZoneScoped;
         switch (border_color)
         {
             case texture_border_color::INTEGER_BLACK:
@@ -396,6 +400,7 @@ namespace stardraw::gl45
 
     bool texture_state::is_valid() const
     {
+        ZoneScoped;
         return gl_texture_id != 0 && glIsTexture(gl_texture_id);
     }
 
@@ -419,6 +424,7 @@ namespace stardraw::gl45
 
     bool texture_state::is_view_format_compatible(const GLenum source_format, const GLenum view_format)
     {
+        ZoneScoped;
         const std::array<std::vector<GLenum>, 12> compatible_sets = {
             std::vector<GLenum> {GL_RGBA32F, GL_RGBA32UI, GL_RGBA32I},
             {GL_RGB32F, GL_RGB32UI, GL_RGB32I},
@@ -445,6 +451,7 @@ namespace stardraw::gl45
 
     bool texture_state::is_view_target_compatible(const GLenum source_target, const GLenum view_target)
     {
+        ZoneScoped;
         const std::array<std::vector<GLenum>, 11> compatible_sets = {
             std::vector<GLenum> {GL_TEXTURE_1D, GL_TEXTURE_1D_ARRAY},
             {GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY},
@@ -468,6 +475,7 @@ namespace stardraw::gl45
 
     status texture_state::is_view_compatible(const texture_descriptor& view_descriptor) const
     {
+        ZoneScoped;
         const u32 min_view_mipmap = view_descriptor.format.view_texture_base_mipmap;
         const u32 max_view_mipmap = min_view_mipmap + view_descriptor.format.mipmap_levels - 1;
 

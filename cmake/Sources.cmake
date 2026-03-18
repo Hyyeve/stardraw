@@ -1,8 +1,9 @@
 set(H_SOURCES_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sources)
 set(H_TARGETS
-        stardraw stardraw-demo glad
+        stardraw starwin stardraw-demo glad
 )
 
 add_subdirectory(sources/glad)
 add_subdirectory(sources/stardraw)
+add_subdirectory(sources/starwin)
 add_subdirectory(sources/stardraw-demo)

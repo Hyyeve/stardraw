@@ -1,23 +1,49 @@
 #include "render_context.hpp"
-#include "window.hpp"
 
 #include <format>
 
 #include "api_conversion.hpp"
 #include "stardraw/internal/internal.hpp"
+#include "starlib/general/string.hpp"
+#include "tracy/TracyOpenGL.hpp"
 
 namespace stardraw::gl45
 {
-    render_context::render_context(window* window, const bool api_validation, const bool backend_validation) : parent_window(window), api_validation_enabled(api_validation), backend_validation_enabled(backend_validation)
-    {
+    static bool has_loaded_glad = false;
 
+    bool check_loaded_glad(const gl_loader_func func)
+    {
+        ZoneScoped;
+        if (!has_loaded_glad)
+        {
+            if (func != nullptr) has_loaded_glad = gladLoadGLLoader(func);
+            else has_loaded_glad = gladLoadGL();
+        }
+        return has_loaded_glad;
+    }
+
+    render_context::render_context(const render_context_config& config, status& out_status) : backend_validation_enabled(config.enable_backend_validation)
+    {
+        ZoneScoped;
+        out_status = status_type::SUCCESS;
+
+        if (!check_loaded_glad(config.gl_loader))
+        {
+            out_status = {status_type::BACKEND_ERROR, "Failed to initialize GL loader (GLAD) - try verifying the loader function you provided?"};
+        }
+
+        validation_message_callback = config.validation_message_callback;
+        if (config.enable_backend_validation)
+        {
+            glDebugMessageCallback(render_context::on_gl_error_static, this);
+        }
+
+        TracyGpuContext;
     }
 
     [[nodiscard]] status render_context::execute_command_buffer(const std::string_view& name)
     {
-        status context_status = parent_window->make_gl_context_active();
-        if (context_status.is_error()) return context_status;
-
+        ZoneScoped;
         //Opengl doesn't have any persistant command buffers, so we just execute it like a temporary one without consuming it.
         if (!command_lists.contains(std::string(name))) return status_type::UNKNOWN;
         const command_list& refren = command_lists[std::string(name)];
@@ -33,9 +59,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::execute_temp_command_buffer(const command_list&& commands)
     {
-        status context_status = parent_window->make_gl_context_active();
-        if (context_status.is_error()) return context_status;
-
+        ZoneScoped;
         for (const starlib::polymorphic<command>& cmd : commands)
         {
             const status result = execute_command(cmd.ptr());
@@ -47,6 +71,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::create_command_buffer(const std::string_view& name, const command_list&& commands)
     {
+        ZoneScoped;
         if (command_lists.contains(std::string(name))) return {status_type::DUPLICATE, std::format("A command buffer named '{0}' already exists", name)};
         command_lists[std::string(name)] = commands;
         return status_type::SUCCESS;
@@ -54,6 +79,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::delete_command_buffer(const std::string_view& name)
     {
+        ZoneScoped;
         if (!command_lists.contains(std::string(name))) return status_type::NOTHING_TO_DO;
         command_lists.erase(std::string(name));
         return status_type::SUCCESS;
@@ -61,9 +87,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::create_objects(const descriptor_list&& descriptors)
     {
-        status context_status = parent_window->make_gl_context_active();
-        if (context_status.is_error()) return context_status;
-
+        ZoneScoped;
         for (const starlib::polymorphic<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());
@@ -75,6 +99,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::delete_object(const descriptor_type type, const std::string_view& name)
     {
+        ZoneScoped;
         const object_identifier identifier = object_identifier(name);
         if (!objects.contains(type)) return status_type::NOTHING_TO_DO;
         if (!objects[type].contains(identifier.hash)) return status_type::NOTHING_TO_DO;
@@ -87,14 +112,13 @@ namespace stardraw::gl45
 
     [[nodiscard]] signal_status render_context::check_signal(const std::string_view& name)
     {
+        ZoneScoped;
         return wait_signal(name, 0);
     }
 
     [[nodiscard]] signal_status render_context::wait_signal(const std::string_view& name, const u64 timeout)
     {
-        const status context_status = parent_window->make_gl_context_active();
-        if (context_status.is_error()) return signal_status::CONTEXT_ERROR;
-
+        ZoneScoped;
         if (!signals.contains(std::string(name)))
         {
             return signal_status::UNKNOWN_SIGNAL;
@@ -111,10 +135,11 @@ namespace stardraw::gl45
         }
     }
 
-    status render_context::prepare_buffer_memory_transfer(const buffer_memory_transfer_info& info, memory_transfer_handle** out_handle)
+    status render_context::prepare_buffer_memory_transfer(const buffer_memory_transfer_info& info, memory_transfer_handle*& out_handle)
     {
+        ZoneScoped;
         buffer_state* buffer;
-        const status find_status = find_buffer_state(info.target, &buffer);
+        status find_status = find_buffer_state(info.target, &buffer);
         if (find_status.is_error()) return find_status;
 
         switch (info.transfer_type)
@@ -125,7 +150,7 @@ namespace stardraw::gl45
                 status prepare_status = buffer->prepare_upload_data_streaming(info.address, info.bytes, &handle);
                 if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
-                *out_handle = handle;
+                out_handle = handle;
                 return status_type::SUCCESS;
             }
             case buffer_memory_transfer_info::type::UPLOAD_CHUNK:
@@ -134,7 +159,7 @@ namespace stardraw::gl45
                 status prepare_status = buffer->prepare_upload_data_chunked(info.address, info.bytes, &handle);
                 if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
-                *out_handle = handle;
+                out_handle = handle;
                 return status_type::SUCCESS;
             }
             case buffer_memory_transfer_info::type::UPLOAD_UNCHECKED:
@@ -143,7 +168,7 @@ namespace stardraw::gl45
                 status prepare_status = buffer->prepare_upload_data_unchecked(info.address, info.bytes, &handle);
                 if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
-                *out_handle = handle;
+                out_handle = handle;
                 return status_type::SUCCESS;
             }
             default: return {status_type::UNSUPPORTED};
@@ -152,12 +177,13 @@ namespace stardraw::gl45
 
     status render_context::flush_buffer_memory_transfer(memory_transfer_handle* handle)
     {
+        ZoneScoped;
         if (!buffer_transfers.contains(handle)) return {status_type::UNKNOWN, "Memory transfer handle not recognized - did you create it with a different context or type?"};
         const buffer_memory_transfer_info info = buffer_transfers[handle];
         buffer_transfers.erase(handle);
 
         buffer_state* buffer;
-        const status find_status = find_buffer_state(info.target, &buffer);
+        status find_status = find_buffer_state(info.target, &buffer);
         if (find_status.is_error()) return find_status;
 
         mem_barrier_controller.barrier_if_needed(info.target, GL_BUFFER_UPDATE_BARRIER_BIT);
@@ -172,8 +198,9 @@ namespace stardraw::gl45
         }
     }
 
-    status render_context::prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle)
+    status render_context::prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle*& out_handle)
     {
+        ZoneScoped;
         texture_state* texture;
         status find_status = find_texture_state(object_identifier(info.target), &texture);
         if (find_status.is_error()) return find_status;
@@ -182,12 +209,13 @@ namespace stardraw::gl45
         status prepare_status = texture->prepare_upload(info, &handle);
         if (prepare_status.is_error()) return prepare_status;
         texture_transfers[handle] = info;
-        *out_handle = handle;
+        out_handle = handle;
         return status_type::SUCCESS;
     }
 
     status render_context::flush_texture_memory_transfer(memory_transfer_handle* handle)
     {
+        ZoneScoped;
         if (!texture_transfers.contains(handle)) return {status_type::UNKNOWN, "Memory transfer handle not recognized - did you create it with a different context or type?"};
         const texture_memory_transfer_info info = texture_transfers[handle];
         texture_transfers.erase(handle);
@@ -201,43 +229,9 @@ namespace stardraw::gl45
         return texture->flush_upload(info, handle);
     }
 
-    status render_context::status_from_last_gl_error()
-    {
-        GLenum latest_status = glGetError();
-        if (latest_status == GL_NO_ERROR) return status_type::SUCCESS;
-
-        std::vector<GLenum> errors;
-        while (latest_status != GL_NO_ERROR)
-        {
-            errors.push_back(latest_status);
-            latest_status = glGetError();
-        }
-
-        std::string error_string = "???";
-        switch (errors[0])
-        {
-            case GL_INVALID_ENUM: error_string = "Invalid enum (probably stardraw bug)";
-                break;
-            case GL_INVALID_OPERATION: error_string = "Invalid operation (probably stardraw bug)";
-                break;
-            case GL_INVALID_VALUE: error_string = "Invalid value (probably stardraw bug)";
-                break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION: error_string = "Invalid framebuffer operation (probably stardraw bug)";
-                break;
-            case GL_OUT_OF_MEMORY: error_string = "Out of memory";
-                break;
-            case GL_STACK_OVERFLOW: error_string = "Stack overflow (this is definitely a stardraw bug!)";
-                break;
-            case GL_STACK_UNDERFLOW: error_string = "Stack underflow (this is definitely a stardraw bug!)";
-                break;
-            default: error_string = "Unknown error";
-                break;
-        }
-        return {status_type::BACKEND_ERROR, std::format("Operations generated {0} GL errors. First error triggered: {1}", errors.size(), error_string)};
-    }
-
     [[nodiscard]] status render_context::execute_command(const command* cmd)
     {
+        ZoneScoped;
         if (cmd == nullptr)
         {
             return {status_type::UNEXPECTED, "Null command"};
@@ -266,6 +260,7 @@ namespace stardraw::gl45
             case command_type::CLEAR_BUFFER: return status_type::UNIMPLEMENTED; //TODO
             case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const shader_config_command*>(cmd));
             case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal_command*>(cmd));
+            case command_type::PRESENT: return execute_present(dynamic_cast<const present_command*>(cmd));
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};
@@ -273,6 +268,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::create_object(const descriptor* descriptor)
     {
+        ZoneScoped;
         const descriptor_type type = descriptor->type();
         switch (type)
         {
@@ -288,6 +284,7 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::create_buffer_state(const buffer_descriptor* descriptor)
     {
+        ZoneScoped;
         status create_status = status_type::SUCCESS;
         buffer_state* buffer = new buffer_state(*descriptor, create_status);
         if (!buffer->is_valid())
@@ -301,6 +298,7 @@ namespace stardraw::gl45
 
     status render_context::create_shader_state(const shader_descriptor* descriptor)
     {
+        ZoneScoped;
         status shader_create_status = status_type::SUCCESS;
         shader_state* shader = new shader_state(*descriptor, shader_create_status);
         if (shader_create_status.is_error())
@@ -314,6 +312,7 @@ namespace stardraw::gl45
 
     status render_context::create_texture_state(const texture_descriptor* descriptor)
     {
+        ZoneScoped;
         status texture_create_status = status_type::SUCCESS;
         texture_state* texture = new texture_state(*descriptor, texture_create_status);
         if (texture_create_status.is_error())
@@ -327,11 +326,13 @@ namespace stardraw::gl45
 
     status render_context::create_texture_sampler_state(const texture_sampler_descriptor* descriptor)
     {
+        ZoneScoped;
         return status_type::UNIMPLEMENTED;
     }
 
     status render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
     {
+        ZoneScoped;
         vertex_specification_state* vertex_spec = new vertex_specification_state();
         if (vertex_spec->vertex_array_id == 0)
         {
@@ -440,8 +441,9 @@ namespace stardraw::gl45
 
     status render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
     {
+        ZoneScoped;
         vertex_specification_state* vertex_spec;
-        const status v_find_status = find_vertex_specification_state(descriptor->vertex_specification, &vertex_spec);
+        status v_find_status = find_vertex_specification_state(descriptor->vertex_specification, &vertex_spec);
         if (v_find_status.is_error()) return v_find_status;
 
         shader_state* shader;
@@ -454,16 +456,18 @@ namespace stardraw::gl45
 
     status render_context::bind_vertex_specification_state(const object_identifier& source)
     {
+        ZoneScoped;
         vertex_specification_state* vertex_spec;
-        const status v_find_status = find_vertex_specification_state(source, &vertex_spec);
+        status v_find_status = find_vertex_specification_state(source, &vertex_spec);
         if (v_find_status.is_error()) return v_find_status;
         return vertex_spec->bind();
     }
 
     status render_context::bind_draw_specification_state(const object_identifier& source)
     {
+        ZoneScoped;
         draw_specification_state* state;
-        const status find_status = find_draw_specification_state(source, &state);
+        status find_status = find_draw_specification_state(source, &state);
         if (find_status.is_error()) return find_status;
 
         status vertex_specification_bind = bind_vertex_specification_state(state->vertex_specification);
@@ -479,14 +483,16 @@ namespace stardraw::gl45
 
     [[nodiscard]] status render_context::bind_buffer(const object_identifier& source, const GLenum target)
     {
+        ZoneScoped;
         buffer_state* buffer_state;
-        const status find_status = find_buffer_state(source, &buffer_state);
+        status find_status = find_buffer_state(source, &buffer_state);
         if (find_status.is_error()) return find_status;
         return buffer_state->bind_to(target);
     }
 
     status render_context::bind_shader(const object_identifier& source)
     {
+        ZoneScoped;
         shader_state* shader;
         status find_status = find_shader_state(source, &shader);
         if (find_status.is_error()) return find_status;
@@ -533,6 +539,7 @@ namespace stardraw::gl45
 
     status render_context::bind_shader_texture_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value, const bool as_image = false)
     {
+        ZoneScoped;
         const binding_location_info binding_info = vk_binding_for_location(location);
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
 
@@ -614,6 +621,7 @@ namespace stardraw::gl45
 
     status render_context::bind_shader_buffer_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value)
     {
+        ZoneScoped;
         const binding_location_info binding_info = vk_binding_for_location(location);
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
         GLenum binding_type = 0;
@@ -660,7 +668,7 @@ namespace stardraw::gl45
         }
 
         buffer_state* buffer;
-        const status find_status = find_buffer_state(object_identifier(value.opaque_reference), &buffer);
+        status find_status = find_buffer_state(object_identifier(value.opaque_reference), &buffer);
         if (find_status.is_error()) return find_status;
 
         status bind_status = buffer->bind_to_slot(binding_type, actual_slot);
@@ -673,6 +681,7 @@ namespace stardraw::gl45
 
     status render_context::bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value)
     {
+        ZoneScoped;
         const binding_location_info binding_info = vk_binding_for_location(location);
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
 
@@ -686,10 +695,123 @@ namespace stardraw::gl45
 
     status render_context::record_object_state(const object_identifier& identifier, object_state* state)
     {
+        ZoneScoped;
         if (state == nullptr) return {status_type::UNEXPECTED, "Unexpected null state"};
         if (!objects.contains(state->object_type())) objects[state->object_type()] = {};
         if (objects[state->object_type()].contains(identifier.hash)) return {status_type::DUPLICATE, std::format("An object of this type with the name '{0}' already exists (or there is a hash collision)!", identifier.name)};
         objects[state->object_type()][identifier.hash] = state;
         return status_type::SUCCESS;
+    }
+
+    status render_context::status_from_last_gl_error() const
+    {
+        ZoneScoped;
+        if (!backend_validation_enabled)
+        {
+            return status_type::SUCCESS;
+        }
+
+        GLenum latest_status = glGetError();
+        if (latest_status == GL_NO_ERROR) return status_type::SUCCESS;
+
+        std::vector<GLenum> errors;
+        while (latest_status != GL_NO_ERROR)
+        {
+            errors.push_back(latest_status);
+            latest_status = glGetError();
+        }
+
+        std::string error_string = "???";
+        switch (errors[0])
+        {
+            case GL_INVALID_ENUM: error_string = "Invalid enum (probably stardraw bug)";
+                break;
+            case GL_INVALID_OPERATION: error_string = "Invalid operation (probably stardraw bug)";
+                break;
+            case GL_INVALID_VALUE: error_string = "Invalid value (probably stardraw bug)";
+                break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: error_string = "Invalid framebuffer operation (probably stardraw bug)";
+                break;
+            case GL_OUT_OF_MEMORY: error_string = "Out of memory";
+                break;
+            case GL_STACK_OVERFLOW: error_string = "Stack overflow (this is definitely a stardraw bug!)";
+                break;
+            case GL_STACK_UNDERFLOW: error_string = "Stack underflow (this is definitely a stardraw bug!)";
+                break;
+            default: error_string = "Unknown error";
+                break;
+        }
+        return {status_type::BACKEND_ERROR, std::format("Operations generated {0} GL errors. First error triggered: {1}", errors.size(), error_string)};
+    }
+
+    void render_context::on_gl_error_static(const GLenum source, const GLenum type, GLuint, const GLenum severity, GLsizei, const GLchar* message, const void* user_ptr)
+    {
+        ZoneScoped;
+        const render_context* relevant_ctx = static_cast<const render_context*>(user_ptr);
+        relevant_ctx->on_gl_error(source, type, severity, message);
+    }
+
+    void render_context::on_gl_error(GLenum source, GLenum type, GLenum severity, const GLchar* message) const
+    {
+        ZoneScoped;
+        std::string source_str;
+        std::string type_str;
+        std::string serverity_str;
+
+        switch (source)
+        {
+            case GL_DEBUG_SOURCE_API: source_str = "API";
+                break;
+            case GL_DEBUG_SOURCE_WINDOW_SYSTEM: source_str = "Window System";
+                break;
+            case GL_DEBUG_SOURCE_SHADER_COMPILER: source_str = "Shader Compiler";
+                break;
+            case GL_DEBUG_SOURCE_THIRD_PARTY: source_str = "Third Party";
+                break;
+            case GL_DEBUG_SOURCE_APPLICATION: source_str = "Application";
+                break;
+            case GL_DEBUG_SOURCE_OTHER: source_str = "Other";
+                break;
+            default: source_str = "Unknown";
+                break;
+        }
+        switch (type)
+        {
+            case GL_DEBUG_TYPE_ERROR: type_str = "Error";
+                break;
+            case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: type_str = "Deprecated Behavior";
+                break;
+            case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: type_str = "Undefined Behavior";
+                break;
+            case GL_DEBUG_TYPE_PORTABILITY: type_str = "Portability";
+                break;
+            case GL_DEBUG_TYPE_PERFORMANCE: type_str = "Performance";
+                break;
+            case GL_DEBUG_TYPE_MARKER: type_str = "Marker";
+                break;
+            case GL_DEBUG_TYPE_PUSH_GROUP: type_str = "Push Group";
+                break;
+            case GL_DEBUG_TYPE_POP_GROUP: type_str = "Pop Group";
+                break;
+            case GL_DEBUG_TYPE_OTHER: type_str = "Other";
+                break;
+            default: type_str = "Unknown";
+                break;
+        }
+
+        switch (severity)
+        {
+            case GL_DEBUG_SEVERITY_HIGH: serverity_str = "Important";
+                break;
+            case GL_DEBUG_SEVERITY_MEDIUM: serverity_str = "Warn";
+                break;
+            case GL_DEBUG_SEVERITY_LOW: serverity_str = "Info";
+                break;
+            default: serverity_str = "Debug";
+                break;
+        }
+
+        const std::string result = starlib::stringify("GL / ", source_str, " / ", type_str, " / ", serverity_str, " : ", message);
+        if (validation_message_callback != nullptr) validation_message_callback(result);
     }
 }

@@ -159,8 +159,10 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status buffer_state::flush_upload_data_unchecked(const memory_transfer_handle* handle)
+    // ReSharper disable once CppMemberFunctionMayBeStatic
+    status buffer_state::flush_upload_data_unchecked(const memory_transfer_handle* handle) // NOLINT(*-convert-member-functions-to-static)
     {
+        ZoneScoped;
         delete handle;
         return status_type::SUCCESS;
     }
@@ -192,6 +194,7 @@ namespace stardraw::gl45
 
     status buffer_state::map_main_buffer()
     {
+        ZoneScoped;
         if (main_buff_pointer != nullptr) return status_type::NOTHING_TO_DO;
         constexpr GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
         main_buff_pointer = glMapNamedBufferRange(main_buffer_id, 0, main_buffer_size, flags);

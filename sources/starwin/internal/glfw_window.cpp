@@ -3,8 +3,7 @@
 #include <format>
 #include <tracy/Tracy.hpp>
 
-
-namespace stardraw
+namespace starwin
 {
     static bool has_loaded_glfw;
 
@@ -270,39 +269,23 @@ namespace stardraw
         return glfwGetWindowAttrib(handle, GLFW_FOCUSED);
     }
 
-    void glfw_window::set_close_requested_callback(const std::function<void(window* window)> func)
+    gl_loader_func glfw_window::gl_get_loader_func()
     {
-        close_request_calback = func;
+        return reinterpret_cast<gl_loader_func>(glfwGetProcAddress);
     }
 
-    void glfw_window::set_resized_callback(const std::function<void(window* window, const u32 width, const u32 height)> func)
+    status glfw_window::gl_apply_context()
     {
-        resize_callback = func;
+        ZoneScoped;
+        glfwMakeContextCurrent(handle);
+        return status_from_last_glfw_error();
     }
 
-    void glfw_window::set_repositioned_callback(const std::function<void(window* window, const u32 x, const u32 y)> func)
+    status glfw_window::poll()
     {
-        reposition_callback = func;
-    }
-
-    void glfw_window::set_minimise_restore_callback(const std::function<void(window* window, const bool minimized)> func)
-    {
-        minimise_restore_callback = func;
-    }
-
-    void glfw_window::set_maximise_restore_callback(const std::function<void(window* window, const bool maximised)> func)
-    {
-        maximise_restore_callback = func;
-    }
-
-    void glfw_window::set_focus_callback(const std::function<void(window* window, const bool focused)> func)
-    {
-        focus_callback = func;
-    }
-
-    void glfw_window::set_redraw_callback(const std::function<void(window* window)> func)
-    {
-        redraw_callback = func;
+        ZoneScoped;
+        glfwPollEvents();
+        return status_from_last_glfw_error();
     }
 
     glfw_window::glfw_window()
@@ -371,56 +354,56 @@ namespace stardraw
     void glfw_window::close_requested_event(GLFWwindow* window)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->close_request_calback != nullptr) _this->close_request_calback(_this);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_close_requested != nullptr) _this->callbacks.on_close_requested(_this);
     }
 
     void glfw_window::resized_event(GLFWwindow* window, const i32 width, const i32 height)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->resize_callback != nullptr) _this->resize_callback(_this, width, height);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_resized != nullptr) _this->callbacks.on_resized(_this, width, height);
     }
 
     void glfw_window::repositioned_event(GLFWwindow* window, const i32 x, const i32 y)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->reposition_callback != nullptr) _this->reposition_callback(_this, x, y);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_repositioned != nullptr) _this->callbacks.on_repositioned(_this, x, y);
     }
 
     void glfw_window::minimized_restored_event(GLFWwindow* window, const i32 minimized)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->minimise_restore_callback != nullptr) _this->minimise_restore_callback(_this, minimized);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_minimization_change != nullptr) _this->callbacks.on_minimization_change(_this, minimized);
     }
 
     void glfw_window::maximized_restored_event(GLFWwindow* window, const i32 maximized)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->maximise_restore_callback != nullptr) _this->maximise_restore_callback(_this, maximized);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_maximization_change != nullptr) _this->callbacks.on_maximization_change(_this, maximized);
     }
 
     void glfw_window::focused_event(GLFWwindow* window, const i32 focused)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->focus_callback != nullptr) _this->focus_callback(_this, focused);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_focus_change != nullptr) _this->callbacks.on_focus_change(_this, focused);
     }
 
     void glfw_window::redraw_event(GLFWwindow* window)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle && _this->redraw_callback != nullptr) _this->redraw_callback(_this);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle && _this->callbacks.on_redraw != nullptr) _this->callbacks.on_redraw(_this);
     }
 
     void glfw_window::framebuffer_resize_event(GLFWwindow* window, const i32 width, const i32 height)
     {
         ZoneScoped;
-        stardraw::glfw_window* _this = static_cast<stardraw::glfw_window*>(glfwGetWindowUserPointer(window));
-        if (window == _this->handle) _this->on_framebuffer_resize(width, height);
+        glfw_window* _this = static_cast<glfw_window*>(glfwGetWindowUserPointer(window));
+        if (window == _this->handle) _this->callbacks.on_framebuffer_recreate(_this, width, height);
     }
 }

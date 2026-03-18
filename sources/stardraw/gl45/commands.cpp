@@ -11,6 +11,7 @@ namespace stardraw::gl45
 
     inline void gl_set_flag(const GLenum flag, const bool enable, const GLuint index = 0)
     {
+        ZoneScoped;
         if (enable)
         {
             glEnablei(flag, index);
@@ -173,6 +174,7 @@ namespace stardraw::gl45
 
     status render_context::execute_draw_config(const draw_config_command* cmd)
     {
+        ZoneScoped;
         return bind_draw_specification_state(cmd->draw_specification);
     }
 
@@ -271,6 +273,16 @@ namespace stardraw::gl45
         glClearStencil(config.stencil);
         glClear(to_gl_clear_mask(cmd->mode));
 
+        return status_type::SUCCESS;
+    }
+
+    status render_context::execute_present(const present_command* cmd) const
+    {
+        //Under OpenGL, there is no specific presentation calls, and presentation is handled entirely by the window refresh.
+        //However, we still need to collect performance data and mark the frame boundary.
+        ZoneScoped;
+        TracyGpuCollect;
+        FrameMark;
         return status_type::SUCCESS;
     }
 

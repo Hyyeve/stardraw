@@ -2,12 +2,14 @@
 #include <functional>
 #include <string>
 
-#include "common.hpp"
-#include "render_context.hpp"
+#include "starlib/types/graphics.hpp"
+#include "starlib/types/status.hpp"
 
-namespace stardraw
+namespace starwin
 {
     using namespace starlib_stdint;
+    using namespace starlib;
+
     enum class cursor_mode
     {
         NORMAL, HIDDEN, CAPTURED, CONFINED,
@@ -24,18 +26,32 @@ namespace stardraw
 
         bool transparent_framebuffer = false;
 
-        ///Toggle whether the backend graphics API validation features should be used.
-        ///If enabled, stardraw will be able to detect and report additional data from the backend api.
-        ///You probably want to enable this during development.
-        bool enable_backend_validation = false;
+        ///OPENGL ONLY: Enable opengl debug context support
+        bool gl_debug_context = false;
+    };
 
-        ///Toggle whether stardraw's api validation should be used.
-        ///If disabled, any stardraw call that would return a non-success value will cause undefined behaviour and in many cases crash the application.
-        ///You probably don't want to disable this unless you are *very* confident that the minor performance increase is worth it.
-        bool enable_stardraw_validation = true;
+    class window;
+    struct window_callbacks
+    {
+        //General window callbacks
 
-        ///Callback that will be passed additional validation messages that are not returned via statuses.
-        std::function<void(const std::string message)> validation_message_callback;
+        std::function<void(window* window)> on_close_requested;
+        std::function<void(window* window, const u32 width, const u32 height)> on_resized;
+        std::function<void(window* window, const u32 x, const u32 y)> on_repositioned;
+        std::function<void(window* window, const bool minimized)> on_minimization_change;
+        std::function<void(window* window, const bool maximised)> on_maximization_change;
+        std::function<void(window* window, const bool focused)> on_focus_change;
+
+        //Graphics callbacks
+
+        ///NOTE: You should not use this for your main render loop.
+        ///This function is triggered when a redraw is requested due to input events such as the window being repositioned/resized by the user.
+        ///Use this function ONLY to make sure your window continues rendering correctly during those events.
+        std::function<void(window* window)> on_redraw;
+
+        ///NOTE: This may or may not be called at the same time as an actual window resize.
+        ///You should rely on this event for triggering graphics framebuffer resizes instead of on_resized
+        std::function<void(window* window, const u32 width, const u32 height)> on_framebuffer_recreate;
     };
 
     struct fullscreen_window_config
@@ -58,12 +74,11 @@ namespace stardraw
     class window
     {
     public:
+        static status create(const window_config& config, window*& out_window);
         virtual ~window() = default;
 
-        [[nodiscard]] static status create(const window_config& config, window** out_window);
-        virtual render_context* get_render_context() = 0;
-
         //Global functionality
+
         virtual status set_title(const std::string& title) = 0;
         virtual status set_icon(const u32 width, const u32 height, void* rgba8_pixels) = 0;
         virtual status set_cursor_mode(const cursor_mode mode) = 0;
@@ -75,6 +90,7 @@ namespace stardraw
         virtual status request_focus() = 0;
 
         //Windowed mode functionality
+
         virtual status set_size(const u32 width, const u32 height) = 0;
         virtual status set_position(const i32 x, const i32 y) = 0;
         virtual status set_decorated(const bool decorations) = 0;
@@ -86,37 +102,42 @@ namespace stardraw
         virtual status clear_aspect_ratio_limit() = 0;
 
         //Mode switching
+
         virtual status to_exclusive_fullscreen(const u32 display_index, const fullscreen_window_config config) = 0;
         virtual status to_windowed_fullscreen(const u32 display_index) = 0; //Window is set to windowed mode and resized/positioned to cover the display.
         virtual status to_windowed(const u32 width, const u32 height, const i32 x, const i32 y) = 0;
 
         //Size switching
+
         virtual status maximise() = 0;
         virtual status minimise() = 0;
         virtual status restore() = 0;
 
+        ///Refreshes the window. Should be called at the start of your rendering.
+        virtual status refresh() = 0;
+
+        ///Polls inputs/window events. Should be called at the start of your update.
+        virtual status poll() = 0;
+
         //Display information
+
         [[nodiscard]] virtual display_info get_primary_display() const = 0;
         [[nodiscard]] virtual std::vector<display_info> get_available_displays() const = 0;
         [[nodiscard]] virtual std::vector<fullscreen_window_config> get_supported_fullscreen_configs(const u32 display_index) const = 0;
 
         //Window information
+
         [[nodiscard]] virtual bool is_close_requested() const = 0;
         [[nodiscard]] virtual bool is_focused() const = 0;
 
-        //Window callbacks
-        virtual void set_close_requested_callback(std::function<void(window* window)> func) = 0;
-        virtual void set_resized_callback(std::function<void(window* window, const u32 width, const u32 height)> func) = 0;
-        virtual void set_repositioned_callback(std::function<void(window* window, const u32 x, const u32 y)> func) = 0;
-        virtual void set_minimise_restore_callback(std::function<void(window* window, const bool minimized)> func) = 0;
-        virtual void set_maximise_restore_callback(std::function<void(window* window, const bool maximised)> func) = 0;
-        virtual void set_focus_callback(std::function<void(window* window, const bool focused)> func) = 0;
-        virtual void set_redraw_callback(std::function<void(window* window)>) = 0;
+        ///OPENGL Only: Get the GL api loader function
+        [[nodiscard]] virtual gl_loader_func gl_get_loader_func() = 0;
 
-        virtual void TEMP_UPDATE_WINDOW() = 0;
+        ///OPENGL Only: Set the current opengl context to this window's context.
+        ///If you're only using a single context/window, you never need to call this.
+        ///If you're using multiple windows, you need to call this before doing any rendering to this window.
+        [[nodiscard]] virtual status gl_apply_context() = 0;
 
-    protected:
-
-        std::unique_ptr<render_context> context;
+        window_callbacks callbacks;
     };
 }
