@@ -8,10 +8,10 @@ target_sources(stardraw PRIVATE
         gl45/gl_headers.hpp
         gl45/common.hpp
         gl45/api_conversion.hpp
-        gl45/common.hpp
         gl45/render_context.hpp gl45/render_context.cpp
+        gl45/object_creation.cpp gl45/commands.cpp
+        gl45/memory_transfers.cpp gl45/state_binding.cpp
 
-        gl45/commands.cpp
         gl45/memory_barrier_controller.hpp
         gl45/staging_buffer_uploader.hpp gl45/staging_buffer_uploader.cpp
 
@@ -20,6 +20,7 @@ target_sources(stardraw PRIVATE
         gl45/object_states/shader_state.hpp gl45/object_states/shader_state.cpp
         gl45/object_states/texture_state.hpp gl45/object_states/texture_state.cpp
         gl45/object_states/vertex_specification_state.hpp gl45/object_states/vertex_specification_state.cpp
+        gl45/object_states/texture_sampler_state.hpp gl45/object_states/texture_sampler_state.cpp
 
         vk13/Device.hpp vk13/Device.cpp
         vk13/simple_window.hpp vk13/simple_window.cpp

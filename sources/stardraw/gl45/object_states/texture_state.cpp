@@ -92,7 +92,7 @@ namespace stardraw::gl45
 
         texture_sampling_conifg sampling_config = desc.default_sampling_config;
         sampling_config.mipmap_max_level = std::min(sampling_config.mipmap_max_level, num_texture_mipmap_levels - 1);
-        out_status = set_sampling_config(sampling_config);
+        out_status = set_sampling_config(sampling_config, is_texture_data_type_integer(desc.format.data_type));
     }
 
     texture_state::texture_state(const texture_state* original, const texture_descriptor& desc, status& out_status)
@@ -127,7 +127,7 @@ namespace stardraw::gl45
 
         texture_sampling_conifg sampling_config = desc.default_sampling_config;
         sampling_config.mipmap_max_level = std::min(sampling_config.mipmap_max_level, num_texture_mipmap_levels - 1);
-        out_status = set_sampling_config(sampling_config);
+        out_status = set_sampling_config(sampling_config, is_texture_data_type_integer(original->data_type));
     }
 
     texture_state::~texture_state()
@@ -354,46 +354,55 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    inline void set_texture_border_color(const GLuint texture_id, const texture_border_color border_color)
+    inline void set_texture_border_color(const GLuint texture_id, const texture_border_color border_color, const bool is_integer)
     {
         ZoneScoped;
-        switch (border_color)
+        if (is_integer)
         {
-            case texture_border_color::INTEGER_BLACK:
+            switch (border_color)
             {
-                constexpr std::array col = {0, 0, 0, 1};
-                glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
+                case texture_border_color::OPAUQE_BLACK:
+                {
+                    constexpr std::array col = {0, 0, 0, 1};
+                    glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::OPAQUE_WHITE:
+                {
+                    constexpr std::array col = {1, 1, 1, 1};
+                    glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::TRANSPARENT:
+                {
+                    constexpr std::array col = {0, 0, 0, 0};
+                    glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
             }
-            case texture_border_color::INTEGER_WHITE:
+        }
+        else
+        {
+            switch (border_color)
             {
-                constexpr std::array col = {1, 1, 1, 1};
-                glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
-            }
-            case texture_border_color::INTEGER_TRANSPARENT:
-            {
-                constexpr std::array col = {0, 0, 0, 0};
-                glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
-            }
-            case texture_border_color::FLOAT_BLACK:
-            {
-                constexpr std::array col = {0.f, 0.f, 0.f, 1.f};
-                glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
-            }
-            case texture_border_color::FLOAT_WHITE:
-            {
-                constexpr std::array col = {1.f, 1.f, 1.f, 1.f};
-                glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
-            }
-            case texture_border_color::FLOAT_TRANSPARENT:
-            {
-                constexpr std::array col = {0.f, 0.f, 0.f, 0.f};
-                glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
-                break;
+                case texture_border_color::OPAUQE_BLACK:
+                {
+                    constexpr std::array col = {0.f, 0.f, 0.f, 1.f};
+                    glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::OPAQUE_WHITE:
+                {
+                    constexpr std::array col = {1.f, 1.f, 1.f, 1.f};
+                    glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::TRANSPARENT:
+                {
+                    constexpr std::array col = {0.f, 0.f, 0.f, 0.f};
+                    glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
             }
         }
     }
@@ -484,16 +493,16 @@ namespace stardraw::gl45
 
         const bool is_array = (view_descriptor.format.shape != texture_shape::CUBE_MAP && view_descriptor.format.layers > 1) || view_descriptor.format.layers > 6;
 
-        if (min_view_mipmap + 1 > num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} mipmap levels, but requesting index {2}", view_descriptor.identifier().name, num_texture_mipmap_levels, min_view_mipmap)};
-        if (max_view_mipmap + 1 > num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} mipmap levels, but requesting index {2}", view_descriptor.identifier().name, num_texture_mipmap_levels, max_view_mipmap)};
-        if (min_view_layer + 1 > num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} texture layers, but requesting index {2}", view_descriptor.identifier().name, num_texture_array_layers, min_view_layer)};
-        if (max_view_layer + 1 > num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} texture layers, but requesting index {2}", view_descriptor.identifier().name, num_texture_array_layers, max_view_layer)};
+        if (min_view_mipmap >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} mipmap levels, but requesting index {2}", view_descriptor.identifier().name, num_texture_mipmap_levels, min_view_mipmap)};
+        if (max_view_mipmap >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} mipmap levels, but requesting index {2}", view_descriptor.identifier().name, num_texture_mipmap_levels, max_view_mipmap)};
+        if (min_view_layer >= num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} texture layers, but requesting index {2}", view_descriptor.identifier().name, num_texture_array_layers, min_view_layer)};
+        if (max_view_layer >= num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture view '{0}' is not compatible with source - source has {1} texture layers, but requesting index {2}", view_descriptor.identifier().name, num_texture_array_layers, max_view_layer)};
         if (!is_view_format_compatible(gl_texture_format, to_gl_texture_format(view_descriptor.format.data_type))) return {status_type::INVALID, std::format("Texture view '{0}' is not compatible with source - texture data types are not compatible", view_descriptor.identifier().name)};
         if (!is_view_target_compatible(gl_texture_target, to_gl_texture_target(view_descriptor.format.shape, view_descriptor.format.msaa != texture_msaa_level::NONE, is_array))) return {status_type::INVALID, std::format("Texture view '{0}' is not compatible with source - texture shapes are not compatible", view_descriptor.identifier().name)};
         return status_type::SUCCESS;
     }
 
-    status texture_state::set_sampling_config(const texture_sampling_conifg& config) const
+    status texture_state::set_sampling_config(const texture_sampling_conifg& config, const bool is_integer_texture) const
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Set texture sampling config");
@@ -504,7 +513,7 @@ namespace stardraw::gl45
         glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_T, to_gl_wrapping_mode(config.wrapping_mode_y));
         glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_R, to_gl_wrapping_mode(config.wrapping_mode_z));
 
-        set_texture_border_color(gl_texture_id, config.border_color);
+        set_texture_border_color(gl_texture_id, config.border_color, is_integer_texture);
 
         if (GLAD_GL_VERSION_4_6 || GLAD_GL_ARB_texture_filter_anisotropic || GLAD_GL_EXT_texture_filter_anisotropic)
         {

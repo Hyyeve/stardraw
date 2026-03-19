@@ -4,7 +4,9 @@
 
 #include "object_states/buffer_state.hpp"
 #include "object_states/draw_specification_state.hpp"
+#include "object_states/framebuffer_state.hpp"
 #include "object_states/shader_state.hpp"
+#include "object_states/texture_sampler_state.hpp"
 #include "object_states/texture_state.hpp"
 #include "object_states/vertex_specification_state.hpp"
 #include "stardraw/api/render_context.hpp"
@@ -60,6 +62,7 @@ namespace stardraw::gl45
         [[nodiscard]] status create_shader_state(const shader_descriptor* descriptor);
         [[nodiscard]] status create_texture_state(const texture_descriptor* descriptor);
         [[nodiscard]] status create_texture_sampler_state(const texture_sampler_descriptor* descriptor);
+        [[nodiscard]] status create_framebuffer_state(const framebuffer_descriptor* descriptor);
         [[nodiscard]] status create_vertex_specification_state(const vertex_specification_descriptor* descriptor);
         [[nodiscard]] status create_draw_specification_state(const draw_specification_descriptor* descriptor);
 
@@ -71,12 +74,15 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_shader_buffer_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
         [[nodiscard]] status bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value);
 
+        [[nodiscard]] status find_and_validate_attachment_texture(const framebuffer_attachment_info& attachment, u32& lowest_msaa_level, u32& highest_msaa_level, bool& any_texture_layered, bool& any_texture_not_layered, texture_state** texture_out);
+
         [[nodiscard]] status record_object_state(const object_identifier& identifier, object_state* state);
         [[nodiscard]] status status_from_last_gl_error() const;
 
         template <typename state_type, descriptor_type object_type>
         [[nodiscard]] state_type* find_object_state(const object_identifier& identifier)
         {
+            ZoneScoped;
             static_assert(std::is_base_of_v<object_state, state_type>);
             if (!objects.contains(object_type)) return nullptr;
             if (objects[object_type].contains(identifier.hash))
@@ -91,54 +97,17 @@ namespace stardraw::gl45
             return nullptr;
         }
 
-        [[nodiscard]] inline status find_buffer_state(const object_identifier& identifier, buffer_state** out_state)
-        {
-            *out_state = find_object_state<buffer_state, descriptor_type::BUFFER>(identifier);
-            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No buffer with name '{0}' in context", identifier.name) };
-            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Buffer '{0}' is in an invalid state", identifier.name) };
-            return status_type::SUCCESS;
-        }
+        [[nodiscard]] status find_buffer_state(const object_identifier& identifier, buffer_state** out_state);
+        [[nodiscard]] status find_shader_state(const object_identifier& identifier, shader_state** out_state);
+        [[nodiscard]] status find_root_texture_state(const object_identifier& identifier, texture_state** out_state);
+        [[nodiscard]] status find_texture_state(const object_identifier& identifier, texture_state** out_state);
+        [[nodiscard]] status find_texture_sampler_state(const object_identifier& identifier, texture_sampler_state** out_state);
+        [[nodiscard]] status find_framebuffer_state(const object_identifier& identifier, framebuffer_state** out_state);
+        [[nodiscard]] status find_vertex_specification_state(const object_identifier& identifier, vertex_specification_state** out_state);
+        [[nodiscard]] status find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state);
 
-        [[nodiscard]] inline status find_shader_state(const object_identifier& identifier, shader_state** out_state)
-        {
-            *out_state = find_object_state<shader_state, descriptor_type::SHADER>(identifier);
-            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No shader with name '{0}' in context", identifier.name) };
-            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Shader '{0}' is in an invalid state", identifier.name) };
-            return status_type::SUCCESS;
-        }
-
-        [[nodiscard]] inline status find_texture_state(const object_identifier& identifier, texture_state** out_state)
-        {
-            *out_state = find_object_state<texture_state, descriptor_type::TEXTURE>(identifier);
-            if (*out_state == nullptr) return { status_type::UNKNOWN, std::format("No texture with name '{0}' in context", identifier.name) };
-            if (!(*out_state)->is_valid()) return{ status_type::INVALID, std::format("Texture '{0}' is in an invalid state", identifier.name) };
-            if ((*out_state)->root_data_store_texture != identifier)
-            {
-                texture_state* root_state;
-                const status root_status = find_texture_state((*out_state)->root_data_store_texture, &root_state);
-                if (root_status.is_error()) return root_status;
-            }
-
-            return status_type::SUCCESS;
-        }
-
-        [[nodiscard]] inline status find_vertex_specification_state(const object_identifier& identifier, vertex_specification_state** out_state)
-        {
-            *out_state = find_object_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
-            if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", identifier.name)};
-            if (!(*out_state)->is_valid()) return {status_type::INVALID, std::format("Vertex specification object '{0}' is in an invalid state", identifier.name)};
-            return status_type::SUCCESS;
-        }
-
-        [[nodiscard]] inline status find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state)
-        {
-            *out_state = find_object_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
-            if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", identifier.name)};
-            return status_type::SUCCESS;
-        }
-
-        static void on_gl_error_static(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* user_param);
-        void on_gl_error(GLenum lenum, GLenum type, GLenum severity, const GLchar* message) const;
+        static void on_gl_error_static(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* user_ptr);
+        void on_gl_error(GLenum source, GLenum type, GLenum severity, const GLchar* message) const;
 
         std::unordered_map<std::string, command_list> command_lists;
         std::unordered_map<descriptor_type, std::unordered_map<u64, object_state*>> objects;

@@ -39,18 +39,19 @@ namespace stardraw::gl45
     {
         switch (type)
         {
-            case texture_data_type::DEPTH_32: return GL_DEPTH_COMPONENT32;
-            case texture_data_type::DEPTH_24: return GL_DEPTH_COMPONENT24;
-            case texture_data_type::DEPTH_16: return GL_DEPTH_COMPONENT16;
-            case texture_data_type::DEPTH_32_STENCIL_8: return GL_DEPTH32F_STENCIL8;
-            case texture_data_type::DEPTH_24_STENCIL_8: return GL_DEPTH24_STENCIL8;
-            case texture_data_type::STENCIL_8: return GL_STENCIL_INDEX8;
-            case texture_data_type::R_8: return GL_R8;
-            case texture_data_type::RG_8: return GL_RG8;
-            case texture_data_type::RGB_8: return GL_RGB8;
-            case texture_data_type::RGBA_8: return GL_RGBA8;
-            case texture_data_type::SRGB_8: return GL_SRGB8;
-            case texture_data_type::SRGBA_8: return GL_SRGB8_ALPHA8;
+            case texture_data_type::DEPTH_U32_NORM: return GL_DEPTH_COMPONENT32;
+            case texture_data_type::DEPTH_F32: return GL_DEPTH_COMPONENT32F;
+            case texture_data_type::DEPTH_U24_NORM: return GL_DEPTH_COMPONENT24;
+            case texture_data_type::DEPTH_U16_NORM: return GL_DEPTH_COMPONENT16;
+            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8: return GL_DEPTH32F_STENCIL8;
+            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8: return GL_DEPTH24_STENCIL8;
+            case texture_data_type::STENCIL_U8: return GL_STENCIL_INDEX8;
+            case texture_data_type::R_U8_NORM: return GL_R8;
+            case texture_data_type::RG_U8_NORM: return GL_RG8;
+            case texture_data_type::RGB_U8_NORM: return GL_RGB8;
+            case texture_data_type::RGBA_U8_NORM: return GL_RGBA8;
+            case texture_data_type::SRGB_U8_NORM: return GL_SRGB8;
+            case texture_data_type::SRGBA_U8_NORM: return GL_SRGB8_ALPHA8;
             case texture_data_type::R_U8: return GL_R8UI;
             case texture_data_type::RG_U8: return GL_RG8UI;
             case texture_data_type::RGB_U8: return GL_RGB8UI;
@@ -92,9 +93,9 @@ namespace stardraw::gl45
     {
         switch (type)
         {
-            case texture_data_type::DEPTH_32_STENCIL_8:
-            case texture_data_type::DEPTH_24_STENCIL_8:
-            case texture_data_type::STENCIL_8:
+            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8:
+            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8:
+            case texture_data_type::STENCIL_U8:
             case texture_data_type::R_U8:
             case texture_data_type::RG_U8:
             case texture_data_type::RGB_U8:
@@ -136,22 +137,22 @@ namespace stardraw::gl45
         {
             case texture_data_type::R_U8:
             case texture_data_type::R_I8:
-            case texture_data_type::STENCIL_8:
-            case texture_data_type::R_8: return 1;
+            case texture_data_type::STENCIL_U8:
+            case texture_data_type::R_U8_NORM: return 1;
             case texture_data_type::RG_U8:
-            case texture_data_type::RG_8:
+            case texture_data_type::RG_U8_NORM:
             case texture_data_type::R_U16:
             case texture_data_type::RG_I8:
             case texture_data_type::R_I16:
-            case texture_data_type::DEPTH_16:
+            case texture_data_type::DEPTH_U16_NORM:
             case texture_data_type::R_F16: return 2;
             case texture_data_type::RGB_U8:
             case texture_data_type::RGB_I8:
-            case texture_data_type::DEPTH_24:
-            case texture_data_type::RGB_8:
-            case texture_data_type::SRGB_8: return 3;
-            case texture_data_type::RGBA_8:
-            case texture_data_type::SRGBA_8:
+            case texture_data_type::DEPTH_U24_NORM:
+            case texture_data_type::RGB_U8_NORM:
+            case texture_data_type::SRGB_U8_NORM: return 3;
+            case texture_data_type::RGBA_U8_NORM:
+            case texture_data_type::SRGBA_U8_NORM:
             case texture_data_type::RG_F16:
             case texture_data_type::R_F32:
             case texture_data_type::RGBA_I8:
@@ -160,9 +161,10 @@ namespace stardraw::gl45
             case texture_data_type::R_U32:
             case texture_data_type::RG_I16:
             case texture_data_type::R_I32:
-            case texture_data_type::DEPTH_32:
-            case texture_data_type::DEPTH_24_STENCIL_8: return 4;
-            case texture_data_type::DEPTH_32_STENCIL_8: return 5;
+            case texture_data_type::DEPTH_U32_NORM:
+            case texture_data_type::DEPTH_F32:
+            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8: return 4;
+            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8: return 5;
             case texture_data_type::RGB_F16:
             case texture_data_type::RGB_U16:
             case texture_data_type::RGB_I16: return 6;
@@ -186,11 +188,12 @@ namespace stardraw::gl45
     {
         switch (texture_data_type)
         {
-            case texture_data_type::DEPTH_32:
-            case texture_data_type::DEPTH_24:
-            case texture_data_type::DEPTH_16:
-            case texture_data_type::DEPTH_32_STENCIL_8:
-            case texture_data_type::DEPTH_24_STENCIL_8:
+            case texture_data_type::DEPTH_F32:
+            case texture_data_type::DEPTH_U32_NORM:
+            case texture_data_type::DEPTH_U24_NORM:
+            case texture_data_type::DEPTH_U16_NORM:
+            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8:
+            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8:
             {
                 return true;
             }
@@ -202,14 +205,29 @@ namespace stardraw::gl45
     {
         switch (texture_data_type)
         {
-            case texture_data_type::DEPTH_32_STENCIL_8:
-            case texture_data_type::DEPTH_24_STENCIL_8:
-            case texture_data_type::STENCIL_8:
+            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8:
+            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8:
+            case texture_data_type::STENCIL_U8:
             {
                 return true;
             }
             default: return false;
         }
+    }
+
+    inline bool is_texture_data_type_color_renderable(const texture_data_type& texture_data_type)
+    {
+        return !does_texture_data_type_have_depth(texture_data_type) && !does_texture_data_type_have_stencil(texture_data_type);
+    }
+
+    inline bool is_texture_data_type_depth_renderable(const texture_data_type& texture_data_type)
+    {
+        return does_texture_data_type_have_depth(texture_data_type);
+    }
+
+    inline bool is_texture_data_type_stencil_renderable(const texture_data_type& texture_data_type)
+    {
+        return does_texture_data_type_have_stencil(texture_data_type);
     }
 
     inline GLenum to_gl_memory_transfer_data_type(const texture_memory_transfer_info::pixel_data_type& data_type)

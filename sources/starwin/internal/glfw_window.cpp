@@ -30,43 +30,43 @@ namespace starwin
     void init_nonprintable_keyname_map(window_input* input)
     {
         const std::vector<std::tuple<starlib_keycodes::keycode, std::string>> unprintables = {
-            {keycode::space, "space"}, {keycode::left_alt, "left_alt"},
-            {keycode::right_alt, "right_alt"}, {keycode::escape, "esc"},
-            {keycode::enter, "enter"}, {keycode::tab, "tab"},
-            {keycode::backspace, "backspace"}, {keycode::insert, "insert"},
-            {keycode::del, "delete"}, {keycode::left, "left_arrow"},
-            {keycode::right, "right_arrow"}, {keycode::up, "up_arrow"},
-            {keycode::down, "down_arrow"}, {keycode::page_up, "page_up"},
-            {keycode::page_down, "page_down"}, {keycode::home, "home"},
-            {keycode::end, "end"}, {keycode::caps_lock, "capslock"},
-            {keycode::scroll_lock, "scroll_lock"},
-            {keycode::num_lock, "numlock"}, {keycode::print_screen, "printscreen"},
-            {keycode::pause, "pause"}, {keycode::f1, "f1"},
-            {keycode::f2, "f2"}, {keycode::f3, "f3"},
-            {keycode::f4, "f4"}, {keycode::f5, "f5"},
-            {keycode::f6, "f6"}, {keycode::f7, "f7"},
-            {keycode::f8, "f8"}, {keycode::f9, "f9"},
-            {keycode::f10, "f10"}, {keycode::f11, "f11"},
-            {keycode::f12, "f12"}, {keycode::f13, "f13"},
-            {keycode::f14, "f14"}, {keycode::f15, "f15"},
-            {keycode::f16, "f16"}, {keycode::f17, "f17"},
-            {keycode::f18, "f18"}, {keycode::f19, "f19"},
-            {keycode::f20, "f20"}, {keycode::f21, "f21"},
-            {keycode::f22, "f22"}, {keycode::f23, "f23"},
-            {keycode::f24, "f24"}, {keycode::f25, "f25"},
-            {keycode::numpad_0, "numpad_0"}, {keycode::numpad_1, "numpad_1"},
-            {keycode::numpad_2, "numpad_2"}, {keycode::numpad_3, "numpad_3"},
-            {keycode::numpad_4, "numpad_4"}, {keycode::numpad_5, "numpad_5"},
-            {keycode::numpad_6, "numpad_6"}, {keycode::numpad_7, "numpad_7"},
-            {keycode::numpad_8, "numpad_8"}, {keycode::numpad_9, "numpad_9"},
-            {keycode::numpad_decimal, "numpad_decimal"}, {keycode::numpad_divide, "numpad_divide"},
-            {keycode::numpad_multiply, "numpad_multiply"}, {keycode::numpad_subtract, "numpad_subtract"},
-            {keycode::numpad_add, "numpad_add"}, {keycode::numpad_enter, "numpad_enter"},
-            {keycode::numpad_equal, "numpad_equal"}, {keycode::left_shift, "left_shift"},
-            {keycode::left_control, "left_control"}, {keycode::left_alt, "left_alt"},
-            {keycode::left_super, "left_super"}, {keycode::right_shift, "right_shift"},
-            {keycode::right_control, "right_control"}, {keycode::right_alt, "right_alt"},
-            {keycode::right_super, "right_super"}, {keycode::menu, "menu"},
+            {keycode::SPACE, "space"}, {keycode::LEFT_ALT, "left_alt"},
+            {keycode::RIGHT_ALT, "right_alt"}, {keycode::ESCAPE, "esc"},
+            {keycode::ENTER, "enter"}, {keycode::TAB, "tab"},
+            {keycode::BACKSPACE, "backspace"}, {keycode::INSERT, "insert"},
+            {keycode::DEL, "delete"}, {keycode::LEFT, "left_arrow"},
+            {keycode::RIGHT, "right_arrow"}, {keycode::UP, "up_arrow"},
+            {keycode::DOWN, "down_arrow"}, {keycode::PAGE_UP, "page_up"},
+            {keycode::PAGE_DOWN, "page_down"}, {keycode::HOME, "home"},
+            {keycode::END, "end"}, {keycode::CAPS_LOCK, "capslock"},
+            {keycode::SCROLL_LOCK, "scroll_lock"},
+            {keycode::NUM_LOCK, "numlock"}, {keycode::PRINT_SCREEN, "printscreen"},
+            {keycode::PAUSE, "pause"}, {keycode::F1, "f1"},
+            {keycode::F2, "f2"}, {keycode::F3, "f3"},
+            {keycode::F4, "f4"}, {keycode::F5, "f5"},
+            {keycode::F6, "f6"}, {keycode::F7, "f7"},
+            {keycode::F8, "f8"}, {keycode::F9, "f9"},
+            {keycode::F10, "f10"}, {keycode::F11, "f11"},
+            {keycode::F12, "f12"}, {keycode::F13, "f13"},
+            {keycode::F14, "f14"}, {keycode::F15, "f15"},
+            {keycode::F16, "f16"}, {keycode::F17, "f17"},
+            {keycode::F18, "f18"}, {keycode::F19, "f19"},
+            {keycode::F20, "f20"}, {keycode::F21, "f21"},
+            {keycode::F22, "f22"}, {keycode::F23, "f23"},
+            {keycode::F24, "f24"}, {keycode::F25, "f25"},
+            {keycode::NUMPAD_0, "numpad_0"}, {keycode::NUMPAD_1, "numpad_1"},
+            {keycode::NUMPAD_2, "numpad_2"}, {keycode::NUMPAD_3, "numpad_3"},
+            {keycode::NUMPAD_4, "numpad_4"}, {keycode::NUMPAD_5, "numpad_5"},
+            {keycode::NUMPAD_6, "numpad_6"}, {keycode::NUMPAD_7, "numpad_7"},
+            {keycode::NUMPAD_8, "numpad_8"}, {keycode::NUMPAD_9, "numpad_9"},
+            {keycode::NUMPAD_DECIMAL, "numpad_decimal"}, {keycode::NUMPAD_DIVIDE, "numpad_divide"},
+            {keycode::NUMPAD_MULTIPLY, "numpad_multiply"}, {keycode::NUMPAD_SUBTRACT, "numpad_subtract"},
+            {keycode::NUMPAD_ADD, "numpad_add"}, {keycode::NUMPAD_ENTER, "numpad_enter"},
+            {keycode::NUMPAD_EQUAL, "numpad_equal"}, {keycode::LEFT_SHIFT, "left_shift"},
+            {keycode::LEFT_CONTROL, "left_control"}, {keycode::LEFT_ALT, "left_alt"},
+            {keycode::LEFT_SUPER, "left_super"}, {keycode::RIGHT_SHIFT, "right_shift"},
+            {keycode::RIGHT_CONTROL, "right_control"}, {keycode::RIGHT_ALT, "right_alt"},
+            {keycode::RIGHT_SUPER, "right_super"}, {keycode::MENU, "menu"},
         };
 
         for (const auto& [keycode, name] : unprintables)
@@ -220,10 +220,10 @@ namespace starwin
     {
         ZoneScoped;
 
-        const u32 dpad_left_id = keycode_to_id(starlib_keycodes::keycode::dpad_left);
-        const u32 dpad_right_id = keycode_to_id(starlib_keycodes::keycode::dpad_right);
-        const u32 dpad_down_id = keycode_to_id(starlib_keycodes::keycode::dpad_down);
-        const u32 dpad_up_id = keycode_to_id(starlib_keycodes::keycode::dpad_up);
+        const u32 dpad_left_id = keycode_to_id(starlib_keycodes::keycode::DPAD_LEFT);
+        const u32 dpad_right_id = keycode_to_id(starlib_keycodes::keycode::DPAD_RIGHT);
+        const u32 dpad_down_id = keycode_to_id(starlib_keycodes::keycode::DPAD_DOWN);
+        const u32 dpad_up_id = keycode_to_id(starlib_keycodes::keycode::DPAD_UP);
 
         for (i32 idx = 0; idx < 16; idx++)
         {
