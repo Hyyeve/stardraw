@@ -21,6 +21,9 @@ struct std::hash<stardraw::shader_entry_point>
 
 namespace stardraw
 {
+    using namespace starlib_stdint;
+    using namespace starlib;
+
     struct linked_set
     {
         Slang::ComPtr<slang::IComponentType> linked_components;
@@ -78,6 +81,10 @@ namespace stardraw
         switch (api)
         {
             case graphics_api::GL45: return 0;
+            case graphics_api::VK13: break;
+            case graphics_api::DX11: break;
+            case graphics_api::DX12: break;
+            case graphics_api::METAL: break;
         }
 
         return -1;

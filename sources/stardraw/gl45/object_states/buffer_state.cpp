@@ -9,7 +9,7 @@
 
 namespace stardraw::gl45
 {
-    buffer_state::buffer_state(const buffer_descriptor& desc, status& out_status)
+    buffer_state::buffer_state(const buffer& desc, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create buffer object");

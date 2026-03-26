@@ -2,7 +2,6 @@
 #include "stardraw/api/common.hpp"
 namespace stardraw
 {
-    using namespace starlib_stdint;
     enum class memory_transfer_status
     {
         READY, TRANSFERRING, COMPLETE
@@ -11,7 +10,7 @@ namespace stardraw
 
     struct buffer_memory_transfer_info
     {
-        enum class type : u8
+        enum class type : starlib_stdint::u8
         {
             UPLOAD_UNCHECKED, //Fastest upload, but not syncronization safe. Use if doing your own syncronization checks.
             UPLOAD_STREAMING, //Fast upload, allocates additional memory to stage uploads. Use for small repeated uploads.
@@ -19,8 +18,8 @@ namespace stardraw
         };
 
         object_identifier target;
-        u64 address;
-        u64 bytes;
+        starlib_stdint::u64 address;
+        starlib_stdint::u64 bytes;
         type transfer_type = type::UPLOAD_CHUNK;
     };
 
@@ -38,17 +37,17 @@ namespace stardraw
         };
 
         object_identifier target;
-        u32 x = 0;
-        u32 y = 0;
-        u32 z = 0;
+        starlib_stdint::u32 x = 0;
+        starlib_stdint::u32 y = 0;
+        starlib_stdint::u32 z = 0;
 
-        u32 width = 1;
-        u32 height = 1;
-        u32 depth = 1;
+        starlib_stdint::u32 width = 1;
+        starlib_stdint::u32 height = 1;
+        starlib_stdint::u32 depth = 1;
 
-        u32 mipmap_level = 0;
-        u32 layer = 0;
-        u32 layers = 1;
+        starlib_stdint::u32 mipmap_level = 0;
+        starlib_stdint::u32 layer = 0;
+        starlib_stdint::u32 layers = 1;
 
         //The data type that the pixels being uploaded are provided as.
         pixel_data_type data_type = pixel_data_type::U8;
@@ -64,7 +63,7 @@ namespace stardraw
 
         //Transfer the requested memory amount in or out of data. Blocks calling thread until transfer is completed (or an error status is generated)
         //Call from a different thread if you want to avoid blocking your render thread during the transfer
-        virtual status transfer(void* data) = 0;
+        virtual starlib::status transfer(void* data) = 0;
         virtual memory_transfer_status transfer_status() = 0;
     };
 

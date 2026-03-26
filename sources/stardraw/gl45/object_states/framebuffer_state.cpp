@@ -6,7 +6,7 @@
 
 namespace stardraw::gl45
 {
-    framebuffer_state::framebuffer_state(const framebuffer_descriptor& descriptor, status& out_status)
+    framebuffer_state::framebuffer_state(const framebuffer& descriptor, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create framebuffer object");

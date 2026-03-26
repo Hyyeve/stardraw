@@ -15,6 +15,8 @@ namespace stardraw::gl45
 {
     class window;
 
+    using namespace starlib;
+
     class render_context final : public stardraw::render_context
     {
     public:
@@ -36,35 +38,35 @@ namespace stardraw::gl45
         [[nodiscard]] status flush_texture_memory_transfer(memory_transfer_handle* handle) override;
     private:
         [[nodiscard]] status execute_command(const command* cmd);
-        [[nodiscard]] status execute_draw(const draw_command* cmd);
-        [[nodiscard]] status execute_draw_indexed(const draw_indexed_command* cmd);
-        [[nodiscard]] status execute_draw_indirect(const draw_indirect_command* cmd);
-        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect_command* cmd);
-        [[nodiscard]] status execute_buffer_copy(const buffer_copy_command* cmd);
-        [[nodiscard]] status execute_texture_copy(const texture_copy_command* cmd);
-        [[nodiscard]] status execute_draw_config(const draw_config_command* cmd);
-        [[nodiscard]] static status execute_config_blending(const blending_config_command* cmd);
-        [[nodiscard]] static status execute_config_stencil(const stencil_config_command* cmd);
-        [[nodiscard]] static status execute_config_scissor(const scissor_config_command* cmd);
-        [[nodiscard]] static status execute_config_face_cull(const face_cull_config_command* cmd);
-        [[nodiscard]] static status execute_config_depth_test(const depth_test_config_command* cmd);
-        [[nodiscard]] static status execute_config_depth_range(const depth_range_config_command* cmd);
-        [[nodiscard]] status execute_config_viewports(const configure_viewports_command* cmd) const;
-        [[nodiscard]] static status execute_clear_window(const clear_window_command* cmd);
-        [[nodiscard]] status execute_compute_dispatch(const compute_dispatch_command* cmd);
-        [[nodiscard]] status execute_compute_dispatch_indirect(const compute_dispatch_indirect_command* cmd);
-        [[nodiscard]] status execute_present(const present_command* cmd) const;
-        [[nodiscard]] status execute_shader_parameters_upload(const shader_config_command* cmd);
-        [[nodiscard]] status execute_signal(const signal_command* cmd);
+        [[nodiscard]] status execute_draw(const draw* cmd);
+        [[nodiscard]] status execute_draw_indexed(const draw_indexed* cmd);
+        [[nodiscard]] status execute_draw_indirect(const draw_indirect* cmd);
+        [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect* cmd);
+        [[nodiscard]] status execute_buffer_copy(const buffer_copy* cmd);
+        [[nodiscard]] status execute_texture_copy(const texture_copy* cmd);
+        [[nodiscard]] status execute_draw_config(const configure_draw* cmd);
+        [[nodiscard]] static status execute_config_blending(const configure_blending* cmd);
+        [[nodiscard]] static status execute_config_stencil(const configure_stencil* cmd);
+        [[nodiscard]] static status execute_config_scissor(const configure_scissor_test* cmd);
+        [[nodiscard]] static status execute_config_face_cull(const configure_face_cull* cmd);
+        [[nodiscard]] static status execute_config_depth_test(const configure_depth_test* cmd);
+        [[nodiscard]] static status execute_config_depth_range(const configure_depth_range* cmd);
+        [[nodiscard]] status execute_config_viewports(const comnfigure_viewports* cmd) const;
+        [[nodiscard]] static status execute_clear_window(const clear_window* cmd);
+        [[nodiscard]] status execute_compute_dispatch(const dispatch_compute* cmd);
+        [[nodiscard]] status execute_compute_dispatch_indirect(const dispatch_compute_indirect* cmd);
+        [[nodiscard]] status execute_present(const present* cmd) const;
+        [[nodiscard]] status execute_shader_parameters_upload(const configure_shader* cmd);
+        [[nodiscard]] status execute_signal(const signal* cmd);
 
         [[nodiscard]] status create_object(const descriptor* descriptor);
-        [[nodiscard]] status create_buffer_state(const buffer_descriptor* descriptor);
-        [[nodiscard]] status create_shader_state(const shader_descriptor* descriptor);
-        [[nodiscard]] status create_texture_state(const texture_descriptor* descriptor);
-        [[nodiscard]] status create_texture_sampler_state(const texture_sampler_descriptor* descriptor);
-        [[nodiscard]] status create_framebuffer_state(const framebuffer_descriptor* descriptor);
-        [[nodiscard]] status create_vertex_specification_state(const vertex_specification_descriptor* descriptor);
-        [[nodiscard]] status create_draw_specification_state(const draw_specification_descriptor* descriptor);
+        [[nodiscard]] status create_buffer_state(const buffer* descriptor);
+        [[nodiscard]] status create_shader_state(const shader* descriptor);
+        [[nodiscard]] status create_texture_state(const texture* descriptor);
+        [[nodiscard]] status create_texture_sampler_state(const sampler* descriptor);
+        [[nodiscard]] status create_framebuffer_state(const framebuffer* descriptor);
+        [[nodiscard]] status create_vertex_specification_state(const vertex_configuration* descriptor);
+        [[nodiscard]] status create_draw_specification_state(const draw_configuration* descriptor);
 
         [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source);
         [[nodiscard]] status bind_draw_specification_state(const object_identifier& source);

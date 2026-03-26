@@ -1,6 +1,6 @@
 #pragma once
-#include "../gl_headers.hpp"
 #include "../common.hpp"
+#include "../gl_headers.hpp"
 #include "stardraw/api/commands.hpp"
 namespace stardraw::gl45
 {
@@ -25,7 +25,7 @@ namespace stardraw::gl45
 
         [[nodiscard]] descriptor_type object_type() const override
         {
-            return descriptor_type::VERTEX_SPECIFICATION;
+            return descriptor_type::VERTEX_CONFIGURATION;
         }
 
         std::vector<vertex_buffer_binding> vertex_buffers;

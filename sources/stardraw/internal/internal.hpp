@@ -14,6 +14,8 @@ struct std::hash<stardraw::shader_parameter_location>
 
 namespace stardraw
 {
+    using namespace starlib_stdint;
+
     struct binding_location_info
     {
         i64 set;

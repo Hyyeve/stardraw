@@ -21,7 +21,7 @@ namespace stardraw::gl45
         return true;
     }
 
-    texture_state::texture_state(const texture_descriptor& desc, status& out_status)
+    texture_state::texture_state(const texture& desc, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create texture object");
@@ -95,7 +95,7 @@ namespace stardraw::gl45
         out_status = set_sampling_config(sampling_config, is_texture_data_type_integer(desc.format.data_type));
     }
 
-    texture_state::texture_state(const texture_state* original, const texture_descriptor& desc, status& out_status)
+    texture_state::texture_state(const texture_state* original, const texture& desc, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create texture object");
@@ -297,7 +297,7 @@ namespace stardraw::gl45
         }
     }
 
-    status texture_state::initalize_and_validate_texture_descriptor(const texture_descriptor& desc)
+    status texture_state::initalize_and_validate_texture_descriptor(const texture& desc)
     {
         ZoneScoped;
         num_texture_mipmap_levels = desc.format.mipmap_levels;
@@ -494,7 +494,7 @@ namespace stardraw::gl45
         return std::ranges::contains(*set_ptr, view_target);
     }
 
-    status texture_state::is_view_compatible(const texture_descriptor& view_descriptor) const
+    status texture_state::is_view_compatible(const texture& view_descriptor) const
     {
         ZoneScoped;
         const u32 min_view_mipmap = view_descriptor.format.view_texture_base_mipmap;

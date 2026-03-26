@@ -27,7 +27,7 @@ namespace stardraw::gl45
             GLbitfield read_barriers = 0;
         };
 
-        explicit shader_state(const shader_descriptor& desc, status& out_status);
+        explicit shader_state(const shader& desc, status& out_status);
         ~shader_state() override;
 
         [[nodiscard]] bool is_valid() const;

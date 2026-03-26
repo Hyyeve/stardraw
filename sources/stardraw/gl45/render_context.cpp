@@ -146,33 +146,36 @@ namespace stardraw::gl45
             return {status_type::UNEXPECTED, "Null command"};
         }
 
-        const command_type type = cmd->type();
+        const command_type type = cmd->get_type();
         switch (type)
         {
-            case command_type::DRAW: return execute_draw(dynamic_cast<const draw_command*>(cmd));
-            case command_type::DRAW_INDEXED: return execute_draw_indexed(dynamic_cast<const draw_indexed_command*>(cmd));
-            case command_type::DRAW_INDIRECT: return execute_draw_indirect(dynamic_cast<const draw_indirect_command*>(cmd));
-            case command_type::DRAW_INDEXED_INDIRECT: return execute_draw_indexed_indirect(dynamic_cast<const draw_indexed_indirect_command*>(cmd));
+            case command_type::DRAW: return execute_draw(dynamic_cast<const draw*>(cmd));
+            case command_type::DRAW_INDEXED: return execute_draw_indexed(dynamic_cast<const draw_indexed*>(cmd));
+            case command_type::DRAW_INDIRECT: return execute_draw_indirect(dynamic_cast<const draw_indirect*>(cmd));
+            case command_type::DRAW_INDEXED_INDIRECT: return execute_draw_indexed_indirect(dynamic_cast<const draw_indexed_indirect*>(cmd));
 
-            case command_type::CONFIG_DRAW: return execute_draw_config(dynamic_cast<const draw_config_command*>(cmd));
-            case command_type::CONFIG_BLENDING: return execute_config_blending(dynamic_cast<const blending_config_command*>(cmd));
-            case command_type::CONFIG_STENCIL: return execute_config_stencil(dynamic_cast<const stencil_config_command*>(cmd));
-            case command_type::CONFIG_SCISSOR: return execute_config_scissor(dynamic_cast<const scissor_config_command*>(cmd));
-            case command_type::CONFIG_FACE_CULL: return execute_config_face_cull(dynamic_cast<const face_cull_config_command*>(cmd));
-            case command_type::CONFIG_DEPTH_TEST: return execute_config_depth_test(dynamic_cast<const depth_test_config_command*>(cmd));
-            case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const depth_range_config_command*>(cmd));
+            case command_type::CONFIG_DRAW: return execute_draw_config(dynamic_cast<const configure_draw*>(cmd));
+            case command_type::CONFIG_BLENDING: return execute_config_blending(dynamic_cast<const configure_blending*>(cmd));
+            case command_type::CONFIG_STENCIL: return execute_config_stencil(dynamic_cast<const configure_stencil*>(cmd));
+            case command_type::CONFIG_SCISSOR: return execute_config_scissor(dynamic_cast<const configure_scissor_test*>(cmd));
+            case command_type::CONFIG_FACE_CULL: return execute_config_face_cull(dynamic_cast<const configure_face_cull*>(cmd));
+            case command_type::CONFIG_DEPTH_TEST: return execute_config_depth_test(dynamic_cast<const configure_depth_test*>(cmd));
+            case command_type::CONFIG_DEPTH_RANGE: return execute_config_depth_range(dynamic_cast<const configure_depth_range*>(cmd));
 
-            case command_type::BUFFER_COPY: return execute_buffer_copy(dynamic_cast<const buffer_copy_command*>(cmd));
-            case command_type::TEXTURE_COPY: return execute_texture_copy(dynamic_cast<const texture_copy_command*>(cmd));
+            case command_type::BUFFER_COPY: return execute_buffer_copy(dynamic_cast<const buffer_copy*>(cmd));
+            case command_type::TEXTURE_COPY: return execute_texture_copy(dynamic_cast<const texture_copy*>(cmd));
 
-            case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window_command*>(cmd));
-            case command_type::CLEAR_BUFFER: return status_type::UNIMPLEMENTED; //TODO
-            case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const shader_config_command*>(cmd));
-            case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal_command*>(cmd));
-            case command_type::PRESENT: return execute_present(dynamic_cast<const present_command*>(cmd));
-            case command_type::COMPUTE_DISPATCH: return execute_compute_dispatch(dynamic_cast<const compute_dispatch_command*>(cmd));
-            case command_type::COMPUTE_DISPATCH_INDIRECT: return execute_compute_dispatch_indirect(dynamic_cast<const compute_dispatch_indirect_command*>(cmd));
-            case command_type::CONFIG_VIEWPORTS: return execute_config_viewports(dynamic_cast<const configure_viewports_command*>(cmd));
+            case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window*>(cmd));
+            case command_type::CLEAR_FRAMEBUFFER: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::CLEAR_TEXTURE: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const configure_shader*>(cmd));
+            case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal*>(cmd));
+            case command_type::PRESENT: return execute_present(dynamic_cast<const present*>(cmd));
+            case command_type::COMPUTE_DISPATCH: return execute_compute_dispatch(dynamic_cast<const dispatch_compute*>(cmd));
+            case command_type::COMPUTE_DISPATCH_INDIRECT: return execute_compute_dispatch_indirect(dynamic_cast<const dispatch_compute_indirect*>(cmd));
+            case command_type::CONFIG_VIEWPORTS: return execute_config_viewports(dynamic_cast<const comnfigure_viewports*>(cmd));
+            case command_type::CONFIG_FRAMEBUFFER: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::FRAMEBUFFER_COPY: return status_type::UNIMPLEMENTED; //TODO
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};
@@ -181,16 +184,16 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::create_object(const descriptor* descriptor)
     {
         ZoneScoped;
-        const descriptor_type type = descriptor->type();
+        const descriptor_type type = descriptor->get_type();
         switch (type)
         {
-            case descriptor_type::BUFFER: return create_buffer_state(dynamic_cast<const buffer_descriptor*>(descriptor));
-            case descriptor_type::SHADER: return create_shader_state(dynamic_cast<const shader_descriptor*>(descriptor));
-            case descriptor_type::VERTEX_SPECIFICATION: return create_vertex_specification_state(dynamic_cast<const vertex_specification_descriptor*>(descriptor));
-            case descriptor_type::DRAW_SPECIFICATION: return create_draw_specification_state(dynamic_cast<const draw_specification_descriptor*>(descriptor));
-            case descriptor_type::TEXTURE: return create_texture_state(dynamic_cast<const texture_descriptor*>(descriptor));
-            case descriptor_type::TEXTURE_SAMPLER: return create_texture_sampler_state(dynamic_cast<const texture_sampler_descriptor*>(descriptor));
-            case descriptor_type::FRAMEBUFFER: return create_framebuffer_state(dynamic_cast<const framebuffer_descriptor*>(descriptor));
+            case descriptor_type::BUFFER: return create_buffer_state(dynamic_cast<const buffer*>(descriptor));
+            case descriptor_type::SHADER: return create_shader_state(dynamic_cast<const shader*>(descriptor));
+            case descriptor_type::VERTEX_CONFIGURATION: return create_vertex_specification_state(dynamic_cast<const vertex_configuration*>(descriptor));
+            case descriptor_type::DRAW_CONFIGURATION: return create_draw_specification_state(dynamic_cast<const draw_configuration*>(descriptor));
+            case descriptor_type::TEXTURE: return create_texture_state(dynamic_cast<const texture*>(descriptor));
+            case descriptor_type::SAMPLER: return create_texture_sampler_state(dynamic_cast<const sampler*>(descriptor));
+            case descriptor_type::FRAMEBUFFER: return create_framebuffer_state(dynamic_cast<const framebuffer*>(descriptor));
         }
         return status_type::UNIMPLEMENTED;
     }
@@ -282,7 +285,7 @@ namespace stardraw::gl45
 
     status render_context::find_texture_sampler_state(const object_identifier& identifier, texture_sampler_state** out_state)
     {
-        *out_state = find_object_state<texture_sampler_state, descriptor_type::TEXTURE_SAMPLER>(identifier);
+        *out_state = find_object_state<texture_sampler_state, descriptor_type::SAMPLER>(identifier);
         if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No sampler state with name '{0}' exists in context", identifier.name)};
         if (!(*out_state)->is_valid()) return {status_type::INVALID, std::format("Sampler state object '{0}' is in an invalid state", identifier.name)};
         return status_type::SUCCESS;
@@ -297,14 +300,14 @@ namespace stardraw::gl45
     }
 
     status render_context::find_vertex_specification_state(const object_identifier& identifier, vertex_specification_state** out_state) {
-        *out_state = find_object_state<vertex_specification_state, descriptor_type::VERTEX_SPECIFICATION>(identifier);
+        *out_state = find_object_state<vertex_specification_state, descriptor_type::VERTEX_CONFIGURATION>(identifier);
         if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No vertex specification with name '{0}' exists in context", identifier.name)};
         if (!(*out_state)->is_valid()) return {status_type::INVALID, std::format("Vertex specification object '{0}' is in an invalid state", identifier.name)};
         return status_type::SUCCESS;
     }
 
     status render_context::find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state) {
-        *out_state = find_object_state<draw_specification_state, descriptor_type::DRAW_SPECIFICATION>(identifier);
+        *out_state = find_object_state<draw_specification_state, descriptor_type::DRAW_CONFIGURATION>(identifier);
         if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No draw specification with name '{0}' exists in context", identifier.name)};
         return status_type::SUCCESS;
     }

@@ -6,8 +6,6 @@
 
 namespace stardraw
 {
-    using namespace starlib_stdint;
-
     struct object_identifier
     {
         object_identifier() : object_identifier("???") {}
@@ -18,7 +16,7 @@ namespace stardraw
 
         bool operator==(const object_identifier&) const = default;
 
-        u64 hash;
+        starlib_stdint::u64 hash;
         std::string name;
     };
 }

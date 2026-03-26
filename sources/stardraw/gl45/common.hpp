@@ -6,6 +6,9 @@
 
 namespace stardraw::gl45
 {
+    using namespace starlib_stdint;
+    using namespace starlib;
+
     #pragma pack(push, 1)
     struct draw_arrays_indirect_params
     {

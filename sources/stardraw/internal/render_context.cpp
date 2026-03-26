@@ -2,6 +2,8 @@
 
 namespace stardraw
 {
+    using namespace starlib;
+
     status render_context::create(const render_context_config& info, render_context*& out_ptr)
     {
         if (out_ptr == nullptr) return {status_type::INVALID, "Null out pointer passed to render context create"};

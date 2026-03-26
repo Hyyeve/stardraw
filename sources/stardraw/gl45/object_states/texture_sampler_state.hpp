@@ -7,7 +7,7 @@ namespace stardraw::gl45
     class texture_sampler_state final : public gl45::object_state
     {
     public:
-        explicit texture_sampler_state(const texture_sampler_descriptor& desc, status& out_status);
+        explicit texture_sampler_state(const sampler& desc, status& out_status);
         ~texture_sampler_state() override;
 
         [[nodiscard]] bool is_valid() const;

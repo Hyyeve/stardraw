@@ -11,7 +11,7 @@
 
 namespace stardraw::gl45
 {
-    [[nodiscard]] status render_context::create_buffer_state(const buffer_descriptor* descriptor)
+    [[nodiscard]] status render_context::create_buffer_state(const buffer* descriptor)
     {
         ZoneScoped;
         status create_status = status_type::SUCCESS;
@@ -25,7 +25,7 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), buffer);
     }
 
-    status render_context::create_shader_state(const shader_descriptor* descriptor)
+    status render_context::create_shader_state(const shader* descriptor)
     {
         ZoneScoped;
         status shader_create_status = status_type::SUCCESS;
@@ -39,7 +39,7 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), shader);
     }
 
-    status render_context::create_texture_state(const texture_descriptor* descriptor)
+    status render_context::create_texture_state(const texture* descriptor)
     {
         ZoneScoped;
         status texture_create_status = status_type::SUCCESS;
@@ -67,7 +67,7 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), texture);
     }
 
-    status render_context::create_texture_sampler_state(const texture_sampler_descriptor* descriptor)
+    status render_context::create_texture_sampler_state(const sampler* descriptor)
     {
         ZoneScoped;
         status create_status = status_type::SUCCESS;
@@ -100,7 +100,7 @@ namespace stardraw::gl45
     }
 
 
-    status render_context::create_framebuffer_state(const framebuffer_descriptor* descriptor)
+    status render_context::create_framebuffer_state(const framebuffer* descriptor)
     {
         ZoneScoped;
 
@@ -206,7 +206,7 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), fbuff_state);
     }
 
-    status render_context::create_vertex_specification_state(const vertex_specification_descriptor* descriptor)
+    status render_context::create_vertex_specification_state(const vertex_configuration* descriptor)
     {
         ZoneScoped;
         vertex_specification_state* vertex_spec = new vertex_specification_state();
@@ -315,7 +315,7 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), vertex_spec);
     }
 
-    status render_context::create_draw_specification_state(const draw_specification_descriptor* descriptor)
+    status render_context::create_draw_specification_state(const draw_configuration* descriptor)
     {
         ZoneScoped;
         vertex_specification_state* vertex_spec;

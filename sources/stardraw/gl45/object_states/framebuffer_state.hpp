@@ -7,7 +7,7 @@ namespace stardraw::gl45
     class framebuffer_state final : public object_state
     {
     public:
-        explicit framebuffer_state(const framebuffer_descriptor& descriptor, status& out_status);
+        explicit framebuffer_state(const framebuffer& descriptor, status& out_status);
         ~framebuffer_state() override;
         [[nodiscard]] status check_complete();
         [[nodiscard]] bool is_valid() const;

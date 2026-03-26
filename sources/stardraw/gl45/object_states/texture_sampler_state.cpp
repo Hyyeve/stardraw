@@ -17,7 +17,7 @@ namespace stardraw::gl45 {
         return true;
     }
 
-    texture_sampler_state::texture_sampler_state(const texture_sampler_descriptor& desc, status& out_status)
+    texture_sampler_state::texture_sampler_state(const sampler& desc, status& out_status)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create texture sampler state");
@@ -124,7 +124,7 @@ namespace stardraw::gl45 {
 
     descriptor_type texture_sampler_state::object_type() const
     {
-        return descriptor_type::TEXTURE_SAMPLER;
+        return descriptor_type::SAMPLER;
     }
 
     status texture_sampler_state::bind(const u32 slot) const

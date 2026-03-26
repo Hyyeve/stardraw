@@ -7,7 +7,7 @@ namespace stardraw::gl45
     class buffer_state final : public object_state
     {
     public:
-        explicit buffer_state(const buffer_descriptor& desc, status& out_status);
+        explicit buffer_state(const buffer& desc, status& out_status);
         ~buffer_state() override;
 
         [[nodiscard]] descriptor_type object_type() const override;

@@ -1,10 +1,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
-#include "../../generated/win64-debug/_deps/tracy-src/public/tracy/Tracy.hpp"
-#include "../../generated/win64-debug/_deps/tracy-src/public/tracy/TracyOpenGL.hpp"
 #include "../starwin/api/window.hpp"
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
@@ -90,29 +87,29 @@ int main()
     const u32 param_buffer_size = frag_shader->buffer_size("structured");
 
     status object_state_status = ctx->create_objects({
-            buffer_descriptor("vertices", 300),
-            buffer_descriptor("uniforms", 300),
-            buffer_descriptor("param-buffer", param_buffer_size * 2),
-            texture_descriptor("tex", texture_format::create_2d(2, 2), texture_sampling_configs::nearest),
-            texture_sampler_descriptor("tex_sampler", texture_sampling_configs::linear, false),
-            vertex_specification_descriptor(
+            buffer("vertices", 300),
+            buffer("uniforms", 300),
+            buffer("param-buffer", param_buffer_size * 2),
+            texture("tex", texture_format::create_2d(2, 2), texture_sampling_configs::nearest),
+            sampler("tex_sampler", texture_sampling_configs::linear, false),
+            vertex_configuration(
                 "vertex-spec",
                 {
                     {"vertices", vertex_data_type::FLOAT3_F32},
                     {"vertices", vertex_data_type::FLOAT4_F32},
                 }
             ),
-            shader_descriptor("shader", shader_stages),
-            draw_specification_descriptor("draw-spec", "vertex-spec", "shader"),
+            shader("shader", shader_stages),
+            draw_configuration("draw-spec", "vertex-spec", "shader"),
         }
     );
 
     status made_commands = ctx->create_command_buffer(
         "main",
         {
-            clear_window_command(attachment_components::ALL, {0., 0., 0., 0.}),
-            draw_command(draw_mode::TRIANGLES, 3),
-            present_command(),
+            clear_window(attachment_components::ALL),
+            draw(draw_mode::TRIANGLES, 3),
+            present(),
         }
     );
 
@@ -130,8 +127,8 @@ int main()
     status tex_transfer_status = ctx->transfer_texture_memory_immediate({"tex", 0, 0, 0, 2, 2}, texture_bytes.data());
 
     status init_status = ctx->execute_temp_command_buffer({
-        blending_config_command(blending_configs::ALPHA),
-        shader_config_command(
+        configure_blending(blending_configs::ALPHA),
+        configure_shader(
             "shader",
             {
                 {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
@@ -139,7 +136,7 @@ int main()
                 {frag_shader->locate("texture"), shader_parameter_value::texture("tex")},
                 {frag_shader->locate("texture"), shader_parameter_value::sampler("tex_sampler")}
             }),
-        draw_config_command("draw-spec"),
+        configure_draw("draw-spec"),
     });
 
     while (true)
