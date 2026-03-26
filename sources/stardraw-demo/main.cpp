@@ -2,12 +2,15 @@
 #include <filesystem>
 #include <fstream>
 
-#include "../starwin/api/window.hpp"
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
 #include "starlib/general/random.hpp"
+#include "starwin/api/window.hpp"
+
 using namespace stardraw;
 using namespace starwin;
+using namespace starlib;
+using namespace starlib_stdint;
 
 shader_buffer_layout* uniforms_layout;
 shader_program* frag_shader;

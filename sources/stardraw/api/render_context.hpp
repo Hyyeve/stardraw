@@ -16,7 +16,6 @@ namespace stardraw
         SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
     };
 
-
     struct render_context_config
     {
         starlib::graphics_api api;

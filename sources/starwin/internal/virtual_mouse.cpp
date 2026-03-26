@@ -5,6 +5,7 @@
 
 namespace starwin
 {
+    using namespace starlib_stdint;
     using namespace glm;
 
     bool mouse_input::is_clicked(const u32 id)

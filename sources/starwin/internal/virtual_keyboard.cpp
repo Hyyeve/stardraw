@@ -7,6 +7,7 @@
 
 namespace starwin
 {
+    using namespace starlib_stdint;
     void virtual_keyboard_input::type_character(const u32 codepoint)
     {
         current_text += starlib::stringify_utf32(codepoint);

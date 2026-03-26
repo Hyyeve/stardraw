@@ -7,6 +7,7 @@
 namespace starwin
 {
     using namespace starlib;
+    using namespace starlib_stdint;
 
     class glfw_window_input : public window_input
     {
