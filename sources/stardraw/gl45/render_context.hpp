@@ -70,6 +70,7 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_draw_specification_state(const object_identifier& source);
         [[nodiscard]] status bind_buffer(const object_identifier& source, GLenum target);
         [[nodiscard]] status bind_shader(const object_identifier& source);
+        [[nodiscard]] status bind_shader_sampler_parameter(const shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
         [[nodiscard]] status bind_shader_texture_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value, bool as_image);
         [[nodiscard]] status bind_shader_buffer_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value);
         [[nodiscard]] status bind_shader_data_parameter(shader_state* shader, const shader_parameter_location& location, shader_parameter_value& value);

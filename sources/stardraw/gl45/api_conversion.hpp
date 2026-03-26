@@ -93,8 +93,6 @@ namespace stardraw::gl45
     {
         switch (type)
         {
-            case texture_data_type::DEPTH_U32_NORM_STENCIL_U8:
-            case texture_data_type::DEPTH_U24_NORM_STENCIL_U8:
             case texture_data_type::STENCIL_U8:
             case texture_data_type::R_U8:
             case texture_data_type::RG_U8:
@@ -371,17 +369,17 @@ namespace stardraw::gl45
         }
     }
 
-    inline GLbitfield to_gl_clear_mask(const clear_window_mode& mode)
+    inline GLbitfield to_gl_clear_mask(const attachment_components& mode)
     {
         switch (mode)
         {
-            case clear_window_mode::COLOR: return GL_COLOR_BUFFER_BIT;
-            case clear_window_mode::DEPTH: return GL_DEPTH_BUFFER_BIT;
-            case clear_window_mode::STENCIL: return GL_STENCIL_BUFFER_BIT;
-            case clear_window_mode::COLOR_AND_DEPTH: return GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
-            case clear_window_mode::COLOR_AND_STENCIL: return GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-            case clear_window_mode::DEPTH_AND_STENCIL: return GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-            case clear_window_mode::ALL: return GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+            case attachment_components::COLOR: return GL_COLOR_BUFFER_BIT;
+            case attachment_components::DEPTH: return GL_DEPTH_BUFFER_BIT;
+            case attachment_components::STENCIL: return GL_STENCIL_BUFFER_BIT;
+            case attachment_components::COLOR_AND_DEPTH: return GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+            case attachment_components::COLOR_AND_STENCIL: return GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+            case attachment_components::DEPTH_AND_STENCIL: return GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+            case attachment_components::ALL: return GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
         }
         return -1;
     }

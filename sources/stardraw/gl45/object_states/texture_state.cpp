@@ -8,11 +8,11 @@
 
 namespace stardraw::gl45
 {
-    bool is_sampling_config_valid_for_type(const texture_data_type type, const texture_sampling_conifg& sampling_config)
+    static bool is_sampling_config_valid_for_type(const texture_data_type type, const texture_sampling_conifg& sampling_config)
     {
         ZoneScoped;
-        const bool is_integer_type = is_texture_data_type_integer(type);
-        if (!is_integer_type) return true;
+        const bool must_nearest_sample = is_texture_data_type_integer(type) || does_texture_data_type_have_stencil(type);
+        if (!must_nearest_sample) return true;
 
         if (sampling_config.upscale_filter != texture_filtering_mode::NEAREST) return false;
         if (sampling_config.downscale_filter != texture_filtering_mode::NEAREST) return false;
@@ -373,9 +373,15 @@ namespace stardraw::gl45
                     glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
                     break;
                 }
-                case texture_border_color::TRANSPARENT:
+                case texture_border_color::TRANSPARENT_BLACK:
                 {
                     constexpr std::array col = {0, 0, 0, 0};
+                    glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::TRANSPARENT_WHITE:
+                {
+                    constexpr std::array col = {1, 1, 1, 0};
                     glTextureParameteriv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
                     break;
                 }
@@ -397,9 +403,15 @@ namespace stardraw::gl45
                     glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
                     break;
                 }
-                case texture_border_color::TRANSPARENT:
+                case texture_border_color::TRANSPARENT_BLACK:
                 {
                     constexpr std::array col = {0.f, 0.f, 0.f, 0.f};
+                    glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
+                    break;
+                }
+                case texture_border_color::TRANSPARENT_WHITE:
+                {
+                    constexpr std::array col = {1.0f, 1.0f, 1.0f, 0.0f};
                     glTextureParameterfv(texture_id, GL_TEXTURE_BORDER_COLOR, col.data());
                     break;
                 }

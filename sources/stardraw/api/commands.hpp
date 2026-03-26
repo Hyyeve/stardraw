@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string_view>
 
 #include "common.hpp"
@@ -14,9 +15,9 @@ namespace stardraw
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
         CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW,
-        CONFIG_VIEWPORTS,
-        BUFFER_COPY, TEXTURE_COPY,
-        CLEAR_WINDOW, CLEAR_BUFFER,
+        CONFIG_VIEWPORTS, CONFIG_FRAMEBUFFER,
+        BUFFER_COPY, TEXTURE_COPY, FRAMEBUFFER_COPY,
+        CLEAR_WINDOW, CLEAR_FRAMEBUFFER, CLEAR_TEXTURE,
         CONFIG_SHADER, COMPUTE_DISPATCH, COMPUTE_DISPATCH_INDIRECT,
         SIGNAL,
         PRESENT,
@@ -374,42 +375,89 @@ namespace stardraw
         u64 bytes;
     };
 
-    enum class clear_window_mode
+    ///Stores a set of 4 values for clearing RGBA channels.
+    ///The values will be assumed to be in the correct format for the format of the buffer being cleared (float, int, or uint)
+    struct clear_channel_values
+    {
+        constexpr clear_channel_values(const f32 r, const f32 g, const f32 b, const f32 a) : data({std::bit_cast<const unsigned int>(r), std::bit_cast<const unsigned int>(g), std::bit_cast<const unsigned int>(b), std::bit_cast<const unsigned int>(a)}) {}
+        constexpr clear_channel_values(const i32 r, const i32 g, const i32 b, const i32 a) : data({std::bit_cast<const unsigned int>(r), std::bit_cast<const unsigned int>(g), std::bit_cast<const unsigned int>(b), std::bit_cast<const unsigned int>(a)}) {}
+        constexpr clear_channel_values(const u32 r, const u32 g, const u32 b, const u32 a) : data({r, g, b, a}) {}
+        std::array<u32, 4> data;
+    };
+
+    struct clear_info
+    {
+        clear_channel_values channels;
+
+        f64 depth = 1.0f;
+        u32 stencil = 0;
+    };
+
+    namespace clear_info_defaults
+    {
+        constexpr clear_info FLOAT_DEFAULT = {.channels = {0.0f, 0.0f, 0.0f, 0.0f}};
+        constexpr clear_info INT_DEFAULT = {.channels = {0, 0, 0, 0}};
+        constexpr clear_info UINT_DEFAULT = {.channels = {0u, 0u, 0u, 0u}};
+    }
+
+    enum class attachment_components
     {
         COLOR, DEPTH, STENCIL,
         COLOR_AND_DEPTH, COLOR_AND_STENCIL, DEPTH_AND_STENCIL,
         ALL
     };
 
-    struct clear_values_config
-    {
-        f32 color_r = 0.0f;
-        f32 color_g = 0.0f;
-        f32 color_b = 0.0f;
-        f32 color_a = 1.0f;
-
-        f64 depth = 1.0f;
-
-        i32 stencil = 0;
-    };
-
-    namespace clear_values_configs
-    {
-        constexpr clear_values_config DEFAULT = {};
-    }
-
-    ///Clears the window/framebuffer to the given values. This command is NOT for clearing framebuffers.
+    ///Clears the window buffer to the given values.
+    ///Window buffers always use floating point clear values.
     struct clear_window_command final : command
     {
-        explicit clear_window_command(const clear_window_mode mode, const clear_values_config& config = clear_values_configs::DEFAULT) : mode(mode), config(config) {}
+        explicit clear_window_command(const attachment_components components = attachment_components::ALL, const clear_info& config = clear_info_defaults::FLOAT_DEFAULT) : attachment_components(components), config(config) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::CLEAR_WINDOW;
         }
 
-        clear_window_mode mode;
-        clear_values_config config;
+        attachment_components attachment_components;
+        clear_info config;
+    };
+
+    ///Clears a texture to the given values.
+    struct clear_texture_command final : command
+    {
+        explicit clear_texture_command(const std::string_view& texture, const attachment_components target = attachment_components::ALL, const clear_info& config = clear_info_defaults::FLOAT_DEFAULT) : texture(texture), target(target), config(config) {}
+
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::CLEAR_TEXTURE;
+        }
+
+        object_identifier texture;
+        attachment_components target;
+        clear_info config;
+    };
+
+    struct framebuffer_color_clear_info
+    {
+        u32 attachment_index = 0;
+        clear_info values = clear_info_defaults::FLOAT_DEFAULT;
+    };
+
+    ///Clears some number of framebuffer attachments to the given values.
+    struct clear_framebuffer_command final : command
+    {
+        explicit clear_framebuffer_command(const std::string_view& framebuffer, const std::initializer_list<framebuffer_color_clear_info> color_clears, const std::optional<clear_info>& depth_clear = std::nullopt, const std::optional<clear_info>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+        explicit clear_framebuffer_command(const std::string_view& framebuffer, const std::vector<framebuffer_color_clear_info>& color_clears, const std::optional<clear_info>& depth_clear = std::nullopt, const std::optional<clear_info>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::CLEAR_FRAMEBUFFER;
+        }
+
+        object_identifier framebuffer;
+        std::vector<framebuffer_color_clear_info> color_clears;
+        std::optional<clear_info> depth_clear = std::nullopt;
+        std::optional<clear_info> stencil_clear = std::nullopt;
     };
 
     struct shader_parameter
@@ -546,5 +594,48 @@ namespace stardraw
 
         u32 first_viewport_index;
         std::vector<viewport_config> viewports;
+    };
+
+    ///Configures the active framebuffer
+    struct configure_framebuffer_command final : command
+    {
+        explicit configure_framebuffer_command(const std::string& framebuffer = "") : framebuffer(framebuffer.empty() ? std::nullopt : std::optional(framebuffer)) {}
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::CONFIG_FRAMEBUFFER;
+        }
+
+        std::optional<object_identifier> framebuffer;
+    };
+
+    enum class framebuffer_copy_filtering
+    {
+        NEAREST, LINEAR
+    };
+
+    ///Defines the source and destination areas to copy between framebuffers,
+    ///and the interpolation to use if the areas are not the same size.
+    ///NOTE: It is invalid to use linear interpolation when copying depth/stencil components.
+    struct framebuffer_copy_info
+    {
+        u32 read_x;
+        u32 read_y;
+        u32 read_width;
+        u32 read_height;
+
+        u32 write_x;
+        u32 write_y;
+        u32 write_width;
+        u32 write_height;
+
+        framebuffer_copy_filtering filtering = framebuffer_copy_filtering::NEAREST;
+        attachment_components components = attachment_components::ALL;
+    };
+
+    struct framebuffer_copy_command final : command
+    {
+
+        object_identifier read_framebuffer;
+        object_identifier write_framebuffer;
     };
 }

@@ -74,6 +74,11 @@ namespace stardraw::gl45
                     result_status = bind_shader_texture_parameter(shader, location, value, false);
                     break;
                 }
+                case shader_parameter_value::value_type::SAMPLER_REFERENCE:
+                {
+                    result_status = bind_shader_sampler_parameter(shader, location, value);
+                    break;
+                }
                 case shader_parameter_value::value_type::IMAGE_REFERENCE:
                 {
                     result_status = bind_shader_texture_parameter(shader, location, value, true);
@@ -90,6 +95,25 @@ namespace stardraw::gl45
         }
 
         return status_type::SUCCESS;
+    }
+
+    status render_context::bind_shader_sampler_parameter(const shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value)
+    {
+        ZoneScoped;
+        const binding_location_info binding_info = vk_binding_for_location(location);
+        const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
+
+        //To bind a sampler, we make sure the location is *explicitly* pointed at the texture variable, not something contained inside the texture.
+        if (binding_info.binding_type != location.offset_ptr)
+        {
+            return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a sampler bound to it!"};
+        }
+
+        texture_sampler_state* sampler;
+        status find_status = find_texture_sampler_state(value.opaque_reference, &sampler);
+        if (find_status.is_error()) return find_status;
+
+        return sampler->bind(actual_slot);
     }
 
     status render_context::bind_shader_texture_parameter(shader_state* shader, const shader_parameter_location& location, const shader_parameter_value& value, const bool as_image = false)
@@ -247,4 +271,5 @@ namespace stardraw::gl45
 
         return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
     }
+
 }

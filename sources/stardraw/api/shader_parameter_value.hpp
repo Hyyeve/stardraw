@@ -14,7 +14,7 @@ namespace stardraw
 
         enum class value_type : u8
         {
-            BOOL, FLOAT, DOUBLE, INT, UINT, FLOAT_MATRIX, DOUBLE_MATRIX, BUFFER_REFERENCE, TEXTURE_REFERENCE, IMAGE_REFERENCE,
+            BOOL, FLOAT, DOUBLE, INT, UINT, FLOAT_MATRIX, DOUBLE_MATRIX, BUFFER_REFERENCE, TEXTURE_REFERENCE, IMAGE_REFERENCE, SAMPLER_REFERENCE
         };
 
         enum class vector_size_type : u8
@@ -144,6 +144,18 @@ namespace stardraw
                 mipmap,
                 layer,
                 array
+            };
+        }
+
+        static shader_parameter_value sampler(const std::string& reference)
+        {
+            return shader_parameter_value {
+                value_type::SAMPLER_REFERENCE,
+                matrix_dimensions_type::_2x2,
+                vector_size_type::_1,
+                0,
+                {},
+                object_identifier(reference),
             };
         }
 

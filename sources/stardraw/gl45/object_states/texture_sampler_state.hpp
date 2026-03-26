@@ -12,6 +12,9 @@ namespace stardraw::gl45
 
         [[nodiscard]] bool is_valid() const;
         [[nodiscard]] descriptor_type object_type() const override;
+        [[nodiscard]] status bind(u32 slot) const;
+
+
     private:
         status set_sampling_config(const texture_sampling_conifg& config, const bool is_integer_type) const;
         GLuint gl_id;

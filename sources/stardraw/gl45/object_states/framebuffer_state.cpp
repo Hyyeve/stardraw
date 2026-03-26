@@ -92,22 +92,22 @@ namespace stardraw::gl45
         return gl_id != 0 && glIsFramebuffer(gl_id) && is_framebuffer_complete;
     }
 
-    status framebuffer_state::attach_color_texture(const framebuffer_attachment_info& info, const texture_state* texture_state, const u32 attachment_index) const
+    status framebuffer_state::attach_color_texture(const framebuffer_attachment_info& info, const texture_state* texture_state, const u32 attachment_index)
     {
         return attach_texture(info, GL_COLOR_ATTACHMENT0 + attachment_index, texture_state);
     }
 
-    status framebuffer_state::attach_depth_texture(const framebuffer_attachment_info& info, const texture_state* texture_state) const
+    status framebuffer_state::attach_depth_texture(const framebuffer_attachment_info& info, const texture_state* texture_state)
     {
         return attach_texture(info, GL_DEPTH_ATTACHMENT, texture_state);
     }
 
-    status framebuffer_state::attach_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state) const
+    status framebuffer_state::attach_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state)
     {
         return attach_texture(info, GL_STENCIL_ATTACHMENT, texture_state);
     }
 
-    status framebuffer_state::attach_depth_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state) const
+    status framebuffer_state::attach_depth_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state)
     {
         return attach_texture(info, GL_DEPTH_STENCIL_ATTACHMENT, texture_state);
     }
@@ -117,7 +117,7 @@ namespace stardraw::gl45
         return descriptor_type::FRAMEBUFFER;
     }
 
-    status framebuffer_state::attach_texture(const framebuffer_attachment_info& info, const GLenum attachment, const texture_state* texture_state) const
+    status framebuffer_state::attach_texture(const framebuffer_attachment_info& info, const GLenum attachment, const texture_state* texture_state)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Attach framebuffer texture");
@@ -130,6 +130,8 @@ namespace stardraw::gl45
         {
             glNamedFramebufferTextureLayer(gl_id, attachment, texture_state->gl_texture_id, info.mipmap_level, info.layer);
         }
+
+        attached_textures.push_back(texture_state->gl_texture_id);
 
         return status_type::SUCCESS;
     }

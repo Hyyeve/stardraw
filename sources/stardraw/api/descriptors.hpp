@@ -279,7 +279,8 @@ namespace stardraw
     {
         OPAUQE_BLACK, //0, 0, 0, 1
         OPAQUE_WHITE, //1, 1, 1, 1
-        TRANSPARENT, //0, 0, 0, 0
+        TRANSPARENT_BLACK, //0, 0, 0, 0
+        TRANSPARENT_WHITE, //1, 1, 1, 0
     };
 
     enum class texture_swizzle
@@ -300,10 +301,10 @@ namespace stardraw
         texture_filtering_mode downscale_filter = texture_filtering_mode::LINEAR;
         texture_filtering_mode upscale_filter = texture_filtering_mode::LINEAR;
 
-        texture_wrapping_mode wrapping_mode_x = texture_wrapping_mode::CLAMP;
-        texture_wrapping_mode wrapping_mode_y = texture_wrapping_mode::CLAMP;
-        texture_wrapping_mode wrapping_mode_z = texture_wrapping_mode::CLAMP;
-        texture_border_color border_color = texture_border_color::TRANSPARENT;
+        texture_wrapping_mode wrapping_mode_x = texture_wrapping_mode::REPEAT;
+        texture_wrapping_mode wrapping_mode_y = texture_wrapping_mode::REPEAT;
+        texture_wrapping_mode wrapping_mode_z = texture_wrapping_mode::REPEAT;
+        texture_border_color border_color = texture_border_color::TRANSPARENT_BLACK;
 
         //Anisotropy is not *strictly* supported in all implementations without extensions, but availablity is near universal.
         texture_anisotropy_level anisotropy_level = texture_anisotropy_level::NONE;

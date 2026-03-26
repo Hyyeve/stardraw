@@ -21,6 +21,7 @@ target_sources(stardraw PRIVATE
         gl45/object_states/texture_state.hpp gl45/object_states/texture_state.cpp
         gl45/object_states/vertex_specification_state.hpp gl45/object_states/vertex_specification_state.cpp
         gl45/object_states/texture_sampler_state.hpp gl45/object_states/texture_sampler_state.cpp
+        gl45/object_states/framebuffer_state.hpp gl45/object_states/framebuffer_state.cpp
 
         vk13/Device.hpp vk13/Device.cpp
         vk13/simple_window.hpp vk13/simple_window.cpp

@@ -94,6 +94,7 @@ int main()
             buffer_descriptor("uniforms", 300),
             buffer_descriptor("param-buffer", param_buffer_size * 2),
             texture_descriptor("tex", texture_format::create_2d(2, 2), texture_sampling_configs::nearest),
+            texture_sampler_descriptor("tex_sampler", texture_sampling_configs::linear, false),
             vertex_specification_descriptor(
                 "vertex-spec",
                 {
@@ -109,7 +110,7 @@ int main()
     status made_commands = ctx->create_command_buffer(
         "main",
         {
-            clear_window_command(clear_window_mode::ALL, {0., 0., 0., 0.}),
+            clear_window_command(attachment_components::ALL, {0., 0., 0., 0.}),
             draw_command(draw_mode::TRIANGLES, 3),
             present_command(),
         }
@@ -135,7 +136,8 @@ int main()
             {
                 {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
                 {frag_shader->locate("structured").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
-                {frag_shader->locate("texture"), shader_parameter_value::image("tex")}
+                {frag_shader->locate("texture"), shader_parameter_value::texture("tex")},
+                {frag_shader->locate("texture"), shader_parameter_value::sampler("tex_sampler")}
             }),
         draw_config_command("draw-spec"),
     });
