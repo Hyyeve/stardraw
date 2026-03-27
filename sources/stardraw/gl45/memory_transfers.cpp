@@ -100,4 +100,10 @@ namespace stardraw::gl45
 
         return texture->flush_upload(info, handle);
     }
+
+    status render_context::execute_aquire(const aquire* cmd) const
+    {
+        //Under OpenGL, there is no specific swapchain aquire calls, and aquiring frames is handled entirely by the window refresh.
+        return status_type::SUCCESS;
+    }
 }

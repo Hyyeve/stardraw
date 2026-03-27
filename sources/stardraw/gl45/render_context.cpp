@@ -146,7 +146,7 @@ namespace stardraw::gl45
             return {status_type::UNEXPECTED, "Null command"};
         }
 
-        const command_type type = cmd->get_type();
+        const command_type type = cmd->type();
         switch (type)
         {
             case command_type::DRAW: return execute_draw(dynamic_cast<const draw*>(cmd));
@@ -154,7 +154,7 @@ namespace stardraw::gl45
             case command_type::DRAW_INDIRECT: return execute_draw_indirect(dynamic_cast<const draw_indirect*>(cmd));
             case command_type::DRAW_INDEXED_INDIRECT: return execute_draw_indexed_indirect(dynamic_cast<const draw_indexed_indirect*>(cmd));
 
-            case command_type::CONFIG_DRAW: return execute_draw_config(dynamic_cast<const configure_draw*>(cmd));
+            case command_type::CONFIG_DRAW: return execute_config_draw(dynamic_cast<const configure_draw*>(cmd));
             case command_type::CONFIG_BLENDING: return execute_config_blending(dynamic_cast<const configure_blending*>(cmd));
             case command_type::CONFIG_STENCIL: return execute_config_stencil(dynamic_cast<const configure_stencil*>(cmd));
             case command_type::CONFIG_SCISSOR: return execute_config_scissor(dynamic_cast<const configure_scissor_test*>(cmd));
@@ -166,16 +166,16 @@ namespace stardraw::gl45
             case command_type::TEXTURE_COPY: return execute_texture_copy(dynamic_cast<const texture_copy*>(cmd));
 
             case command_type::CLEAR_WINDOW: return execute_clear_window(dynamic_cast<const clear_window*>(cmd));
-            case command_type::CLEAR_FRAMEBUFFER: return status_type::UNIMPLEMENTED; //TODO
-            case command_type::CLEAR_TEXTURE: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::CLEAR_FRAMEBUFFER: return execute_clear_framebuffer(dynamic_cast<const clear_framebuffer*>(cmd));
+            case command_type::CLEAR_TEXTURE: return execute_clear_texture(dynamic_cast<const clear_texture*>(cmd));
             case command_type::CONFIG_SHADER: return execute_shader_parameters_upload(dynamic_cast<const configure_shader*>(cmd));
             case command_type::SIGNAL: return execute_signal(dynamic_cast<const signal*>(cmd));
             case command_type::PRESENT: return execute_present(dynamic_cast<const present*>(cmd));
             case command_type::COMPUTE_DISPATCH: return execute_compute_dispatch(dynamic_cast<const dispatch_compute*>(cmd));
             case command_type::COMPUTE_DISPATCH_INDIRECT: return execute_compute_dispatch_indirect(dynamic_cast<const dispatch_compute_indirect*>(cmd));
             case command_type::CONFIG_VIEWPORTS: return execute_config_viewports(dynamic_cast<const comnfigure_viewports*>(cmd));
-            case command_type::CONFIG_FRAMEBUFFER: return status_type::UNIMPLEMENTED; //TODO
-            case command_type::FRAMEBUFFER_COPY: return status_type::UNIMPLEMENTED; //TODO
+            case command_type::FRAMEBUFFER_COPY: return execute_framebuffer_copy(dynamic_cast<const framebuffer_copy*>(cmd));
+            case command_type::AQUIRE: return execute_aquire(dynamic_cast<const aquire*>(cmd));
         }
 
         return {status_type::UNSUPPORTED, "Unsupported command"};
@@ -184,7 +184,7 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::create_object(const descriptor* descriptor)
     {
         ZoneScoped;
-        const descriptor_type type = descriptor->get_type();
+        const descriptor_type type = descriptor->type();
         switch (type)
         {
             case descriptor_type::BUFFER: return create_buffer_state(dynamic_cast<const buffer*>(descriptor));

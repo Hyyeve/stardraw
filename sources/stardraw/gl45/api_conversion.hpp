@@ -91,6 +91,33 @@ namespace stardraw::gl45
         return 0;
     }
 
+    inline bool is_integer_texture_data_type_signed(const texture_data_type type)
+    {
+        switch (type)
+        {
+            case texture_data_type::R_I8:
+            case texture_data_type::RG_I8:
+            case texture_data_type::RGB_I8:
+            case texture_data_type::RGBA_I8:
+            case texture_data_type::R_I16:
+            case texture_data_type::RG_I16:
+            case texture_data_type::RGB_I16:
+            case texture_data_type::RGBA_I16:
+            case texture_data_type::R_I32:
+            case texture_data_type::RG_I32:
+            case texture_data_type::RGB_I32:
+            case texture_data_type::RGBA_I32:
+            {
+                return true;
+            }
+
+            default:
+            {
+                return false;
+            }
+        }
+    }
+
     inline bool is_texture_data_type_integer(const texture_data_type type)
     {
         switch (type)
@@ -587,4 +614,32 @@ namespace stardraw::gl45
         }
         return {-1, -1, false, false};
     }
+
+    inline GLbitfield to_gl_attachment_bitfield(const attachment_components components)
+    {
+        switch (components)
+        {
+            case attachment_components::COLOR: return GL_COLOR_BUFFER_BIT;
+            case attachment_components::DEPTH: return GL_DEPTH_BUFFER_BIT;
+            case attachment_components::STENCIL: return GL_STENCIL_BUFFER_BIT;
+            case attachment_components::COLOR_AND_DEPTH: return GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+            case attachment_components::COLOR_AND_STENCIL: return GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT;
+            case attachment_components::DEPTH_AND_STENCIL: return GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+            case attachment_components::ALL: return GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT;
+        }
+
+        return -1;
+    };
+
+    inline GLenum to_gl_filter_mode(const framebuffer_copy_filtering filtering)
+    {
+        switch (filtering)
+        {
+            case framebuffer_copy_filtering::NEAREST: return GL_NEAREST;
+            case framebuffer_copy_filtering::LINEAR: return GL_LINEAR;
+        }
+
+        return -1;
+    }
+
 }

@@ -44,7 +44,8 @@ namespace stardraw::gl45
         [[nodiscard]] status execute_draw_indexed_indirect(const draw_indexed_indirect* cmd);
         [[nodiscard]] status execute_buffer_copy(const buffer_copy* cmd);
         [[nodiscard]] status execute_texture_copy(const texture_copy* cmd);
-        [[nodiscard]] status execute_draw_config(const configure_draw* cmd);
+        [[nodiscard]] status execute_framebuffer_copy(const framebuffer_copy* cmd);
+        [[nodiscard]] status execute_config_draw(const configure_draw* cmd);
         [[nodiscard]] static status execute_config_blending(const configure_blending* cmd);
         [[nodiscard]] static status execute_config_stencil(const configure_stencil* cmd);
         [[nodiscard]] static status execute_config_scissor(const configure_scissor_test* cmd);
@@ -53,9 +54,12 @@ namespace stardraw::gl45
         [[nodiscard]] static status execute_config_depth_range(const configure_depth_range* cmd);
         [[nodiscard]] status execute_config_viewports(const comnfigure_viewports* cmd) const;
         [[nodiscard]] static status execute_clear_window(const clear_window* cmd);
+        [[nodiscard]] status execute_clear_framebuffer(const clear_framebuffer* cmd);
+        [[nodiscard]] status execute_clear_texture(const clear_texture* cmd);
         [[nodiscard]] status execute_compute_dispatch(const dispatch_compute* cmd);
         [[nodiscard]] status execute_compute_dispatch_indirect(const dispatch_compute_indirect* cmd);
         [[nodiscard]] status execute_present(const present* cmd) const;
+        [[nodiscard]] status execute_aquire(const aquire* cmd) const;
         [[nodiscard]] status execute_shader_parameters_upload(const configure_shader* cmd);
         [[nodiscard]] status execute_signal(const signal* cmd);
 

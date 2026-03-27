@@ -110,6 +110,7 @@ int main()
     status made_commands = ctx->create_command_buffer(
         "main",
         {
+            aquire(),
             clear_window(attachment_components::ALL),
             draw(draw_mode::TRIANGLES, 3),
             present(),

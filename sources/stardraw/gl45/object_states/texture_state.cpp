@@ -545,8 +545,38 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    status texture_state::clear(const u32 mipmap_level, const clear_values& clear_values) const
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Clear texture mipmap");
+
+        if (mipmap_level >= num_texture_mipmap_levels)
+        {
+            return {status_type::RANGE_OVERFLOW, "Mipmap level out of the bounds of the texture"};
+        }
+
+        if (is_texture_data_type_integer(data_type))
+        {
+            if (is_integer_texture_data_type_signed(data_type))
+            {
+                glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_INT, clear_values.channels.data.data());
+            }
+            else
+            {
+                glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_UNSIGNED_INT, clear_values.channels.data.data());
+            }
+        }
+        else
+        {
+            glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_FLOAT, clear_values.channels.data.data());
+        }
+
+        return status_type::SUCCESS;
+    }
+
     texture_shape texture_state::get_shape() const
     {
         return shape;
     }
 }
+

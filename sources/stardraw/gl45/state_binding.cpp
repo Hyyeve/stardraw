@@ -21,6 +21,7 @@ namespace stardraw::gl45
     status render_context::bind_draw_specification_state(const object_identifier& source)
     {
         ZoneScoped;
+        TracyGpuZone("[Stardraw] Bind draw configuration");
         draw_specification_state* state;
         status find_status = find_draw_specification_state(source, &state);
         if (find_status.is_error()) return find_status;
@@ -30,6 +31,20 @@ namespace stardraw::gl45
 
         status shader_bind = bind_shader(state->shader);
         if (shader_bind.is_error()) return shader_bind;
+
+        if (state->framebuffer.has_value())
+        {
+            framebuffer_state* framebuffer;
+            status framebuffer_find = find_framebuffer_state(state->framebuffer.value(), &framebuffer);
+            if (framebuffer_find.is_error()) return framebuffer_find;
+
+            status bind_status = framebuffer->bind();
+            if (bind_status.is_error()) return bind_status;
+        }
+        else
+        {
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        }
 
         active_draw_specification = state;
 

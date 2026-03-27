@@ -15,14 +15,23 @@ namespace stardraw::gl45
         [[nodiscard]] status attach_depth_texture(const framebuffer_attachment_info& info, const texture_state* texture_state);
         [[nodiscard]] status attach_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state);
         [[nodiscard]] status attach_depth_stencil_texture(const framebuffer_attachment_info& info, const texture_state* texture_state);
-
+        [[nodiscard]] status bind() const;
 
         [[nodiscard]] descriptor_type object_type() const override;
+        [[nodiscard]] status blit_to(framebuffer_state* dest_state, const framebuffer_copy_info& info);
+        [[nodiscard]] status blit_to_default(const framebuffer_copy_info& info);
+        [[nodiscard]] status clear_depth(f32 value) const;
+        [[nodiscard]] status clear_stencil(u32 value) const;
+        [[nodiscard]] status clear_color(u32 attachment, const clear_values& values);
+
     private:
         [[nodiscard]] status attach_texture(const framebuffer_attachment_info& info, const GLenum attachment, const texture_state* texture_state);
 
         GLuint gl_id;
         bool is_framebuffer_complete = false;
+        GLenum depth_format;
+        GLenum stencil_format;
         std::vector<GLuint> attached_textures;
+        std::unordered_map<u32, texture_data_type> attached_color_formats;
     };
 }

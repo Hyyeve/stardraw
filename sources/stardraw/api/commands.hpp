@@ -14,19 +14,18 @@ namespace stardraw
     enum class command_type : starlib_stdint::u8
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
-        CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW,
-        CONFIG_VIEWPORTS, CONFIG_FRAMEBUFFER,
+        CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW, CONFIG_VIEWPORTS,
         BUFFER_COPY, TEXTURE_COPY, FRAMEBUFFER_COPY,
         CLEAR_WINDOW, CLEAR_FRAMEBUFFER, CLEAR_TEXTURE,
         CONFIG_SHADER, COMPUTE_DISPATCH, COMPUTE_DISPATCH_INDIRECT,
         SIGNAL,
-        PRESENT,
+        AQUIRE, PRESENT,
     };
 
     struct command
     {
         virtual ~command() = default;
-        [[nodiscard]] virtual command_type get_type() const = 0;
+        [[nodiscard]] virtual command_type type() const = 0;
     };
 
     typedef std::vector<starlib::polymorphic<command>> command_list;
@@ -47,7 +46,7 @@ namespace stardraw
     {
         draw(const draw_mode mode, const starlib_stdint::u32 vertex_count, const starlib_stdint::u32 start_vertex = 0, const starlib_stdint::u32 instance_count = 1, const starlib_stdint::u32 start_instance = 0) : mode(mode), count(vertex_count), start_vertex(start_vertex), instances(instance_count), start_instance(start_instance) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW;
         }
@@ -69,7 +68,7 @@ namespace stardraw
     {
         draw_indexed(const draw_mode mode, const starlib_stdint::u32 count, const starlib_stdint::i32 vertex_index_offset = 0, const starlib_stdint::u32 start_index = 0, const starlib_stdint::u32 instances = 1, const starlib_stdint::u32 start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDEXED;
         }
@@ -95,7 +94,7 @@ namespace stardraw
     {
         draw_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib_stdint::u32 draw_count, const starlib_stdint::u32 indirect_index = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_index(indirect_index) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
@@ -112,7 +111,7 @@ namespace stardraw
     {
         draw_indexed_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib_stdint::u32 draw_count, const starlib_stdint::u32 indirect_index = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_index(indirect_index) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::DRAW_INDIRECT;
         }
@@ -128,7 +127,7 @@ namespace stardraw
     struct configure_draw final : command
     {
         explicit configure_draw(const std::string& draw_specification) : draw_specification(draw_specification) {}
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_DRAW;
         }
@@ -176,7 +175,7 @@ namespace stardraw
     {
         explicit configure_stencil(const stencil_config& config, const stencil_facing faces = stencil_facing::BOTH) : config(config), for_facing(faces) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_STENCIL;
         }
@@ -253,7 +252,7 @@ namespace stardraw
     {
         explicit configure_blending(const blending_config& config, const starlib_stdint::u32 draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_BLENDING;
         }
@@ -287,7 +286,7 @@ namespace stardraw
     {
         explicit configure_depth_test(const depth_test_config& config) : config(config) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_DEPTH_TEST;
         }
@@ -300,7 +299,7 @@ namespace stardraw
     {
         explicit configure_depth_range(const starlib_stdint::f64 near, const starlib_stdint::f64 far, const starlib_stdint::u32 viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_DEPTH_RANGE;
         }
@@ -320,7 +319,7 @@ namespace stardraw
     {
         explicit configure_face_cull(const face_cull_mode& mode) : mode(mode) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_FACE_CULL;
         }
@@ -349,7 +348,7 @@ namespace stardraw
     {
         explicit configure_scissor_test(const scissor_test_config& config, const starlib_stdint::u32 viewport_index = 0) : config(config), viewport_index(viewport_index) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_SCISSOR;
         }
@@ -363,7 +362,7 @@ namespace stardraw
     {
         explicit buffer_copy(const std::string_view& source_buffer, const std::string_view& dest_buffer, const starlib_stdint::u64 from_address, const starlib_stdint::u64 to_address, const starlib_stdint::u64 bytes) : read_buffer(source_buffer), write_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::BUFFER_COPY;
         }
@@ -400,19 +399,18 @@ namespace stardraw
         }
     };
 
-    struct clear_info
+    struct clear_values
     {
         clear_channel_values channels;
-
         starlib_stdint::f64 depth = 1.0f;
         starlib_stdint::u32 stencil = 0;
     };
 
     namespace clear_info_defaults
     {
-        constexpr clear_info FLOAT_DEFAULT = {.channels = {0.0f, 0.0f, 0.0f, 0.0f}};
-        constexpr clear_info INT_DEFAULT = {.channels = {0, 0, 0, 0}};
-        constexpr clear_info UINT_DEFAULT = {.channels = {0u, 0u, 0u, 0u}};
+        constexpr clear_values FLOAT_DEFAULT = {.channels = {0.0f, 0.0f, 0.0f, 0.0f}};
+        constexpr clear_values INT_DEFAULT = {.channels = {0, 0, 0, 0}};
+        constexpr clear_values UINT_DEFAULT = {.channels = {0u, 0u, 0u, 0u}};
     }
 
     enum class attachment_components
@@ -426,53 +424,53 @@ namespace stardraw
     ///Window buffers always use floating point clear values.
     struct clear_window final : command
     {
-        explicit clear_window(const attachment_components clear_components = attachment_components::ALL, const clear_info& config = clear_info_defaults::FLOAT_DEFAULT) : clear_components(clear_components), config(config) {}
+        explicit clear_window(const attachment_components clear_components = attachment_components::ALL, const clear_values& config = clear_info_defaults::FLOAT_DEFAULT) : clear_components(clear_components), config(config) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CLEAR_WINDOW;
         }
 
         attachment_components clear_components;
-        clear_info config;
+        clear_values config;
     };
 
     ///Clears a texture to the given values.
     struct clear_texture final : command
     {
-        explicit clear_texture(const std::string_view& texture, const attachment_components target = attachment_components::ALL, const clear_info& config = clear_info_defaults::FLOAT_DEFAULT) : texture(texture), target(target), config(config) {}
+        explicit clear_texture(const std::string_view& texture, const clear_values& clear_values = clear_info_defaults::FLOAT_DEFAULT, const starlib_stdint::u32 mipmap_level = 0) : texture(texture), mipmap_level(mipmap_level), clear_vlaues(clear_values) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CLEAR_TEXTURE;
         }
 
         object_identifier texture;
-        attachment_components target;
-        clear_info config;
+        starlib_stdint::u32 mipmap_level;
+        clear_values clear_vlaues;
     };
 
     struct framebuffer_color_clear_info
     {
         starlib_stdint::u32 attachment_index = 0;
-        clear_info values = clear_info_defaults::FLOAT_DEFAULT;
+        clear_values values = clear_info_defaults::FLOAT_DEFAULT;
     };
 
     ///Clears some number of framebuffer attachments to the given values.
     struct clear_framebuffer final : command
     {
-        explicit clear_framebuffer(const std::string_view& framebuffer, const std::initializer_list<framebuffer_color_clear_info> color_clears, const std::optional<clear_info>& depth_clear = std::nullopt, const std::optional<clear_info>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
-        explicit clear_framebuffer(const std::string_view& framebuffer, const std::vector<framebuffer_color_clear_info>& color_clears, const std::optional<clear_info>& depth_clear = std::nullopt, const std::optional<clear_info>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+        explicit clear_framebuffer(const std::string_view& framebuffer, const std::initializer_list<framebuffer_color_clear_info> color_clears, const std::optional<starlib_stdint::f32>& depth_clear = std::nullopt, const std::optional<starlib_stdint::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+        explicit clear_framebuffer(const std::string_view& framebuffer, const std::vector<framebuffer_color_clear_info>& color_clears, const std::optional<starlib_stdint::f32>& depth_clear = std::nullopt, const std::optional<starlib_stdint::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CLEAR_FRAMEBUFFER;
         }
 
         object_identifier framebuffer;
         std::vector<framebuffer_color_clear_info> color_clears;
-        std::optional<clear_info> depth_clear = std::nullopt;
-        std::optional<clear_info> stencil_clear = std::nullopt;
+        std::optional<starlib_stdint::f32> depth_clear = std::nullopt;
+        std::optional<starlib_stdint::u32> stencil_clear = std::nullopt;
     };
 
     struct shader_parameter
@@ -489,7 +487,7 @@ namespace stardraw
         explicit configure_shader(const std::string_view& shader, const std::vector<shader_parameter>& parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
         explicit configure_shader(const std::string_view& shader, const std::initializer_list<shader_parameter> parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_SHADER;
         }
@@ -504,7 +502,7 @@ namespace stardraw
     {
         explicit signal(const std::string_view& signal_name) : signal_name(signal_name) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::SIGNAL;
         }
@@ -554,7 +552,7 @@ namespace stardraw
     {
         texture_copy(const std::string_view& read_texture, const std::string_view& write_texture, const texture_copy_info& copy_info) : read_texture(read_texture), write_texture(write_texture), copy_info(copy_info) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::TEXTURE_COPY;
         }
@@ -564,11 +562,21 @@ namespace stardraw
         texture_copy_info copy_info;
     };
 
+    ///Marks the start of the frame.
+    ///It is undefined behaviour if you do not call this at the end of your frame rendering.
+    struct aquire final : command
+    {
+        [[nodiscard]] command_type type() const override
+        {
+            return command_type::AQUIRE;
+        }
+    };
+
     ///Marks the end of the frame.
     ///It is undefined behaviour if you do not call this at the end of your frame rendering.
     struct present final : command
     {
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::PRESENT;
         }
@@ -578,7 +586,7 @@ namespace stardraw
     struct dispatch_compute final : command
     {
         dispatch_compute(const std::string_view& shader, const starlib_stdint::u32 groups_x, const starlib_stdint::u32 groups_y, const starlib_stdint::u32 groups_z) : groups_x(groups_x), groups_y(groups_y), groups_z(groups_z), shader(shader) {}
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::COMPUTE_DISPATCH;
         }
@@ -593,7 +601,7 @@ namespace stardraw
     struct dispatch_compute_indirect final : command
     {
         dispatch_compute_indirect(const std::string_view& shader, const std::string_view& indirect_buffer, const starlib_stdint::u32 indirect_index = 0) : shader(shader), indirect_buffer(indirect_buffer), indirect_index(indirect_index) {}
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::COMPUTE_DISPATCH_INDIRECT;
         }
@@ -617,25 +625,13 @@ namespace stardraw
         explicit comnfigure_viewports(const std::initializer_list<viewport_config> viewports, const starlib_stdint::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
         explicit comnfigure_viewports(const std::vector<viewport_config>& viewports, const starlib_stdint::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_VIEWPORTS;
         }
 
         starlib_stdint::u32 first_viewport_index;
         std::vector<viewport_config> viewports;
-    };
-
-    ///Configures the active framebuffer
-    struct configure_framebuffer final : command
-    {
-        explicit configure_framebuffer(const std::string& framebuffer = "") : framebuffer(framebuffer.empty() ? std::nullopt : std::optional(framebuffer)) {}
-        [[nodiscard]] command_type get_type() const override
-        {
-            return command_type::CONFIG_FRAMEBUFFER;
-        }
-
-        std::optional<object_identifier> framebuffer;
     };
 
     enum class framebuffer_copy_filtering
@@ -661,24 +657,27 @@ namespace stardraw
         framebuffer_copy_filtering filtering = framebuffer_copy_filtering::NEAREST;
         attachment_components components = attachment_components::ALL;
 
-        inline framebuffer_copy_info create_simple(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const attachment_components copy_components = attachment_components::ALL) const
+        starlib_stdint::u32 read_color_attachment_index = 0;
+        starlib_stdint::u32 write_color_attachment_index = 0;
+
+        inline framebuffer_copy_info create_simple(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const attachment_components copy_components = attachment_components::ALL, const starlib_stdint::u32 color_attachment_index = 0) const
         {
-            return {x, y, width, height, x, y, width, height, framebuffer_copy_filtering::NEAREST, copy_components};
+            return {x, y, width, height, x, y, width, height, framebuffer_copy_filtering::NEAREST, copy_components, color_attachment_index, color_attachment_index};
         }
     };
 
-    ///Copies a region between two framebuffers
+    ///Copies a region between two framebuffers. If a write framebuffer is not provided, it will write to the default (window) framebuffer.
     struct framebuffer_copy final : command
     {
-        explicit framebuffer_copy(const std::string_view& read_framebuffer, const std::string_view& write_framebuffer, const framebuffer_copy_info& copy_info) : copy_info(copy_info), read_framebuffer(read_framebuffer), write_framebuffer(write_framebuffer) {}
+        explicit framebuffer_copy(const std::string_view& read_framebuffer, const std::optional<std::string_view>& write_framebuffer, const framebuffer_copy_info& copy_info) : copy_info(copy_info), read_framebuffer(read_framebuffer), write_framebuffer(write_framebuffer) {}
 
-        [[nodiscard]] command_type get_type() const override
+        [[nodiscard]] command_type type() const override
         {
             return command_type::FRAMEBUFFER_COPY;
         }
 
         framebuffer_copy_info copy_info;
         object_identifier read_framebuffer;
-        object_identifier write_framebuffer;
+        std::optional<object_identifier> write_framebuffer;
     };
 }

@@ -22,7 +22,7 @@ namespace stardraw
         explicit constexpr descriptor(const std::string_view& name) : ident(name) {}
         virtual ~descriptor() = default;
 
-        [[nodiscard]] virtual descriptor_type get_type() const = 0;
+        [[nodiscard]] virtual descriptor_type type() const = 0;
         [[nodiscard]] const inline object_identifier& identifier() const
         {
             return ident;
@@ -45,7 +45,7 @@ namespace stardraw
     {
         explicit buffer(const std::string_view& name, const starlib_stdint::u64 size, const buffer_memory_storage memory = buffer_memory_storage::VRAM) : descriptor(name), size(size), memory(memory) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::BUFFER;
         }
@@ -108,7 +108,7 @@ namespace stardraw
     {
         constexpr vertex_configuration(const std::string_view& name, vertex_data_layout layout, const std::string_view& index_buffer = "") : descriptor(name), layout(std::move(layout)), index_buffer(index_buffer), has_index_buffer(!index_buffer.empty()) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::VERTEX_CONFIGURATION;
         }
@@ -121,15 +121,16 @@ namespace stardraw
     ///Describes a vertex specification and shader combination required for calling draw commands
     struct draw_configuration final : descriptor
     {
-        draw_configuration(const std::string_view& name, const std::string_view& vertex_specification, const std::string_view& shader) : descriptor(name), vertex_specification(vertex_specification), shader(shader) {}
+        draw_configuration(const std::string_view& name, const std::string_view& vertex_specification, const std::string_view& shader, const std::optional<object_identifier>& framebuffer = std::nullopt) : descriptor(name), vertex_specification(vertex_specification), shader(shader), framebuffer(framebuffer) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::DRAW_CONFIGURATION;
         }
 
         object_identifier vertex_specification;
         object_identifier shader;
+        std::optional<object_identifier> framebuffer;
     };
 
     ///Describes a shader made up of some number of shader states
@@ -138,7 +139,7 @@ namespace stardraw
         shader(const std::string_view& name, const std::vector<shader_stage>& stages) : descriptor(name), stages(stages), cache_ptr(nullptr), cache_size(0) {}
         shader(const std::string_view& name, const void* cache_ptr, const starlib_stdint::u64 cache_size) : descriptor(name), stages({}), cache_ptr(cache_ptr), cache_size(cache_size) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::SHADER;
         }
@@ -327,7 +328,7 @@ namespace stardraw
     {
         explicit texture(const std::string_view& name, const texture_format& format, const texture_sampling_conifg& default_sampling_config, const std::string_view& as_view_of_texture = "") : descriptor(name), format(format), default_sampling_config(default_sampling_config), as_view_of(as_view_of_texture.empty() ? std::nullopt : std::optional(as_view_of_texture)) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::TEXTURE;
         }
@@ -341,7 +342,7 @@ namespace stardraw
     {
         sampler(const std::string_view& name, const texture_sampling_conifg& smapler_config, const bool integer_texture_sampler) : descriptor(name), sampler_config(smapler_config), integer_texture_sampler(integer_texture_sampler) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::SAMPLER;
         }
@@ -363,7 +364,7 @@ namespace stardraw
         framebuffer(const std::string_view& name, const std::initializer_list<framebuffer_attachment_info> color_attachments, const std::optional<framebuffer_attachment_info>& depth_attachment = std::nullopt, const std::optional<framebuffer_attachment_info>& stencil_attachment = std::nullopt) : descriptor(name), color_attachments(color_attachments), depth_attachment(depth_attachment), stencil_attachment(stencil_attachment) {}
         framebuffer(const std::string_view& name, const std::vector<framebuffer_attachment_info>& color_attachments, const std::optional<framebuffer_attachment_info>& depth_attachment = std::nullopt, const std::optional<framebuffer_attachment_info>& stencil_attachment = std::nullopt) : descriptor(name), color_attachments(color_attachments), depth_attachment(depth_attachment), stencil_attachment(stencil_attachment) {}
 
-        [[nodiscard]] descriptor_type get_type() const override
+        [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::FRAMEBUFFER;
         }

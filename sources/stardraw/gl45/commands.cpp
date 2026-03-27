@@ -172,7 +172,30 @@ namespace stardraw::gl45
         return dest_state->copy_pixels(source_state, cmd->copy_info);
     }
 
-    status render_context::execute_draw_config(const configure_draw* cmd)
+    status render_context::execute_framebuffer_copy(const framebuffer_copy* cmd)
+    {
+        ZoneScoped;
+        framebuffer_state* source_state;
+        status source_find_status = find_framebuffer_state(cmd->read_framebuffer, &source_state);
+        if (source_find_status.is_error()) return source_find_status;
+
+        if (cmd->write_framebuffer.has_value())
+        {
+            framebuffer_state* dest_state;
+            status dest_find_status = find_framebuffer_state(cmd->write_framebuffer.value(), &dest_state);
+            if (dest_find_status.is_error()) return dest_find_status;
+
+            mem_barrier_controller.barrier_if_needed(cmd->read_framebuffer, GL_FRAMEBUFFER_BARRIER_BIT);
+            mem_barrier_controller.barrier_if_needed(cmd->write_framebuffer.value(), GL_FRAMEBUFFER_BARRIER_BIT);
+
+            return source_state->blit_to(dest_state, cmd->copy_info);
+        }
+
+        mem_barrier_controller.barrier_if_needed(cmd->read_framebuffer, GL_FRAMEBUFFER_BARRIER_BIT);
+        return source_state->blit_to_default(cmd->copy_info);
+    }
+
+    status render_context::execute_config_draw(const configure_draw* cmd)
     {
         ZoneScoped;
         return bind_draw_specification_state(cmd->draw_specification);
@@ -281,7 +304,7 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Execute clear window cmd");
 
-        const clear_info& config = cmd->config;
+        const clear_values& config = cmd->config;
         glClearColor(config.channels.as_f32(0), config.channels.as_f32(1), config.channels.as_f32(2), config.channels.as_f32(3));
         glClearDepth(config.depth);
         glClearStencil(config.stencil);
@@ -290,10 +313,51 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
+    status render_context::execute_clear_framebuffer(const clear_framebuffer* cmd)
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute cleaer framebuffer cmd");
+        framebuffer_state* framebuffer;
+        status find_framebuffer_status = find_framebuffer_state(cmd->framebuffer, &framebuffer);
+        if (find_framebuffer_status.is_error()) return find_framebuffer_status;
+
+        if (cmd->depth_clear.has_value())
+        {
+            status clear_status = framebuffer->clear_depth(cmd->depth_clear.value());
+            if (clear_status.is_error()) return clear_status;
+        }
+
+        if (cmd->stencil_clear.has_value())
+        {
+            status clear_status = framebuffer->clear_stencil(cmd->stencil_clear.value());
+            if (clear_status.is_error()) return clear_status;
+        }
+
+        for (const framebuffer_color_clear_info& color_clear : cmd->color_clears)
+        {
+            status clear_status = framebuffer->clear_color(color_clear.attachment_index, color_clear.values);
+            if (clear_status.is_error()) return clear_status;
+        }
+
+        return status_type::SUCCESS;
+    }
+
+    status render_context::execute_clear_texture(const clear_texture* cmd)
+    {
+        ZoneScoped;
+        TracyGpuZone("[Stardraw] Execute clear texture cmd");
+
+        texture_state* texture;
+        status find_status = find_texture_state(cmd->texture, &texture);
+        if (find_status.is_error()) return find_status;
+
+        return texture->clear(cmd->mipmap_level, cmd->clear_vlaues);
+    }
+
     status render_context::execute_compute_dispatch(const dispatch_compute* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute compute shader dispatch");
+        TracyGpuZone("[Stardraw] Execute compute shader dispatch cmd");
 
         shader_state* shader;
         status find_status = find_shader_state(cmd->shader, &shader);

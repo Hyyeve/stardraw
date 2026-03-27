@@ -29,6 +29,7 @@ namespace stardraw::gl45
         [[nodiscard]] static bool is_view_target_compatible(GLenum source_target, GLenum view_target);
         [[nodiscard]] status is_view_compatible(const texture& view_descriptor) const;
         [[nodiscard]] status set_sampling_config(const texture_sampling_conifg& config, bool is_integer_texture) const;
+        [[nodiscard]] status clear(u32 mipmap_level, const clear_values& clear_values) const;
 
         [[nodiscard]] texture_shape get_shape() const;
         [[nodiscard]] descriptor_type object_type() const override
