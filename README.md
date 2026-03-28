@@ -12,3 +12,5 @@ Current features include:
 
 In future I would like to implement a Vulkan backend (some initial work on that has been done by a friend, but it's non-usable currently),
 and potentially other APIs.
+
+See sources/stardraw-demo/main.cpp for an overview of stardraw's current API.
