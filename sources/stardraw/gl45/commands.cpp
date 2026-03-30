@@ -50,7 +50,7 @@ namespace stardraw::gl45
         TracyGpuZone("[Stardraw] Execute draw indexed cmd");
 
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
-        if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, "The current draw specification does not have an index buffer for indexed drawing"};
+        if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, std::format("The current draw specification '{0}' does not have an index buffer for indexed drawing", active_draw_specification->id.name)};
 
         const GLenum index_element_type = to_gl_index_size(cmd->index_type);
         const u32 index_element_size = to_gl_type_size(index_element_type); //Clangd claims this is uninitialized, but it's... not??
@@ -105,7 +105,7 @@ namespace stardraw::gl45
         TracyGpuZone("[Stardraw] Execute draw indirect cmd");
 
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
-        if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, "The current draw specification does not have an index buffer for indexed drawing"};
+        if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, std::format("The current draw specification '{0}' does not have an index buffer for indexed drawing", active_draw_specification->id.name)};
 
         const GLenum index_element_type = to_gl_index_size(cmd->index_type);
 

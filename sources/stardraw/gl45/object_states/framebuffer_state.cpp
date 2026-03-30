@@ -7,7 +7,7 @@
 
 namespace stardraw::gl45
 {
-    framebuffer_state::framebuffer_state(const framebuffer& descriptor, status& out_status) : depth_format(0), stencil_format(0)
+    framebuffer_state::framebuffer_state(const framebuffer& descriptor, status& out_status) : depth_format(0), stencil_format(0), framebuffer_id(descriptor.identifier()), gl_id(0)
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create framebuffer object");
@@ -16,7 +16,7 @@ namespace stardraw::gl45
 
         if (gl_id <= 0)
         {
-            out_status = {status_type::BACKEND_ERROR, "Failed to create framebuffer object"};
+            out_status = {status_type::BACKEND_ERROR, std::format("Failed to create framebuffer object '{0}'", framebuffer_id.name)};
             return;
         }
 
@@ -46,7 +46,7 @@ namespace stardraw::gl45
         {
             case GL_FRAMEBUFFER_UNDEFINED:
             {
-                status_string = "Framebuffer object not valid (this is a stardraw bug!)";
+                status_string = std::format("Framebuffer object '{0}' not valid (this is a stardraw bug!)", framebuffer_id.name);
                 break;
             }
             case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
@@ -54,27 +54,27 @@ namespace stardraw::gl45
             case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
             case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
             {
-                status_string = "Incomplete framebuffer attachments (this is a stardraw bug!)";
+                status_string = std::format("Incomplete attachments in framebuffer '{0}' (this is a stardraw bug!)", framebuffer_id.name);
                 break;
             }
             case GL_FRAMEBUFFER_UNSUPPORTED:
             {
-                status_string = "This platform/driver doesn't support the provided framebuffer attachment combination";
+                status_string = std::format("Unsupported attachment combination in framebuffer '{0}' (platform/driver limitation)", framebuffer_id.name);
                 break;
             }
             case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
             {
-                status_string = "Framebuffer attachments have mismatched multisample settings (this is a stardraw bug!)";
+                status_string = std::format("Framebuffer '{0}' attachments have mismatched multisample settings (this is a stardraw bug!)", framebuffer_id.name);
                 break;
             }
             case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
             {
-                status_string = "Framebuffer attachments have mismatched layer settings (this is a stardraw bug!)";
+                status_string = std::format("Framebuffer '{0}' attachments have mismatched layer settings (this is a stardraw bug!)", framebuffer_id.name);
                 break;
             }
             default:
             {
-                status_string = "Unknown framebuffer error (this is probably a stardraw bug!)";
+                status_string = std::format("Unknown error in framebufer '{0}' (this is probably a stardraw bug!)", framebuffer_id.name);
                 break;
             }
         }
@@ -136,24 +136,24 @@ namespace stardraw::gl45
 
         if (info.components != attachment_components::COLOR && info.filtering != framebuffer_copy_filtering::NEAREST)
         {
-            return {status_type::INVALID, "Cannot use linear filtering on depth/stencil buffer copies"};
+            return {status_type::INVALID, std::format("Cannot use linear filtering on depth/stencil buffer copy between '{0}' and '{1}'", framebuffer_id.name, dest_state->framebuffer_id.name)};
         }
 
         if (info.components != attachment_components::COLOR && (depth_format != dest_state->depth_format || stencil_format != dest_state->stencil_format))
         {
-            return {status_type::INVALID, "Read and write framebuffers must have the same depth/stencil formats for this copy"};
+            return {status_type::INVALID, std::format("Read and write framebuffers must have the same depth/stencil formats for copy between '{0}' and '{1}'", framebuffer_id.name, dest_state->framebuffer_id.name)};
         }
 
         if (info.components != attachment_components::DEPTH && info.components != attachment_components::STENCIL)
         {
             if (!attached_color_formats.contains(info.read_color_attachment_index))
             {
-                return {status_type::RANGE_OVERFLOW, "Read color attachment index has no attachment"};
+                return {status_type::RANGE_OVERFLOW, std::format("Read color attachment index has no attachment in framebuffer '{0}'", framebuffer_id.name)};
             }
 
             if (!dest_state->attached_color_formats.contains(info.write_color_attachment_index))
             {
-                return {status_type::RANGE_OVERFLOW, "Write color attachment index has no attachment"};
+                return {status_type::RANGE_OVERFLOW, std::format("Write color attachment index has no attachment in framebuffer '{0}'", dest_state->framebuffer_id.name)};
             }
 
             const texture_data_type source_data_type = attached_color_formats[info.read_color_attachment_index];
@@ -165,7 +165,7 @@ namespace stardraw::gl45
 
             if (is_source_color_integer != is_dest_color_integer || is_mismatched_integer_formats)
             {
-                return {status_type::INVALID, "Read and write color attachments have incompatible data types"};
+                return {status_type::INVALID, std::format("Read and write color attachments have incompatible data types for copy between '{0}' and '{1}'", framebuffer_id.name, dest_state->framebuffer_id.name)};
             }
 
             glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
@@ -184,17 +184,17 @@ namespace stardraw::gl45
 
         if (info.components != attachment_components::COLOR)
         {
-            return {status_type::INVALID, "Cannot blit non-color values to the default (window) framebuffer"};
+            return {status_type::INVALID, std::format("Cannot blit non-color values to the default (window) framebuffer (trying to copy from '{0}')", framebuffer_id.name)};
         }
 
         if (!attached_color_formats.contains(info.read_color_attachment_index))
         {
-            return {status_type::RANGE_OVERFLOW, "Read color attachment index has no attachment"};
+            return {status_type::RANGE_OVERFLOW, std::format("Read color attachment index has no attachment in framebuffer '{0}'", framebuffer_id.name)};
         }
 
         if (info.write_color_attachment_index != 0)
         {
-            return {status_type::RANGE_OVERFLOW, "Write color attachment index isn't valid. Only 0 is supported for copying to the default framebuffer"};
+            return {status_type::RANGE_OVERFLOW, std::format("Write color attachment index isn't valid for copy from '{0}' Only 0 is supported for copying to the default framebuffer", framebuffer_id.name)};
         }
 
         const texture_data_type source_data_type = attached_color_formats[info.read_color_attachment_index];
@@ -202,7 +202,7 @@ namespace stardraw::gl45
 
         if (is_source_color_integer)
         {
-            return {status_type::INVALID, "Cannot copy integer data to the default framebuffer"};
+            return {status_type::INVALID, std::format("Cannot copy integer data to the default framebuffer (trying to copy from '{0}')", framebuffer_id.name)};
         }
 
         glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
@@ -233,7 +233,7 @@ namespace stardraw::gl45
         TracyGpuZone("[Stardraw] Framebuffer clear (color)");
         if (!attached_color_formats.contains(attachment))
         {
-            return {status_type::INVALID, std::format("Can't clear attachment; no color attachment with index {0}", attachment)};
+            return {status_type::INVALID, std::format("Can't clear attachment; no color attachment with index {0} in framebuffer '{1}'", attachment, framebuffer_id.name)};
         }
 
         const texture_data_type data_format = attached_color_formats[attachment];

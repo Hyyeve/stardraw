@@ -92,7 +92,7 @@ namespace stardraw::gl45
         else any_texture_not_layered = true;
         if (texture->num_texture_msaa_samples < lowest_msaa_level) lowest_msaa_level = texture->num_texture_msaa_samples;
         if (texture->num_texture_msaa_samples > highest_msaa_level) highest_msaa_level = texture->num_texture_msaa_samples;
-        if (texture->num_texture_msaa_samples > GL_MAX_FRAMEBUFFER_SAMPLES) return {status_type::INVALID, std::format("Texture multisample count is too high on texture '{}'", attachment.texture.name)};
+        if (texture->num_texture_msaa_samples > GL_MAX_FRAMEBUFFER_SAMPLES) return {status_type::INVALID, std::format("Texture multisample count is too high on texture '{0}'", attachment.texture.name)};
         if (attachment.layer > GL_MAX_FRAMEBUFFER_LAYERS) return {status_type::INVALID, std::format("Texture attachment layer is too high on texture '{0}'", attachment.texture.name)};
         if (attachment.layer >= texture->num_texture_array_layers) return {status_type::INVALID, std::format("Texture attachment layer is outside the bounds of the texture object '{0}'", attachment.texture.name)};
         if (attachment.mipmap_level >= texture->num_texture_mipmap_levels) return {status_type::INVALID, std::format("Texture attachment mipmap level is not a valid mipmap level in the texture object '{0}'", attachment.texture.name)};
@@ -104,7 +104,7 @@ namespace stardraw::gl45
     {
         ZoneScoped;
 
-        if (descriptor->color_attachments.size() > 32) return {status_type::UNSUPPORTED, "Maximum number of color attachments in a framebuffer is 32."};
+        if (descriptor->color_attachments.size() > 32) return {status_type::UNSUPPORTED, std::format("Maximum number of color attachments in a framebuffer is 32. (requested {0} for framebuffer '{1}'", descriptor->color_attachments.size(), descriptor->identifier().name)};
 
         bool any_texture_not_layered = false;
         bool any_texture_layered = false;
@@ -118,7 +118,7 @@ namespace stardraw::gl45
             texture_state* texture;
             status validate_status = find_and_validate_attachment_texture(attachment,  lowest_msaa_level, highest_msaa_level, any_texture_layered, any_texture_not_layered, &texture);
             if (validate_status.is_error()) return validate_status;
-            if (!is_texture_data_type_color_renderable(texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer color attachment.", attachment.texture.name)};
+            if (!is_texture_data_type_color_renderable(texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer color attachment. (for framebuffer '{1}')", attachment.texture.name, descriptor->identifier().name)};
             color_textures.push_back(texture);
         }
 
@@ -128,7 +128,7 @@ namespace stardraw::gl45
             const framebuffer_attachment_info& attachment = descriptor->depth_attachment.value();
             status validate_status = find_and_validate_attachment_texture(attachment,  lowest_msaa_level, highest_msaa_level, any_texture_layered, any_texture_not_layered, &depth_texture);
             if (validate_status.is_error()) return validate_status;
-            if (!is_texture_data_type_depth_renderable(depth_texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer depth attachment.", attachment.texture.name)};
+            if (!is_texture_data_type_depth_renderable(depth_texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer depth attachment. (for framebuffer '{1}')", attachment.texture.name, descriptor->identifier().name)};
         }
 
         texture_state* stencil_texture = nullptr;
@@ -137,11 +137,11 @@ namespace stardraw::gl45
             const framebuffer_attachment_info& attachment = descriptor->stencil_attachment.value();
             status validate_status = find_and_validate_attachment_texture(attachment,  lowest_msaa_level, highest_msaa_level, any_texture_layered, any_texture_not_layered, &stencil_texture);
             if (validate_status.is_error()) return validate_status;
-            if (!is_texture_data_type_stencil_renderable(stencil_texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer stencil attachment.", attachment.texture.name)};
+            if (!is_texture_data_type_stencil_renderable(stencil_texture->data_type)) return {status_type::INVALID, std::format("Texture data format of '{0}' cannot be uesd as a framebuffer stencil attachment. (for framebuffer '{1}')", attachment.texture.name, descriptor->identifier().name)};
         }
 
-        if (lowest_msaa_level != highest_msaa_level) return {status_type::INVALID, "Cannot mix textures with different MSAA levels in framebuffer attachments"};
-        if (any_texture_layered && any_texture_not_layered) return {status_type::INVALID, "Cannot mix layered and non-layered textures in framebuffer attachments"};
+        if (lowest_msaa_level != highest_msaa_level) return {status_type::INVALID, std::format("Cannot mix textures with different MSAA levels in framebuffer attachments for framebuffer '{0}'", descriptor->identifier().name)};
+        if (any_texture_layered && any_texture_not_layered) return {status_type::INVALID, std::format("Cannot mix layered and non-layered textures in framebuffer attachments for framebuffer '{0}'", descriptor->identifier().name)};
 
         status create_status = status_type::SUCCESS;
         framebuffer_state* fbuff_state = new framebuffer_state(*descriptor, create_status);
@@ -213,7 +213,7 @@ namespace stardraw::gl45
         if (vertex_spec->vertex_array_id == 0)
         {
             delete vertex_spec;
-            return {status_type::BACKEND_ERROR, std::format("Attempting to create vertex specification '{0}' resulted in an invalid buffer", descriptor->identifier().name)};
+            return {status_type::BACKEND_ERROR, std::format("Attempting to create vertex specification '{0}' resulted in an invalid object", descriptor->identifier().name)};
         }
 
         const vertex_data_layout& format = descriptor->layout;
@@ -333,7 +333,7 @@ namespace stardraw::gl45
     status render_context::record_object_state(const object_identifier& identifier, object_state* state)
     {
         ZoneScoped;
-        if (state == nullptr) return {status_type::UNEXPECTED, "Unexpected null state"};
+        if (state == nullptr) return {status_type::UNEXPECTED, std::format("Unexpected null state while trying to find object '{0}'", identifier.name)};
         if (!objects.contains(state->object_type())) objects[state->object_type()] = {};
         if (objects[state->object_type()].contains(identifier.hash)) return {status_type::DUPLICATE, std::format("An object of this type with the name '{0}' already exists (or there is a hash collision)!", identifier.name)};
         objects[state->object_type()][identifier.hash] = state;

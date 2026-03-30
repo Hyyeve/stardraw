@@ -121,7 +121,7 @@ namespace stardraw::gl45
         //To bind a sampler, we make sure the location is *explicitly* pointed at the texture variable, not something contained inside the texture.
         if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
-            return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a sampler bound to it!"};
+            return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a sampler bound to it!", location.internal->path_string)};
         }
 
         texture_sampler_state* sampler;
@@ -140,7 +140,7 @@ namespace stardraw::gl45
         //To bind a texture, we make sure the location is *explicitly* pointed at the texture variable, not something contained inside the texture.
         if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
-            return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a texture bound to it!"};
+            return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a texture bound to it!", location.internal->path_string)};
         }
 
         texture_shape resource_shape;
@@ -177,21 +177,21 @@ namespace stardraw::gl45
                     }
                     default:
                     {
-                        return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a texture bound to it!"};
+                        return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a texture bound to it!", location.internal->path_string)};
                     }
                 }
                 break;
             }
             default:
             {
-                return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a texture bound to it!"};
+                return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a texture bound to it!", location.internal->path_string)};
             }
         }
 
         texture_state* texture;
         status find_status = find_texture_state(value.opaque_reference, &texture);
         if (find_status.is_error()) return find_status;
-        if (texture->get_shape() != resource_shape) return {status_type::INVALID, std::format("Texture object '{0}' can't be bound to this location - wrong texture shape!", value.opaque_reference.name)};
+        if (texture->get_shape() != resource_shape) return {status_type::INVALID, std::format("Texture object '{0}' can't be bound to location '{1}' - wrong texture shape!", value.opaque_reference.name, location.internal->path_string)};
 
         status bind_status = status_type::SUCCESS;
         const SlangResourceAccess access = binding_info.binding_type_ptr->getResourceAccess();
@@ -209,7 +209,7 @@ namespace stardraw::gl45
         }
 
         if (bind_status.is_error()) return bind_status;
-        shader->bound_objects[actual_slot] = { value.opaque_reference, as_image && gl_access != GL_READ_ONLY, GL_TEXTURE_FETCH_BARRIER_BIT };
+        shader->bound_objects[actual_slot] = {value.opaque_reference, as_image && gl_access != GL_READ_ONLY, GL_TEXTURE_FETCH_BARRIER_BIT};
         return status_type::SUCCESS;
     }
 
@@ -224,7 +224,7 @@ namespace stardraw::gl45
         //To bind a buffer, we make sure the location is *explicitly* pointed at the buffer variable, not something contained inside the buffer.
         if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
-            return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a buffer bound to it!"};
+            return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a buffer bound to it!", location.internal->path_string)};
         }
 
         switch (binding_info.binding_type_ptr->getKind())
@@ -257,7 +257,7 @@ namespace stardraw::gl45
             }
             default:
             {
-                return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a buffer bound to it!"};
+                return {status_type::INVALID, std::format("The shader parameter location '{0}' cannot have a buffer bound to it!", location.internal->path_string)};
             }
         }
 
@@ -268,7 +268,7 @@ namespace stardraw::gl45
         status bind_status = buffer->bind_to_slot(binding_type, actual_slot);
         const GLbitfield read_barrier = (binding_type == GL_SHADER_STORAGE_BUFFER ? GL_SHADER_STORAGE_BARRIER_BIT : GL_UNIFORM_BARRIER_BIT);
         const bool has_write_access = access != SLANG_RESOURCE_ACCESS_READ;
-        shader->bound_objects[actual_slot] = { value.opaque_reference, has_write_access, read_barrier };
+        shader->bound_objects[actual_slot] = {value.opaque_reference, has_write_access, read_barrier};
         if (bind_status.is_error()) return bind_status;
         return status_type::SUCCESS;
     }
@@ -281,10 +281,9 @@ namespace stardraw::gl45
 
         if (!shader->bound_objects.contains(actual_slot))
         {
-            return {status_type::INVALID, "Can't upload shader parameter; the shader does not have a backing buffer set for the given location!"};
+            return {status_type::INVALID, std::format("Can't apply shader parameter value; the shader does not have a buffer bound to store data at '{0}'", location.internal->path_string)};
         }
 
         return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.internal->byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
     }
-
 }

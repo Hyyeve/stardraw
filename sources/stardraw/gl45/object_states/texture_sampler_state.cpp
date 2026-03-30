@@ -1,4 +1,7 @@
 #include "texture_sampler_state.hpp"
+
+#include <format>
+
 #include "stardraw/gl45/api_conversion.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
@@ -29,7 +32,7 @@ namespace stardraw::gl45 {
                 desc.sampler_config.mipmap_filter != texture_filtering_mode::NEAREST)
             {
 
-                out_status = {status_type::INVALID, "Integer type textures/samplers must only have nearest filtering"};
+                out_status = {status_type::INVALID, std::format("Sampler descriptor for '{0}' isn't valid: Integer type textures/samplers must only have nearest filtering", sampler_id.name)};
                 return;
             }
         }
@@ -38,7 +41,7 @@ namespace stardraw::gl45 {
 
         if (gl_id == 0)
         {
-            out_status = {status_type::BACKEND_ERROR, "Failed to create texture sampler state"};
+            out_status = {status_type::BACKEND_ERROR, std::format("Failed to create texture sampler state '{0}'", sampler_id.name)};
             return;
         }
 

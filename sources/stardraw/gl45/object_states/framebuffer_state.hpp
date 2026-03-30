@@ -27,11 +27,12 @@ namespace stardraw::gl45
     private:
         [[nodiscard]] status attach_texture(const framebuffer_attachment_info& info, const GLenum attachment, const texture_state* texture_state);
 
-        GLuint gl_id;
+        GLuint gl_id{};
         bool is_framebuffer_complete = false;
         GLenum depth_format;
         GLenum stencil_format;
         std::vector<GLuint> attached_textures;
         std::unordered_map<u32, texture_data_type> attached_color_formats;
+        object_identifier framebuffer_id;
     };
 }

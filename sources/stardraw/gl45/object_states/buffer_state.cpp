@@ -90,7 +90,7 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Flush staged buffer upload");
         const gl_memory_transfer_handle* staged_handle = dynamic_cast<gl_memory_transfer_handle*>(handle);
-        if (staged_handle == nullptr) return {status_type::INVALID, "Invalid memory transfer handle cast - this is an internal bug!"};
+        if (staged_handle == nullptr) return {status_type::INVALID, std::format("Invalid memory transfer handle cast - this is an internal bug! (trying to upload to buffer '{0}'", buffer_identifier.name)};
         status copy_status = copy_data(staged_handle->transfer_buffer_id, staged_handle->transfer_buffer_address, staged_handle->transfer_destination_address, staged_handle->transfer_size);
         if (copy_status.is_error()) return copy_status;
         return staging_buffer_uploader::flush_upload(staged_handle);
@@ -129,7 +129,7 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Flush staged buffer upload");
         const gl_memory_transfer_handle* chunked_handle = dynamic_cast<gl_memory_transfer_handle*>(handle);
-        if (chunked_handle == nullptr) return {status_type::INVALID, "Invalid memory transfer handle cast - this is an internal bug!"};
+        if (chunked_handle == nullptr) return {status_type::INVALID, std::format("Invalid memory transfer handle cast - this is an internal bug! (trying to upload to buffer '{0}'", buffer_identifier.name)};
         glUnmapNamedBuffer(chunked_handle->transfer_buffer_id);
         status copy_status = copy_data(chunked_handle->transfer_buffer_id, chunked_handle->transfer_buffer_address, chunked_handle->transfer_destination_address, chunked_handle->transfer_size);
         glDeleteBuffers(1, &chunked_handle->transfer_buffer_id);

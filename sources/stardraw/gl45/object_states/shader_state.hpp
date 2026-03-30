@@ -47,19 +47,20 @@ namespace stardraw::gl45
         std::vector<shader_parameter> parameter_store;
         std::unordered_map<u32, object_binding> bound_objects;
         bool has_compute_stage = false;
+        object_identifier shader_id;
 
     private:
         [[nodiscard]] status create_from_stages(const std::vector<shader_stage>& stages);
 
         [[nodiscard]] status remap_spirv_stages(const std::vector<shader_stage>& stages, std::vector<std::string>& out_sources);
 
-        [[nodiscard]] static status link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id);
-        [[nodiscard]] static status compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id);
+        [[nodiscard]] status link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id);
+        [[nodiscard]] status compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id);
 
-        [[nodiscard]] static status validate_program(const GLuint program);
+        [[nodiscard]] status validate_program(const GLuint program);
 
-        [[nodiscard]] static std::string get_shader_log(const GLuint shader);
-        [[nodiscard]] static std::string get_program_log(const GLuint program);
+        [[nodiscard]] std::string get_shader_log(const GLuint shader) const;
+        [[nodiscard]] std::string get_program_log(const GLuint program) const;
 
         GLuint shader_program_id = 0;
     };

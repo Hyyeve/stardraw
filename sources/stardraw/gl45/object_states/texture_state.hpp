@@ -51,6 +51,7 @@ namespace stardraw::gl45
 
         texture_shape shape = texture_shape::_2D;
         texture_data_type data_type = texture_data_type::R_U8_NORM;
+        object_identifier texture_id;
     private:
         [[nodiscard]] u64 compute_bytes_in_transfer(const texture_memory_transfer_info& info) const;
         status initalize_and_validate_texture_descriptor(const texture& desc);

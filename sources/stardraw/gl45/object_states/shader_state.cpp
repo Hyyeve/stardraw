@@ -10,7 +10,7 @@
 namespace stardraw::gl45
 {
     using namespace starlib_stdint;
-    shader_state::shader_state(const shader& desc, status& out_status)
+    shader_state::shader_state(const shader& desc, status& out_status) : shader_id(desc.identifier())
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Create shader object");
@@ -20,7 +20,7 @@ namespace stardraw::gl45
     shader_state::~shader_state()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Delete shader object")
+        TracyGpuZone("[Stardraw] Delete shader object");
         if (!is_valid()) return;
 
         glDeleteProgram(shader_program_id);
@@ -35,8 +35,8 @@ namespace stardraw::gl45
     status shader_state::make_active() const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Make shader active")
-        if (!is_valid()) return {status_type::BACKEND_ERROR, "Shader object not valid!"};
+        TracyGpuZone("[Stardraw] Make shader active");
+        if (!is_valid()) return {status_type::BACKEND_ERROR, std::format("Shader object '{0}' not valid!", shader_id.name)};
         glUseProgram(shader_program_id);
         return status_type::SUCCESS;
     }
@@ -44,8 +44,8 @@ namespace stardraw::gl45
     status shader_state::dispatch_compute(const u32 groups_x, const u32 groups_y, const u32 groups_z) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Shader compute dispatch")
-        if (!has_compute_stage) return {status_type::INVALID, "Attempting to dispatch compute with a shader that doesn't have a compute stage!"};
+        TracyGpuZone("[Stardraw] Shader compute dispatch");
+        if (!has_compute_stage) return {status_type::INVALID, std::format("Can't dispatch compute stage of shader '{0}' - doesn't have a compute stage!", shader_id.name)};
         status activate_status = make_active();
         if (activate_status.is_error()) return activate_status;
         glDispatchCompute(groups_x, groups_y, groups_z);
@@ -55,8 +55,8 @@ namespace stardraw::gl45
     status shader_state::dispatch_compute_indirect(const u64 indirect_offset) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Shader compute dispatch (indirect)")
-        if (!has_compute_stage) return {status_type::INVALID, "Attempting to dispatch compute with a shader that doesn't have a compute stage!"};
+        TracyGpuZone("[Stardraw] Shader compute dispatch (indirect)");
+        if (!has_compute_stage) return {status_type::INVALID, std::format("Can't dispatch compute stage of shader '{0}' - doesn't have a compute stage!", shader_id.name)};
         status activate_status = make_active();
         if (activate_status.is_error()) return activate_status;
         glDispatchComputeIndirect(static_cast<GLintptr>(indirect_offset));
@@ -66,7 +66,7 @@ namespace stardraw::gl45
     status shader_state::upload_parameter(const shader_parameter& parameter)
     {
         ZoneScoped;
-        if (parameter.location == invalid_shader_paramter_location) return {status_type::UNKNOWN, "Shader parameter location not found in shader"};
+        if (!parameter.location.internal->is_valid) return {status_type::UNKNOWN, std::format("Shader parameter location '{1}' not found in shader '{0}'", shader_id.name, parameter.location.internal->path_string)};
         const auto existing_param = std::ranges::find(parameter_store, parameter);
         if (existing_param == parameter_store.end()) parameter_store.push_back(parameter);
         else parameter_store.emplace(existing_param, parameter);
@@ -122,7 +122,7 @@ namespace stardraw::gl45
             const GLenum shader_type = to_gl_shader_type(stage.internal->type);
             if (shader_type == 0)
             {
-                stages_compile_status = {status_type::BACKEND_ERROR, "A provided shader stage is not supported on this API!"};
+                stages_compile_status = {status_type::BACKEND_ERROR, std::format("A provided shader stage in the shader '{0}' is not supported on this API!", shader_id.name)};
                 break;
             }
 
@@ -169,7 +169,7 @@ namespace stardraw::gl45
         ZoneScopedN("Convert Slang spirv to opengl-compatible GLSL");
         for (const shader_stage& stage : stages)
         {
-            if (stage.internal->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program is non-GL45!")};
+            if (stage.internal->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program for shader '{0}' is non-GL45!", shader_id.name)};
         }
 
         struct stage_compiler
@@ -252,7 +252,7 @@ namespace stardraw::gl45
                 const std::string source = stage->compiler.compile();
                 if (source.empty())
                 {
-                    result_status = {status_type::BACKEND_ERROR, "Failed to transpile SPIR-V into OpenGL compatible GLSL"};
+                    result_status = {status_type::BACKEND_ERROR, std::format("Failed to transpile SPIR-V into OpenGL compatible GLSL for shader '{0}'", shader_id.name)};
                     break;
                 }
 
@@ -261,7 +261,7 @@ namespace stardraw::gl45
         }
         catch (std::exception& _)
         {
-            result_status = {status_type::BACKEND_ERROR, "Failed to transpile SPIR-V into OpenGL compatible GLSL"};
+            result_status = {status_type::BACKEND_ERROR, std::format("Failed to transpile SPIR-V into OpenGL compatible GLSL for shader '{0}'", shader_id.name)};
         }
 
         for (const stage_compiler* stage : stage_compilers)
@@ -275,9 +275,9 @@ namespace stardraw::gl45
     status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Link shader stages")
+        TracyGpuZone("[Stardraw] Link shader stages");
         const GLuint program = glCreateProgram();
-        if (program == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateProgram)"};
+        if (program == 0) return {status_type::BACKEND_ERROR, std::format("Creating shader '{0}' failed (glCreateProgram)", shader_id.name)};
 
         for (const GLuint shader : stages)
         {
@@ -294,7 +294,7 @@ namespace stardraw::gl45
         {
             std::string log = get_program_log(program);
             glDeleteProgram(program);
-            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", log)};
+            return {status_type::BACKEND_ERROR, std::format("Shader validation for shader '{1}' failed with error: \n {0}", log, shader_id.name)};
         }
 
         out_shader_id = program;
@@ -305,9 +305,9 @@ namespace stardraw::gl45
     status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Compile shader stage")
+        TracyGpuZone("[Stardraw] Compile shader stage");
         const GLuint shader = glCreateShader(type);
-        if (shader == 0) return {status_type::BACKEND_ERROR, "Creating shader failed (glCreateShader)"};
+        if (shader == 0) return {status_type::BACKEND_ERROR, std::format("Creating shader '{0}' failed (glCreateShader)", shader_id.name)};
 
         const char* c_str = source.c_str();
         glShaderSource(shader, 1, &c_str, nullptr);
@@ -320,7 +320,7 @@ namespace stardraw::gl45
         {
             const std::string log = get_shader_log(shader);
             glDeleteShader(shader);
-            return {status_type::BACKEND_ERROR, std::format("Shader stage compilation failed with error: \n {0}", log)};
+            return {status_type::BACKEND_ERROR, std::format("Shader stage compilation for shader '{1}' failed with error: \n {0}", log, shader_id.name)};
         }
 
         out_shader_id = shader;
@@ -338,13 +338,13 @@ namespace stardraw::gl45
 
         if (success != GL_TRUE)
         {
-            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
+            return {status_type::BACKEND_ERROR, std::format("Shader validation for shader '{1}' failed with error: \n {0}", get_program_log(program), shader_id.name)};
         }
 
         return status_type::SUCCESS;
     }
 
-    std::string shader_state::get_shader_log(const GLuint shader)
+    std::string shader_state::get_shader_log(const GLuint shader) const
     {
         ZoneScoped;
         i32 log_length = 0;
@@ -359,7 +359,7 @@ namespace stardraw::gl45
         return log;
     }
 
-    std::string shader_state::get_program_log(const GLuint program)
+    std::string shader_state::get_program_log(const GLuint program) const
     {
         ZoneScoped;
         i32 log_length = 0;

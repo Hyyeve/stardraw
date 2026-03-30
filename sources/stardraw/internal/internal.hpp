@@ -26,6 +26,8 @@ namespace stardraw
         starlib_stdint::u64 byte_address = 0;
         starlib_stdint::u64 binding_range = 0;
         starlib_stdint::u64 binding_range_index = 0;
+        std::string path_string = "???";
+        bool is_valid = true;
         bool operator==(const shader_parameter_location_internal&) const = default;
     };
 
@@ -42,8 +44,6 @@ namespace stardraw
             free(data);
         }
     };
-
-    const shader_parameter_location invalid_shader_paramter_location = shader_parameter_location {std::make_unique<shader_parameter_location::shader_parameter_location_internal>()};
 
     binding_location_info vk_binding_for_location(const shader_parameter_location& location);
 }

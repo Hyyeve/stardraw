@@ -12,6 +12,7 @@ namespace stardraw::gl45
         object_identifier vertex_specification;
         std::optional<object_identifier> framebuffer;
         bool has_index_buffer;
+        object_identifier id;
     };
 
 }

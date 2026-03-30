@@ -43,7 +43,7 @@ namespace stardraw::gl45
 
         if (gl_texture_id == 0)
         {
-            out_status = {status_type::BACKEND_ERROR, std::format("Creating texture {0} failed", desc.identifier().name)};
+            out_status = {status_type::BACKEND_ERROR, std::format("Creating texture '{0}' failed", desc.identifier().name)};
             return;
         }
 
@@ -119,7 +119,7 @@ namespace stardraw::gl45
 
         if (gl_texture_id == 0)
         {
-            out_status = {status_type::BACKEND_ERROR, std::format("Creating texture view {0} failed", desc.identifier().name)};
+            out_status = {status_type::BACKEND_ERROR, std::format("Creating texture view '{0}' failed", desc.identifier().name)};
             return;
         }
 
@@ -173,12 +173,12 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Copy texture data");
-        if (!is_view_format_compatible(gl_texture_format, read_texture->gl_texture_format)) return {status_type::INVALID, "Can't transfer between textures; incompatible data formats"};
-        if (!is_view_target_compatible(gl_texture_target, read_texture->gl_texture_target)) return {status_type::INVALID, "Can't transfer between textures; incompatible texture shapes"};
+        if (!is_view_format_compatible(gl_texture_format, read_texture->gl_texture_format)) return {status_type::INVALID, std::format("Can't transfer between textures '{0}' and '{1}' - incompatible data formats", texture_id.name, read_texture->texture_id.name)};
+        if (!is_view_target_compatible(gl_texture_target, read_texture->gl_texture_target)) return {status_type::INVALID, std::format("Can't transfer between textures '{0}' and '{1}' - incompatible texture shapes", texture_id.name, read_texture->texture_id.name)};
 
         if (read_texture->num_texture_msaa_samples != num_texture_msaa_samples)
         {
-            return {status_type::INVALID, "Can't transfer between textures; number of MSAA samples doesn't match"};
+            return {status_type::INVALID, std::format("Can't transfer between textures '{0}' and '{1}' - number of MSAA samples doesn't match", texture_id.name, read_texture->texture_id.name)};
         }
 
         const u32 read_x = copy_info.read_x;
@@ -190,19 +190,19 @@ namespace stardraw::gl45
 
         if (read_x + copy_info.copy_width > read_texture->size.x || read_y + copy_info.copy_height > read_texture->size.y || read_z + copy_info.copy_depth > read_texture->size.z)
         {
-            return {status_type::RANGE_OVERFLOW, "Texture copy dimensions outside the bounds of the read texture"};
+            return {status_type::RANGE_OVERFLOW, std::format("Texture copy dimensions outside the bounds of the read texture '{0}'", read_texture->texture_id.name)};
         }
 
         if (write_x + copy_info.copy_width > size.x || write_y + copy_info.copy_height > size.y || write_z + copy_info.copy_depth > size.z)
         {
-            return {status_type::RANGE_OVERFLOW, "Texture copy dimensions outside the bounds of the write texture"};
+            return {status_type::RANGE_OVERFLOW, std::format("Texture copy dimensions outside the bounds of the write texture '{0}'", texture_id.name)};
         }
 
-        if (copy_info.read_mipmap_level >= read_texture->num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, "Texture copy mipmap level is outside the bounds of the read texture"};
-        if (copy_info.write_mipmap_level >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, "Texture copy mipmap level is outside the bounds of the write texture"};
+        if (copy_info.read_mipmap_level >= read_texture->num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture copy mipmap level is outside the bounds of the read texture '{0}'", read_texture->texture_id.name)};
+        if (copy_info.write_mipmap_level >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture copy mipmap level is outside the bounds of the write texture '{0}'", texture_id.name)};
 
-        if (copy_info.read_layer + copy_info.copy_layers >= read_texture->num_texture_array_layers) return {status_type::RANGE_OVERFLOW, "Texture copy array layers are outside the bounds of the read texture"};
-        if (copy_info.write_layer + copy_info.copy_layers >= num_texture_array_layers) return {status_type::RANGE_OVERFLOW, "Texture copy array layers are outside the bounds of the write texture"};
+        if (copy_info.read_layer + copy_info.copy_layers >= read_texture->num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture copy array layers are outside the bounds of the read texture '{0}'", read_texture->texture_id.name)};
+        if (copy_info.write_layer + copy_info.copy_layers >= num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture copy array layers are outside the bounds of the write texture '{0}'", texture_id.name)};
 
         switch (read_texture->shape)
         {
@@ -237,18 +237,18 @@ namespace stardraw::gl45
 
         if (info.x + info.width > size.x || info.y + info.height > size.y || info.z + info.depth > size.z)
         {
-            return {status_type::RANGE_OVERFLOW, "Texture upload dimensions outside the bounds of the texture"};
+            return {status_type::RANGE_OVERFLOW, std::format("Texture upload dimensions outside the bounds of the texture '{0}'", texture_id.name)};
         }
 
-        if (info.mipmap_level >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, "Texture upload mipmap level is outside the bounds of the texture"};
-        if (info.layer + info.layers > num_texture_array_layers || info.layers < 1) return {status_type::RANGE_OVERFLOW, "Texture upload array layers are outside the bounds of the texture"};
+        if (info.mipmap_level >= num_texture_mipmap_levels) return {status_type::RANGE_OVERFLOW, std::format("Texture upload mipmap level is outside the bounds of the texture '{0}'", texture_id.name)};
+        if (info.layer + info.layers > num_texture_array_layers || info.layers < 1) return {status_type::RANGE_OVERFLOW, std::format("Texture upload array layers are outside the bounds of the texture '{0}'", texture_id.name)};
 
-        if (info.channels == texture_memory_transfer_info::pixel_channels::STENCIL && !does_texture_data_type_have_stencil(data_type)) return {status_type::INVALID, "Texture upload channels is set to stencil, but this texture does not contain stencil data!"};
-        if (info.channels == texture_memory_transfer_info::pixel_channels::DEPTH && !does_texture_data_type_have_depth(data_type)) return {status_type::INVALID, "Texture upload channels is set to depth, but this texture does not contain depth data!"};
+        if (info.channels == texture_memory_transfer_info::pixel_channels::STENCIL && !does_texture_data_type_have_stencil(data_type)) return {status_type::INVALID, std::format("Texture upload channels is set to stencil, but texture '{0}' does not contain stencil data!", texture_id.name)};
+        if (info.channels == texture_memory_transfer_info::pixel_channels::DEPTH && !does_texture_data_type_have_depth(data_type)) return {status_type::INVALID, std::format("Texture upload channels is set to depth, but texture '{0}' does not contain depth data!", texture_id.name)};
 
         GLuint temp_buffer;
         glCreateBuffers(1, &temp_buffer);
-        if (temp_buffer == 0) return {status_type::BACKEND_ERROR, std::format("Unable to create temporary upload destination for texture")};
+        if (temp_buffer == 0) return {status_type::BACKEND_ERROR, std::format("Unable to create temporary upload destination for texture '{0}'", texture_id.name)};
 
         const u64 bytes = compute_bytes_in_transfer(info);
 
@@ -257,7 +257,7 @@ namespace stardraw::gl45
         if (temp_buffer_ptr == nullptr)
         {
             glDeleteBuffers(1, &temp_buffer);
-            return {status_type::BACKEND_ERROR, std::format("Unable to write to temporary upload destination for texture")};
+            return {status_type::BACKEND_ERROR, std::format("Unable to write to temporary upload destination for texture '{0}'", texture_id.name)};
         }
 
         gl_memory_transfer_handle* handle = new gl_memory_transfer_handle();
@@ -275,7 +275,7 @@ namespace stardraw::gl45
         ZoneScoped;
         TracyGpuZone("[Stardraw] Flush texture upload");
         const gl_memory_transfer_handle* gl_handle = dynamic_cast<gl_memory_transfer_handle*>(handle);
-        if (gl_handle == nullptr) return {status_type::INVALID, "Invalid memory transfer handle cast - this is an internal bug!"};
+        if (gl_handle == nullptr) return {status_type::INVALID, std::format("Invalid memory transfer handle cast - this is an internal bug! (trying to upload to texture '{0}')", texture_id.name)};
         glUnmapNamedBuffer(gl_handle->transfer_buffer_id);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, gl_handle->transfer_buffer_id);
         status unpack_status = unpack_pixels(info.mipmap_level, info.x, info.y, info.z, info.width, info.height, info.depth, to_gl_channels_format(info.channels), to_gl_memory_transfer_data_type(info.data_type));
@@ -437,8 +437,8 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Bind texture as image");
-        if (mipmap_level >= num_texture_mipmap_levels) return {status_type::INVALID, "Texture does not contain specified mipmap level for image binding"};
-        if (array_layer >= num_texture_array_layers) return {status_type::INVALID, "Texture does not contain specified array layer for image binding"};
+        if (mipmap_level >= num_texture_mipmap_levels) return {status_type::INVALID, std::format("Texture '{0}' does not contain specified mipmap level for image binding", texture_id.name)};
+        if (array_layer >= num_texture_array_layers) return {status_type::INVALID, std::format("Texture '{0}' does not contain specified array layer for image binding", texture_id.name)};
         glBindImageTexture(slot, gl_texture_id, mipmap_level, entire_array, array_layer, access, gl_texture_format);
         return status_type::SUCCESS;
     }
@@ -552,7 +552,7 @@ namespace stardraw::gl45
 
         if (mipmap_level >= num_texture_mipmap_levels)
         {
-            return {status_type::RANGE_OVERFLOW, "Mipmap level out of the bounds of the texture"};
+            return {status_type::RANGE_OVERFLOW, std::format("Mipmap level out of the bounds of the texture '{0}'", texture_id.name)};
         }
 
         if (is_texture_data_type_integer(data_type))

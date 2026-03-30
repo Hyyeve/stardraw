@@ -289,7 +289,7 @@ namespace stardraw
 
         const Slang::ComPtr<slang::IComponentType> linked_shader_component = linked_shader.internal->linked_components;
 
-        if (!linked_shader.internal->entry_point_indexes.contains(entry_point)) return {status_type::UNKNOWN, "Entry point not found in linked set"};
+        if (!linked_shader.internal->entry_point_indexes.contains(entry_point)) return {status_type::UNKNOWN, "Entry point not found in linked shader"};
         const u32 entry_point_idx = linked_shader.internal->entry_point_indexes.at(entry_point);
 
         const int target_index = get_target_index_for_api(api);
@@ -410,13 +410,20 @@ namespace stardraw
     {
         slang::TypeLayoutReflection* type_layout = internal->offset_ptr;
         slang::TypeLayoutReflection* element_layout = type_layout->getElementTypeLayout();
-        if (element_layout == nullptr) return invalid_shader_paramter_location;
+        if (element_layout == nullptr)
+        {
+            shader_parameter_location result = shader_parameter_location(*this);
+            result.internal->is_valid = false;
+            result.internal->path_string += std::format("[{0}]", index);
+            return result;
+        }
 
         shader_parameter_location result = shader_parameter_location(*this);
         result.internal->offset_ptr = element_layout;
         result.internal->byte_address += index * element_layout->getStride();
         result.internal->binding_range_index *= type_layout->getElementCount();
         result.internal->binding_range_index += index;
+        result.internal->path_string += std::format("[{0}]", index);
         return result;
     }
 
@@ -446,7 +453,12 @@ namespace stardraw
         if (is_single_element_container_kind(type_layout->getKind())) type_layout = type_layout->getElementTypeLayout();
 
         const i32 index = type_layout->findFieldIndexByName(name.data(), name.data() + name.size());
-        if (index < 0) return invalid_shader_paramter_location;
+        if (index < 0) {
+            shader_parameter_location result = shader_parameter_location(*this);
+            result.internal->is_valid = false;
+            result.internal->path_string += std::format(".{0}", name);
+            return result;
+        }
 
         slang::VariableLayoutReflection* field = type_layout->getFieldByIndex(index);
 
@@ -454,6 +466,7 @@ namespace stardraw
         result.internal->offset_ptr = field->getTypeLayout();
         result.internal->byte_address += field->getOffset();
         result.internal->binding_range += type_layout->getFieldBindingRangeOffset(index);
+        result.internal->path_string += std::format(".{0}", name);
         return result;
     }
 
@@ -488,10 +501,20 @@ namespace stardraw
         slang::VariableLayoutReflection* globals_as_var = internal->reflection->getGlobalParamsVarLayout();
         slang::TypeLayoutReflection* globals = globals_as_var->getTypeLayout();
         const i64 field_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
-        if (field_idx < 0) return invalid_shader_paramter_location;
+        slang::VariableLayoutReflection* root_param = field_idx < 0 ? nullptr : globals->getFieldByIndex(field_idx);
+        if (root_param == nullptr)
+        {
+            shader_parameter_location result {
+                std::make_unique<shader_parameter_location::shader_parameter_location_internal>(
+                    shader_parameter_location::shader_parameter_location_internal {
+                        .path_string = std::string(name),
+                        .is_valid = false,
+                    }
+                )
+            };
 
-        slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(field_idx);
-        if (root_param == nullptr) return invalid_shader_paramter_location;
+            return result;
+        }
 
         shader_parameter_location result {
             std::make_unique<shader_parameter_location::shader_parameter_location_internal>(
@@ -501,7 +524,8 @@ namespace stardraw
                     .root_idx = static_cast<u64>(field_idx),
                     .byte_address = 0,
                     .binding_range = 0,
-                    .binding_range_index = 0
+                    .binding_range_index = 0,
+                    .path_string = std::string(name),
                 }
             )
         };
@@ -534,9 +558,9 @@ namespace stardraw
 
         slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();
         const i64 global_idx = globals->findFieldIndexByName(buffer_name.data(), buffer_name.data() + buffer_name.size());
-        if (global_idx < 0) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name {0}", buffer_name)};
+        if (global_idx < 0) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name '{0}'", buffer_name)};
         slang::VariableLayoutReflection* root_param = globals->getFieldByIndex(global_idx);
-        if (root_param == nullptr) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name {0}", buffer_name)};
+        if (root_param == nullptr) return {status_type::UNKNOWN, std::format("Couldn't find buffer by name '{0}'", buffer_name)};
 
         slang::TypeLayoutReflection* base_layout = root_param->getTypeLayout()->getElementTypeLayout();
         out_buffer_layout.padded_size = base_layout->getStride();

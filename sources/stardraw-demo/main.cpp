@@ -145,7 +145,7 @@ int main()
         configure_shader(
             "shader",
             {
-                {frag_shader.locate("uniforms"), shader_parameter_value::buffer("param-buffer")},
+                {frag_shader.locate("uniforms").field("meow").index(3).field("mrrp"), shader_parameter_value::buffer("param-buffer")},
                 {frag_shader.locate("uniforms").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
                 {frag_shader.locate("texture"), shader_parameter_value::texture("tex")},
                 {frag_shader.locate("texture"), shader_parameter_value::sampler("tex_sampler")}
@@ -166,6 +166,8 @@ int main()
             break;
         }
     }
+
+    status cleanup_status = stardraw::cleanup_shader_compiler();
 
     return 0;
 }

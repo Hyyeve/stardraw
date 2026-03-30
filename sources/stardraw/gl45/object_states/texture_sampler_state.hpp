@@ -18,5 +18,6 @@ namespace stardraw::gl45
     private:
         status set_sampling_config(const texture_sampling_conifg& config, const bool is_integer_type) const;
         GLuint gl_id;
+        object_identifier sampler_id;
     };
 }
