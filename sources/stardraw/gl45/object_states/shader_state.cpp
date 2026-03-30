@@ -41,7 +41,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status shader_state::dispatch_compute(u32 groups_x, u32 groups_y, u32 groups_z) const
+    status shader_state::dispatch_compute(const u32 groups_x, const u32 groups_y, const u32 groups_z) const
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Shader compute dispatch")
@@ -115,11 +115,11 @@ namespace stardraw::gl45
         for (u32 idx = 0; idx < stages.size(); idx++)
         {
             const shader_stage& stage = stages[idx];
-            if (stage.type == shader_stage_type::COMPUTE)
+            if (stage.internal->type == shader_stage_type::COMPUTE)
             {
                 has_compute_stage = true;
             }
-            const GLenum shader_type = to_gl_shader_type(stage.type);
+            const GLenum shader_type = to_gl_shader_type(stage.internal->type);
             if (shader_type == 0)
             {
                 stages_compile_status = {status_type::BACKEND_ERROR, "A provided shader stage is not supported on this API!"};
@@ -169,7 +169,7 @@ namespace stardraw::gl45
         ZoneScopedN("Convert Slang spirv to opengl-compatible GLSL");
         for (const shader_stage& stage : stages)
         {
-            if (stage.program->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program is non-GL45!")};
+            if (stage.internal->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program is non-GL45!")};
         }
 
         struct stage_compiler
@@ -190,7 +190,7 @@ namespace stardraw::gl45
         {
             for (const shader_stage& stage : stages)
             {
-                stage_compilers.push_back(new stage_compiler {spirv_cross::CompilerGLSL(static_cast<const u32*>(stage.program->data), stage.program->data_size / sizeof(u32)), {}});
+                stage_compilers.push_back(new stage_compiler {spirv_cross::CompilerGLSL(static_cast<const u32*>(stage.internal->data), stage.internal->data_size / sizeof(u32)), {}});
             }
 
             std::vector<u32> bindings_per_set;
@@ -292,8 +292,9 @@ namespace stardraw::gl45
 
         if (success != GL_TRUE)
         {
+            std::string log = get_program_log(program);
             glDeleteProgram(program);
-            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", get_program_log(program))};
+            return {status_type::BACKEND_ERROR, std::format("Shader validation failed with error: \n {0}", log)};
         }
 
         out_shader_id = program;

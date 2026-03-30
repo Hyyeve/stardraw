@@ -15,13 +15,11 @@ namespace stardraw::gl45
         switch (stage)
         {
             case shader_stage_type::VERTEX: return GL_VERTEX_SHADER;
-            case shader_stage_type::TESSELATION_CONTROL: return GL_TESS_CONTROL_SHADER;
-            case shader_stage_type::TESSELATION_EVAL: return GL_TESS_EVALUATION_SHADER;
             case shader_stage_type::GEOMETRY: return GL_GEOMETRY_SHADER;
             case shader_stage_type::FRAGMENT: return GL_FRAGMENT_SHADER;
             case shader_stage_type::COMPUTE: return GL_COMPUTE_SHADER;
+            case shader_stage_type::UNKNOWN: return 0;
         }
-
         return 0;
     }
 

@@ -1,7 +1,6 @@
 #pragma once
 #include "../common.hpp"
 #include "../gl_headers.hpp"
-#include "stardraw/api/commands.hpp"
 namespace stardraw::gl45
 {
     class vertex_specification_state final : public object_state

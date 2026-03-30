@@ -12,37 +12,47 @@ using namespace starwin;
 using namespace starlib;
 using namespace starlib_stdint;
 
-shader_buffer_layout* uniforms_layout;
-shader_program* frag_shader;
-shader_program* vert_shader;
+shader_buffer_layout uniforms_layout;
+
+shader_stage frag_shader;
+shader_stage vert_shader;
 
 std::vector<shader_stage> load_shader()
 {
+    ///Read in the slang source..
     const std::filesystem::path path = "shader.slang";
     std::ifstream file(path, std::ios::in);
     std::stringstream buffer;
     buffer << file.rdbuf();
     file.close();
 
+    shader_module main_module;
+    shader_program linked_shader;
+
+    ///Init the internal compiler session & load the source
     status init_status = stardraw::setup_shader_compiler();
-    status load_status = stardraw::load_shader_module("main", buffer.str());
+    status load_status = stardraw::load_shader_module(buffer.str(), main_module);
 
-    shader_entry_point vert_entry_point = {"main", "vertexMain"};
-    shader_entry_point frag_entry_point = {"main", "fragmentMain"};
+    ///Create entry points and link them into a shader program
+    shader_entry_point vert_entry_point = {main_module, "vertexMain"};
+    shader_entry_point frag_entry_point = {main_module, "fragmentMain"};
 
-    status link_status_vtx = stardraw::link_shader_modules(
-        "main_linked",
+    status link_status_vtx = stardraw::link_shader_program(
         {
             vert_entry_point,
             frag_entry_point,
-        }
+        },
+        linked_shader
     );
 
-    status vtx_load_status = stardraw::create_shader_program("main_linked", vert_entry_point, graphics_api::GL45, &vert_shader);
-    status frg_load_status = stardraw::create_shader_program("main_linked", frag_entry_point, graphics_api::GL45, &frag_shader);
-    status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", &uniforms_layout);
+    ///Get individual stages from the linked program
+    status vtx_load_status = stardraw::create_shader_stage(linked_shader, vert_entry_point, graphics_api::GL45, vert_shader);
+    status frg_load_status = stardraw::create_shader_stage(linked_shader, frag_entry_point, graphics_api::GL45, frag_shader);
 
-    return {{shader_stage_type::VERTEX, vert_shader}, {shader_stage_type::FRAGMENT, frag_shader}};
+    ///Get the buffer layout of our uniform buffer
+    status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", uniforms_layout);
+
+    return {vert_shader, frag_shader};
 }
 
 struct vertex
@@ -87,7 +97,7 @@ int main()
 
     const std::vector<shader_stage> shader_stages = load_shader();
 
-    const u32 param_buffer_size = frag_shader->buffer_size("structured");
+    const u32 param_buffer_size = frag_shader.buffer_size("structured");
 
     status object_state_status = ctx->create_objects({
             buffer("vertices", 300),
@@ -135,10 +145,10 @@ int main()
         configure_shader(
             "shader",
             {
-                {frag_shader->locate("structured"), shader_parameter_value::buffer("param-buffer")},
-                {frag_shader->locate("structured").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
-                {frag_shader->locate("texture"), shader_parameter_value::texture("tex")},
-                {frag_shader->locate("texture"), shader_parameter_value::sampler("tex_sampler")}
+                {frag_shader.locate("uniforms"), shader_parameter_value::buffer("param-buffer")},
+                {frag_shader.locate("uniforms").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
+                {frag_shader.locate("texture"), shader_parameter_value::texture("tex")},
+                {frag_shader.locate("texture"), shader_parameter_value::sampler("tex_sampler")}
             }),
         configure_draw("draw-spec"),
     });

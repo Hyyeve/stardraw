@@ -119,7 +119,7 @@ namespace stardraw::gl45
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
 
         //To bind a sampler, we make sure the location is *explicitly* pointed at the texture variable, not something contained inside the texture.
-        if (binding_info.binding_type != location.offset_ptr)
+        if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
             return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a sampler bound to it!"};
         }
@@ -138,18 +138,18 @@ namespace stardraw::gl45
         const u32 actual_slot = binding_info.slot + shader->descriptor_set_binding_offsets[binding_info.set];
 
         //To bind a texture, we make sure the location is *explicitly* pointed at the texture variable, not something contained inside the texture.
-        if (binding_info.binding_type != location.offset_ptr)
+        if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
             return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a texture bound to it!"};
         }
 
         texture_shape resource_shape;
 
-        switch (binding_info.binding_type->getKind())
+        switch (binding_info.binding_type_ptr->getKind())
         {
             case slang::TypeReflection::Kind::Resource:
             {
-                const u32 shape = binding_info.binding_type->getResourceShape() & ~SlangResourceShape::SLANG_TEXTURE_COMBINED_FLAG;
+                const u32 shape = binding_info.binding_type_ptr->getResourceShape() & ~SlangResourceShape::SLANG_TEXTURE_COMBINED_FLAG;
                 switch (shape)
                 {
                     case SlangResourceShape::SLANG_TEXTURE_1D_ARRAY:
@@ -194,7 +194,7 @@ namespace stardraw::gl45
         if (texture->get_shape() != resource_shape) return {status_type::INVALID, std::format("Texture object '{0}' can't be bound to this location - wrong texture shape!", value.opaque_reference.name)};
 
         status bind_status = status_type::SUCCESS;
-        const SlangResourceAccess access = binding_info.binding_type->getResourceAccess();
+        const SlangResourceAccess access = binding_info.binding_type_ptr->getResourceAccess();
         GLenum gl_access = GL_READ_WRITE;
         if (access == SLANG_RESOURCE_ACCESS_READ) gl_access = GL_READ_ONLY;
         else if (access == SLANG_RESOURCE_ACCESS_WRITE) gl_access = GL_WRITE_ONLY;
@@ -222,12 +222,12 @@ namespace stardraw::gl45
         SlangResourceAccess access;
 
         //To bind a buffer, we make sure the location is *explicitly* pointed at the buffer variable, not something contained inside the buffer.
-        if (binding_info.binding_type != location.offset_ptr)
+        if (binding_info.binding_type_ptr != location.internal->offset_ptr)
         {
             return {status_type::UNSUPPORTED, "The shader parameter location provided cannot have a buffer bound to it!"};
         }
 
-        switch (binding_info.binding_type->getKind())
+        switch (binding_info.binding_type_ptr->getKind())
         {
             case slang::TypeReflection::Kind::ParameterBlock:
             case slang::TypeReflection::Kind::ConstantBuffer:
@@ -246,8 +246,8 @@ namespace stardraw::gl45
 
             case slang::TypeReflection::Kind::Resource:
             {
-                const SlangResourceShape shape = binding_info.binding_type->getResourceShape();
-                access = binding_info.binding_type->getResourceAccess();
+                const SlangResourceShape shape = binding_info.binding_type_ptr->getResourceShape();
+                access = binding_info.binding_type_ptr->getResourceAccess();
                 if (shape == SLANG_STRUCTURED_BUFFER || shape == SLANG_BYTE_ADDRESS_BUFFER)
                 {
                     binding_type = GL_SHADER_STORAGE_BUFFER;
@@ -284,7 +284,7 @@ namespace stardraw::gl45
             return {status_type::INVALID, "Can't upload shader parameter; the shader does not have a backing buffer set for the given location!"};
         }
 
-        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
+        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.internal->byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
     }
 
 }
