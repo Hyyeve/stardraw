@@ -110,6 +110,7 @@ namespace stardraw
 
     starlib::status cleanup_shader_compiler()
     {
+        if (active_slang_session == nullptr) return {status_type::NOTHING_TO_DO, "Shader compiler not initialized"};
         linked_programs.clear();
         active_slang_session->release();
         global_slang_context->release();
@@ -120,6 +121,7 @@ namespace stardraw
 
     status load_shader_module(const std::string_view& source, shader_module& out_shader_module)
     {
+        if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         constexpr std::hash<std::string_view> hash;
         const std::string fake_path = std::format("module_{0}.fakepath", hash(source));
         Slang::ComPtr<slang::IBlob> diagnostics;
@@ -144,6 +146,7 @@ namespace stardraw
 
     status load_shader_module(const void* cache_ptr, const u64 cache_size, shader_module& out_shader_module)
     {
+        if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         const std::string fake_path = std::format("module_{0}.fakepath", std::hash<const void*>()(cache_ptr));
         Slang::ComPtr<slang::IBlob> diagnostics;
 
@@ -167,6 +170,7 @@ namespace stardraw
 
     status cache_shader_module(const shader_module& module, void*& out_cache_ptr, u64& out_cache_size)
     {
+        if (module.internal == nullptr) return {status_type::UNEXPECTED, "Module is invalid!"};
         const Slang::ComPtr<slang::IModule> inner_module = module.internal->slang_module;
 
         Slang::ComPtr<ISlangBlob> serialized_blob;
@@ -192,6 +196,7 @@ namespace stardraw
         {
             const shader_entry_point& entry_point = entry_points[idx];
 
+            if (entry_point.module.internal == nullptr) return {status_type::UNEXPECTED, std::format("Module for entry point '{0}' is invalid!", entry_point.entry_point_name)};
             const Slang::ComPtr<slang::IModule> inner_module = entry_point.module.internal->slang_module;
 
             Slang::ComPtr<slang::IEntryPoint> slang_entry_point;
@@ -253,7 +258,9 @@ namespace stardraw
 
     status create_shader_stage(const shader_program& linked_shader, const shader_entry_point& entry_point, const graphics_api& api, shader_stage& out_shader_stage)
     {
-        shader_stage result = shader_stage(std::make_shared<shader_stage::shader_stage_internal>());
+        if (linked_shader.internal == nullptr) return {status_type::UNEXPECTED, "Linked shader program is not valid!"};
+
+        const shader_stage result = shader_stage(std::make_shared<shader_stage::shader_stage_internal>());
 
         const Slang::ComPtr<slang::IComponentType> linked_shader_component = linked_shader.internal->linked_components;
 
@@ -300,7 +307,7 @@ namespace stardraw
             memcpy(result.internal->data, shader_blob->getBufferPointer(), result.internal->data_size);
         }
 
-        out_shader_stage = std::move(result);
+        out_shader_stage = result;
 
         return status_type::SUCCESS;
     }
@@ -376,6 +383,14 @@ namespace stardraw
 
     shader_parameter_location shader_parameter_location::index(const u32 index) const
     {
+        if (internal == nullptr)
+        {
+            shader_parameter_location result = shader_parameter_location(*this);
+            result.internal->is_valid = false;
+            result.internal->path_string += std::format("[{0}]", index);
+            return result;
+        }
+
         slang::TypeLayoutReflection* type_layout = internal->offset_ptr;
         slang::TypeLayoutReflection* element_layout = type_layout->getElementTypeLayout();
         if (element_layout == nullptr)
@@ -416,12 +431,21 @@ namespace stardraw
 
     shader_parameter_location shader_parameter_location::field(const std::string_view& name) const
     {
+        if (internal == nullptr)
+        {
+            shader_parameter_location result = shader_parameter_location(*this);
+            result.internal->is_valid = false;
+            result.internal->path_string += std::format(".{0}", name);
+            return result;
+        }
+
         slang::TypeLayoutReflection* type_layout = internal->offset_ptr;
 
         if (is_single_element_container_kind(type_layout->getKind())) type_layout = type_layout->getElementTypeLayout();
 
         const i32 index = type_layout->findFieldIndexByName(name.data(), name.data() + name.size());
-        if (index < 0) {
+        if (index < 0)
+        {
             shader_parameter_location result = shader_parameter_location(*this);
             result.internal->is_valid = false;
             result.internal->path_string += std::format(".{0}", name);
@@ -443,7 +467,8 @@ namespace stardraw
     shader_parameter_location& shader_parameter_location::operator=(const shader_parameter_location& other)
     {
         if (this == &other) return *this;
-        internal = std::make_unique<shader_parameter_location_internal>(*other.internal);
+        if (other.internal != nullptr) internal = std::make_unique<shader_parameter_location_internal>(*other.internal);
+        else internal = std::make_unique<shader_parameter_location_internal>();
         return *this;
     }
 
@@ -458,6 +483,7 @@ namespace stardraw
 
     bool shader_parameter_location::operator==(const shader_parameter_location& other) const
     {
+        if (internal == nullptr || other.internal == nullptr) return internal == other.internal;
         return *internal == *other.internal;
     }
 
@@ -466,6 +492,19 @@ namespace stardraw
 
     shader_parameter_location shader_stage::locate(const std::string_view& name) const
     {
+        if (internal == nullptr)
+        {
+            return
+                shader_parameter_location {
+                    std::make_unique<shader_parameter_location::shader_parameter_location_internal>(
+                        shader_parameter_location::shader_parameter_location_internal {
+                            .path_string = std::string(name),
+                            .is_valid = false,
+                        }
+                    )
+                };
+        }
+
         slang::VariableLayoutReflection* globals_as_var = internal->reflection->getGlobalParamsVarLayout();
         slang::TypeLayoutReflection* globals = globals_as_var->getTypeLayout();
         const i64 field_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
@@ -503,6 +542,7 @@ namespace stardraw
 
     i64 shader_stage::buffer_size(const std::string_view& name) const
     {
+        if (internal == nullptr) return -1;
         slang::TypeLayoutReflection* globals = internal->reflection->getGlobalParamsTypeLayout();
         const i64 global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
         if (global_idx < 0) return -1;
@@ -522,6 +562,7 @@ namespace stardraw
 
     status determine_shader_buffer_layout(const shader_stage& program, const std::string_view& buffer_name, memory_layout_info& out_buffer_layout)
     {
+        if (program.internal == nullptr) return {status_type::UNEXPECTED, "Shader program is not valid!"};
         slang::ShaderReflection* shader_layout = program.internal->reflection;
 
         slang::TypeLayoutReflection* globals = shader_layout->getGlobalParamsTypeLayout();

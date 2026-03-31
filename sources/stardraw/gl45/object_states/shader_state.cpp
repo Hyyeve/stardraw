@@ -169,7 +169,8 @@ namespace stardraw::gl45
         ZoneScopedN("Convert Slang spirv to opengl-compatible GLSL");
         for (const shader_stage& stage : stages)
         {
-            if (stage.internal->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader program for shader '{0}' is non-GL45!", shader_id.name)};
+            if (stage.internal == nullptr) return {status_type::UNEXPECTED, std::format("A provided shader stage for shader '{0}' is invalid!", shader_id.name)};
+            if (stage.internal->api != graphics_api::GL45) return {status_type::INVALID, std::format("A provided shader stage for shader '{0}' is non-GL45!", shader_id.name)};
         }
 
         struct stage_compiler

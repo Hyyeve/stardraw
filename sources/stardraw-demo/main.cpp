@@ -83,7 +83,6 @@ int main()
     status wind_status = window::create(
         {
             .api = graphics_api::GL45,
-            .transparent_framebuffer = true,
             .gl_debug_context = true,
         }, wind);
 
@@ -97,11 +96,10 @@ int main()
 
     const std::vector<shader_stage> shader_stages = load_shader();
 
-    const u32 param_buffer_size = frag_shader.buffer_size("structured");
+    const i64 param_buffer_size = frag_shader.buffer_size("uniforms");
 
     status object_state_status = ctx->create_objects({
             buffer("vertices", 300),
-            buffer("uniforms", 300),
             buffer("param-buffer", param_buffer_size * 2),
             texture("tex", texture_format::create_2d(2, 2), texture_sampling_configs::nearest),
             sampler("tex_sampler", texture_sampling_configs::linear, false),

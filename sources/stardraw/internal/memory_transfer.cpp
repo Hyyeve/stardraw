@@ -5,6 +5,7 @@ namespace stardraw
     void* layout_memory(const memory_layout_info& layout, const void* data, const u64 data_size)
     {
         if (data == nullptr) return nullptr;
+        if (layout.packed_size == 0 || layout.padded_size == 0) return nullptr;
 
         const u64 element_count = data_size / layout.packed_size;
         const u8* in_bytes = static_cast<const u8*>(data);

@@ -155,14 +155,9 @@ namespace stardraw::gl45 {
             glSamplerParameterf(gl_id, GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(config.anisotropy_level));
         }
 
-        glSamplerParameteri(gl_id, GL_TEXTURE_BASE_LEVEL, config.mipmap_min_level);
-        glSamplerParameteri(gl_id, GL_TEXTURE_MAX_LEVEL, config.mipmap_max_level);
+        glSamplerParameteri(gl_id, GL_TEXTURE_MIN_LOD, config.mipmap_min_level);
+        glSamplerParameteri(gl_id, GL_TEXTURE_MAX_LOD, config.mipmap_max_level);
         glSamplerParameterf(gl_id, GL_TEXTURE_LOD_BIAS, config.mipmap_bias);
-
-        glSamplerParameteri(gl_id, GL_TEXTURE_SWIZZLE_R, to_gl_swizzle_mode(config.swizzling.swizzle_red));
-        glSamplerParameteri(gl_id, GL_TEXTURE_SWIZZLE_G, to_gl_swizzle_mode(config.swizzling.swizzle_green));
-        glSamplerParameteri(gl_id, GL_TEXTURE_SWIZZLE_B, to_gl_swizzle_mode(config.swizzling.swizzle_blue));
-        glSamplerParameteri(gl_id, GL_TEXTURE_SWIZZLE_A, to_gl_swizzle_mode(config.swizzling.swizzle_alpha));
 
         return status_type::SUCCESS;
     }

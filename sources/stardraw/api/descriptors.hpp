@@ -319,6 +319,7 @@ namespace stardraw
         ///If anisotropy is not supported, this setting will be ignored.
         texture_anisotropy_level anisotropy_level = texture_anisotropy_level::NONE;
 
+        ///NOTE: Swizzling mode is ingored by samplers and can only be used on textures directly.
         texture_swizzle_config swizzling = {};
 
         texture_filtering_mode mipmap_filter = texture_filtering_mode::NEAREST;
