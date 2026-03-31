@@ -113,8 +113,8 @@ namespace stardraw
         linked_programs.clear();
         active_slang_session->release();
         global_slang_context->release();
-        delete active_slang_session;
-        delete global_slang_context;
+        active_slang_session = nullptr;
+        global_slang_context = nullptr;
         return status_type::SUCCESS;
     }
 
