@@ -7,7 +7,13 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(spirv_cross_core REQUIRED)
 find_package(spirv_cross_glsl REQUIRED)
 
+if(NOT TARGET starlib)
 add_subdirectory(libraries/starlib)
+endif()
+
+if(NOT TARGET starwin)
+add_subdirectory(libraries/starwin)
+endif()
 
 include(FetchContent)
 

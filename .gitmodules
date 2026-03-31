@@ -2,3 +2,7 @@
 	path = libraries/starlib
 	url = https://github.com/Hyyeve/starlib
 	branch = master
+[submodule "libraries/starwin"]
+	path = libraries/starwin
+	url = https://github.com/Hyyeve/starwin
+	branch = master
