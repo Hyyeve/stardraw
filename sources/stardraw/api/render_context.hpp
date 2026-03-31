@@ -11,13 +11,11 @@
 
 namespace stardraw
 {
-    enum class signal_status : starlib_stdint::u8
-    {
-        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
-    };
-
+    ///Render context configuration information
     struct render_context_config
     {
+        ///The graphics API this render context will use.
+        ///NOTE: Not all defined graphics APIs are available. Currently implmented backends: GL45
         starlib::graphics_api api;
 
         ///Toggle whether the backend graphics API validation features should be used.
@@ -36,20 +34,44 @@ namespace stardraw
         starlib::gl_loader_func gl_loader;
     };
 
+    ///Main render context interface that manages graphics state and objects.
+    ///This is your main interface for performing rendering operations.
+    ///It is undefined to create multiple render contexts that rely on the same backend graphics context / window, and may result in unexpected behaviour.
     class render_context
     {
     public:
+        ///Create a render context with some configuration.
         static starlib::status create(const render_context_config& info, render_context*& out_ptr);
         virtual ~render_context() = default;
 
-        [[nodiscard]] virtual starlib::status execute_command_buffer(const std::string_view& name) = 0;
-        [[nodiscard]] virtual starlib::status execute_temp_command_buffer(const command_list&& cmd_list) = 0;
-        [[nodiscard]] virtual starlib::status create_command_buffer(const std::string_view& name, const command_list&& cmd_list) = 0;
+        ///Create a named command buffer to later execute.
+        [[nodiscard]] virtual starlib::status create_command_buffer(const std::string_view& name, const command_list&& cmd_buffer) = 0;
+
+        ///Delete a named command buffer.
         [[nodiscard]] virtual starlib::status delete_command_buffer(const std::string_view& name) = 0;
+
+        ///Consume a list of descriptors and set up internal graphics state for them.
+        ///Descriptors are consumed in order and may reference objects defined earlier in the list or in any earlier calls.
+        ///Descriptor names are globally exclusive irregardless of descriptor type.
         [[nodiscard]] virtual starlib::status create_objects(const descriptor_list&& descriptors) = 0;
+
+        ///Delete a named object.
+        ///NOTE: Deleting an object may cause other objects to become invalid (for instance, deleting a texture that has a texture view into it).
+        ///Stardraw tries to detect theses cases and may return an error status either from the delete call or a later call,
+        ///but error checking deleted objects is harder and less robust than checking object creation,
+        ///so unexpected behaviour may occur if you delete an object that is still being referenced by any other objects.
         [[nodiscard]] virtual starlib::status delete_object(descriptor_type type, const std::string_view& name) = 0;
 
+        ///Execute a previously defined command buffer. You should set up and reuse command buffers for commands that do not require dynamic data.
+        [[nodiscard]] virtual starlib::status execute_command_buffer(const std::string_view& name) = 0;
+
+        ///Consume and execute a given command buffer immediately. You should only use this for commands that require dynamic data.
+        [[nodiscard]] virtual starlib::status execute_command_buffer(const command_list&& cmd_buffer) = 0;
+
+        ///Check the status of a named signal
         [[nodiscard]] virtual signal_status check_signal(const std::string_view& name) = 0;
+
+        ///Wait for a named signal to be flagged
         [[nodiscard]] virtual signal_status wait_signal(const std::string_view& name, const starlib_stdint::u64 timeout_nanos) = 0;
 
         //Create a memory transfer handle for uploading or downloading data to/from a buffer.

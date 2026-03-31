@@ -4,6 +4,7 @@ target_sources(stardraw PRIVATE
 
         internal/shaders.cpp
         internal/render_context.cpp
+        internal/memory_transfer.cpp
 
         gl45/gl_headers.hpp
         gl45/common.hpp

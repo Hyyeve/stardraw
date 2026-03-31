@@ -4,6 +4,7 @@
 
 namespace stardraw
 {
+    ///Heavily templated type to store any kind of uploadable shader parameter.
     struct shader_parameter_value
     {
         enum class parameter_type : starlib_stdint::u8
@@ -42,6 +43,7 @@ namespace stardraw
             constexpr static vector_size_type type = vector_size_type::_1;
         };
 
+        ///Create a shader parameter value that stores a vector of some data type.
         template <typename data_type, typename... data_type_pack>
         static shader_parameter_value vector(data_type val0, data_type_pack... vals)
         {
@@ -59,6 +61,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores a vector of some data type.
         template <starlib_stdint::u64 vector_size = 1, typename data_type>
         static shader_parameter_value vector(std::array<data_type, vector_size> array)
         {
@@ -74,6 +77,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores an array of vectors of some data type.
         template <starlib_stdint::u64 vector_size = 1, starlib_stdint::u64 total_size, typename data_type>
         static shader_parameter_value vectors(std::array<data_type, total_size> array)
         {
@@ -91,6 +95,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores some number of matrices
         template <typename dimensions, starlib_stdint::u64 total_elements, typename data_type>
         static shader_parameter_value matrices(std::array<data_type, total_elements> matrix)
         {
@@ -107,6 +112,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores a reference to a buffer
         static shader_parameter_value buffer(const std::string& reference)
         {
             return shader_parameter_value {
@@ -119,6 +125,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores a reference to a texture that is intended for sampling use
         static shader_parameter_value texture(const std::string& reference)
         {
             return shader_parameter_value {
@@ -131,6 +138,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores a reference to a texture that is intended for image read/write use
         static shader_parameter_value image(const std::string& reference, const starlib_stdint::u32 mipmap = 0, const starlib_stdint::u32 layer = 0, const bool array = false)
         {
             return shader_parameter_value {
@@ -146,6 +154,7 @@ namespace stardraw
             };
         }
 
+        ///Create a shader parameter value that stores a reference to a sampler config that can be applied to a texture sampler.
         static shader_parameter_value sampler(const std::string& reference)
         {
             return shader_parameter_value {

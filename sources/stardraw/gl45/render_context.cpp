@@ -59,7 +59,7 @@ namespace stardraw::gl45
         return status_from_last_gl_error();
     }
 
-    [[nodiscard]] status render_context::execute_temp_command_buffer(const command_list&& commands)
+    [[nodiscard]] status render_context::execute_command_buffer(const command_list&& commands)
     {
         ZoneScoped;
         for (const starlib::polymorphic<command>& cmd : commands)

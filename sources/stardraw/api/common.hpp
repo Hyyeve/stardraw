@@ -6,6 +6,7 @@
 
 namespace stardraw
 {
+    ///Used internally to identify objects created from descriptors. Usually constructed automatically.
     struct object_identifier
     {
         object_identifier() : object_identifier("???") {}

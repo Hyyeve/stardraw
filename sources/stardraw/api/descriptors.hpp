@@ -9,6 +9,8 @@
 
 namespace stardraw
 {
+
+    ///Identifier for descriptors. Used for internal descriptor polymorphism purposes
     enum class descriptor_type : starlib_stdint::u8
     {
         BUFFER, SHADER, TEXTURE, SAMPLER,  FRAMEBUFFER,
@@ -32,9 +34,11 @@ namespace stardraw
         object_identifier ident;
     };
 
+    ///Descriptor list type
     typedef std::vector<starlib::polymorphic<descriptor>> descriptor_list;
 
     ///NOTE: Buffer memory storage cannot be guarenteed on OpenGL, but SYSRAM guarentees it will be possible to write into the buffer directly.
+    ///TODO: This needs to be refactored into more specific usage flags to support other backends.
     enum class buffer_memory_storage : starlib_stdint::u8
     {
         SYSRAM, VRAM,
@@ -283,12 +287,16 @@ namespace stardraw
         TRANSPARENT_WHITE, //1, 1, 1, 0
     };
 
+    ///Channel identifiers for texture swizzling
     enum class texture_swizzle
     {
         RED, GREEN, BLUE, ALPHA
     };
 
-    struct texture_swizzle_mode
+    ///Configuratoin for how to swizzle texture channels.
+    ///Mappings are from sampled channel -> original channel, as in:
+    ///swizzle_red = texture_swizzle::GREEN, causes reads to the red channel to return data from the (original) green channel.
+    struct texture_swizzle_config
     {
         texture_swizzle swizzle_red = texture_swizzle::RED;
         texture_swizzle swizzle_green = texture_swizzle::GREEN;
@@ -296,6 +304,7 @@ namespace stardraw
         texture_swizzle swizzle_alpha = texture_swizzle::ALPHA;
     };
 
+    ///Collection of options required for configuring texture sampling
     struct texture_sampling_conifg
     {
         texture_filtering_mode downscale_filter = texture_filtering_mode::LINEAR;
@@ -306,10 +315,11 @@ namespace stardraw
         texture_wrapping_mode wrapping_mode_z = texture_wrapping_mode::REPEAT;
         texture_border_color border_color = texture_border_color::TRANSPARENT_BLACK;
 
-        //Anisotropy is not *strictly* supported in all implementations without extensions, but availablity is near universal.
+        ///NOTE: Anisotropy is not *strictly* supported in all implementations without extensions, but availablity is near universal.
+        ///If anisotropy is not supported, this setting will be ignored.
         texture_anisotropy_level anisotropy_level = texture_anisotropy_level::NONE;
 
-        texture_swizzle_mode swizzling = {};
+        texture_swizzle_config swizzling = {};
 
         texture_filtering_mode mipmap_filter = texture_filtering_mode::NEAREST;
         starlib_stdint::u32 mipmap_min_level = 0;
@@ -317,6 +327,7 @@ namespace stardraw
         starlib_stdint::f32 mipmap_bias = 0;
     };
 
+    ///Default texture sampling configs
     namespace texture_sampling_configs
     {
         constexpr texture_sampling_conifg linear = {.anisotropy_level = texture_anisotropy_level::X16};
@@ -324,6 +335,7 @@ namespace stardraw
         constexpr texture_sampling_conifg none = {.downscale_filter = texture_filtering_mode::NEAREST, .upscale_filter = texture_filtering_mode::NEAREST, .mipmap_max_level = 0};
     }
 
+    ///Describes a texture with some format and default sampling config. Optionally, it can be a view into an existing texture.
     struct texture final : descriptor
     {
         explicit texture(const std::string_view& name, const texture_format& format, const texture_sampling_conifg& default_sampling_config, const std::string_view& as_view_of_texture = "") : descriptor(name), format(format), default_sampling_config(default_sampling_config), as_view_of(as_view_of_texture.empty() ? std::nullopt : std::optional(as_view_of_texture)) {}
@@ -338,6 +350,7 @@ namespace stardraw
         std::optional<object_identifier> as_view_of;
     };
 
+    ///Describes a texture sampling config that can be applied to a specific sampler via shader parameters.
     struct sampler final : descriptor
     {
         sampler(const std::string_view& name, const texture_sampling_conifg& smapler_config, const bool integer_texture_sampler) : descriptor(name), sampler_config(smapler_config), integer_texture_sampler(integer_texture_sampler) {}
@@ -351,6 +364,7 @@ namespace stardraw
         bool integer_texture_sampler;
     };
 
+    ///Information requierd for framebuffer attachments
     struct framebuffer_attachment_info
     {
         object_identifier texture;
@@ -359,6 +373,8 @@ namespace stardraw
         bool layered;
     };
 
+    ///Describes a framebuffer with some number of color attachments, and optionally, depth/stencil attachments.
+    ///It is allowed to provide the same texture for both the depth and stencil attachments, if the texture is a combined depth-stencil format.
     struct framebuffer final : descriptor
     {
         framebuffer(const std::string_view& name, const std::initializer_list<framebuffer_attachment_info> color_attachments, const std::optional<framebuffer_attachment_info>& depth_attachment = std::nullopt, const std::optional<framebuffer_attachment_info>& stencil_attachment = std::nullopt) : descriptor(name), color_attachments(color_attachments), depth_attachment(depth_attachment), stencil_attachment(stencil_attachment) {}

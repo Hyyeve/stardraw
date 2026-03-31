@@ -11,6 +11,7 @@
 
 namespace stardraw
 {
+    ///Identifier for commands. Used for internal command polymorphism purposes
     enum class command_type : starlib_stdint::u8
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
@@ -22,19 +23,23 @@ namespace stardraw
         AQUIRE, PRESENT,
     };
 
+    ///Base commad type
     struct command
     {
         virtual ~command() = default;
         [[nodiscard]] virtual command_type type() const = 0;
     };
 
+    ///Command list type
     typedef std::vector<starlib::polymorphic<command>> command_list;
 
+    ///Geometry draw modes. Starlib only supports a small subset of possibilities to ensure cross-api compatibility.
     enum class draw_mode : starlib_stdint::u8
     {
         TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN,
     };
 
+    ///Data type to determine how index values are interpreted.
     enum class draw_indexed_index_type : starlib_stdint::u8
     {
         UINT_32, UINT_16, UINT_8
@@ -135,21 +140,25 @@ namespace stardraw
         object_identifier draw_specification;
     };
 
+    ///Stencil test function options
     enum class stencil_test_func : starlib_stdint::u8
     {
         ALWAYS, NEVER, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL
     };
 
+    ///Stencil test result options
     enum class stencil_result_op : starlib_stdint::u8
     {
         KEEP, ZERO, REPLACE, INCREMENT, INCREMENT_WRAP, DECREMENT, DECREMENT_WRAP, INVERT
     };
 
+    ///Stencil test face options
     enum class stencil_facing : starlib_stdint::u8
     {
         FRONT, BACK, BOTH
     };
 
+    ///Combination of stencil test options required to configure stencil testing.
     struct stencil_config
     {
         stencil_test_func test_func = stencil_test_func::ALWAYS;
@@ -158,13 +167,14 @@ namespace stardraw
         stencil_result_op depth_fail_op = stencil_result_op::KEEP;
         stencil_result_op pixel_pass_op = stencil_result_op::KEEP;
 
-        int reference = 0;
-        int test_mask = std::numeric_limits<int>::max();
-        int write_mask = std::numeric_limits<int>::max();
+        starlib_stdint::u32 reference = 0;
+        starlib_stdint::u32 test_mask = starlib_stdint::u32_max;
+        starlib_stdint::u32 write_mask = starlib_stdint::u32_max;
 
         bool enabled = true;
     };
 
+    ///Default stencil configs
     namespace stencil_configs
     {
         constexpr stencil_config DISABLED = {.enabled = false };
@@ -184,11 +194,13 @@ namespace stardraw
         stencil_facing for_facing;
     };
 
+    ///Blending function options
     enum class blending_func : starlib_stdint::u8
     {
         ADD, SUBTRACT, REVERSE_SUBTRACT, MIN, MAX
     };
 
+    ///Blending factor options
     enum class blending_factor : starlib_stdint::u8
     {
         ZERO,
@@ -217,6 +229,7 @@ namespace stardraw
         SECONDARY_SOURCE_ALPHA,
     };
 
+    ///Combination of blending options required to configure blending
     struct blending_config
     {
         blending_factor source_blend_rgb = blending_factor::SOURCE_ALPHA;
@@ -235,6 +248,7 @@ namespace stardraw
         bool enabled = true;
     };
 
+    ///Default blending configs
     namespace blending_configs
     {
         constexpr blending_config DISABLED = {.enabled = false};
@@ -261,11 +275,13 @@ namespace stardraw
         starlib_stdint::u32 draw_buffer_index;
     };
 
+    ///Depth test function options
     enum class depth_test_func : starlib_stdint::u8
     {
         ALWAYS, NEVER, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL
     };
 
+    ///Collection of options requierd to configure depth testing
     struct depth_test_config
     {
         depth_test_func test_func = depth_test_func::LESS;
@@ -273,6 +289,7 @@ namespace stardraw
         bool enabled = true;
     };
 
+    ///Default depth testing configs
     namespace depth_test_configs
     {
         constexpr depth_test_config DISABLED = {.enabled = false};
@@ -309,6 +326,7 @@ namespace stardraw
         starlib_stdint::u32 viewport_index;
     };
 
+    ///Face culling options
     enum face_cull_mode
     {
         DISABLED, BACK, FRONT, BOTH
@@ -327,6 +345,7 @@ namespace stardraw
         face_cull_mode mode;
     };
 
+    ///Options required to configure stencil testing
     struct scissor_test_config
     {
         starlib_stdint::i32 left = std::numeric_limits<starlib_stdint::i32>::min();
@@ -338,6 +357,7 @@ namespace stardraw
         bool enabled = true;
     };
 
+    ///Default stencil testing configs
     namespace scissor_test_configs
     {
         constexpr scissor_test_config DISABLED = {.enabled = false };
@@ -399,6 +419,7 @@ namespace stardraw
         }
     };
 
+    ///Stores clear values for both 4-channel data and depth/stencil
     struct clear_values
     {
         clear_channel_values channels;
@@ -406,6 +427,7 @@ namespace stardraw
         starlib_stdint::u32 stencil = 0;
     };
 
+    ///Default clear value configs
     namespace clear_info_defaults
     {
         constexpr clear_values FLOAT_DEFAULT = {.channels = {0.0f, 0.0f, 0.0f, 0.0f}};
@@ -413,6 +435,7 @@ namespace stardraw
         constexpr clear_values UINT_DEFAULT = {.channels = {0u, 0u, 0u, 0u}};
     }
 
+    ///Attachment types for commands to target
     enum class attachment_components
     {
         COLOR, DEPTH, STENCIL,
@@ -450,6 +473,7 @@ namespace stardraw
         clear_values clear_vlaues;
     };
 
+    ///Clear info for a framebuffer color attachment
     struct framebuffer_color_clear_info
     {
         starlib_stdint::u32 attachment_index = 0;
@@ -473,6 +497,7 @@ namespace stardraw
         std::optional<starlib_stdint::u32> stencil_clear = std::nullopt;
     };
 
+    ///Location and value for a single shader parameter
     struct shader_parameter
     {
         shader_parameter_location location;
@@ -482,6 +507,7 @@ namespace stardraw
 
     ///Updates shader parameter data
     ///Note: shader parameter data *overwrites* the relevant data in the buffers bound to the shader.
+    ///Exactly when the data is written is not defined and modifying buffer data that is also modified by active shader parameters may cause unexpected results.
     struct configure_shader final : command
     {
         explicit configure_shader(const std::string_view& shader, const std::vector<shader_parameter>& parameters, const bool erase_previous = false) : shader(shader), parameters(parameters), erase_previous(erase_previous) {}
@@ -497,6 +523,12 @@ namespace stardraw
         bool erase_previous;
     };
 
+    ///Status for signals. Not used in the command, but retured when querying signal state.
+    enum class signal_status : starlib_stdint::u8
+    {
+        SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
+    };
+
     ///Set a fence ('signal') that can be checked via the render context to determine when previous commands are finished.
     struct signal final : command
     {
@@ -510,6 +542,7 @@ namespace stardraw
         std::string signal_name;
     };
 
+    ///Information required to perform texture copies
     struct texture_copy_info
     {
         starlib_stdint::u32 read_x;
@@ -611,6 +644,7 @@ namespace stardraw
         starlib_stdint::u32 indirect_index;
     };
 
+    ///Configuration information for veiwports
     struct viewport_config
     {
         float x;
@@ -634,6 +668,7 @@ namespace stardraw
         std::vector<viewport_config> viewports;
     };
 
+    ///Filtering modes for framebuffer copies
     enum class framebuffer_copy_filtering
     {
         NEAREST, LINEAR

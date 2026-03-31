@@ -22,7 +22,7 @@ namespace stardraw::gl45
     public:
         explicit render_context(const render_context_config& config, status& out_status);
         [[nodiscard]] status execute_command_buffer(const std::string_view& name) override;
-        [[nodiscard]] status execute_temp_command_buffer(const command_list&& commands) override;
+        [[nodiscard]] status execute_command_buffer(const command_list&& commands) override;
         [[nodiscard]] status create_command_buffer(const std::string_view& name, const command_list&& commands) override;
         [[nodiscard]] status delete_command_buffer(const std::string_view& name) override;
         [[nodiscard]] status create_objects(const descriptor_list&& descriptors) override;

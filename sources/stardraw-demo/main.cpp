@@ -12,7 +12,7 @@ using namespace starwin;
 using namespace starlib;
 using namespace starlib_stdint;
 
-shader_buffer_layout uniforms_layout;
+memory_layout_info uniforms_layout;
 
 shader_stage frag_shader;
 shader_stage vert_shader;
@@ -50,7 +50,7 @@ std::vector<shader_stage> load_shader()
     status frg_load_status = stardraw::create_shader_stage(linked_shader, frag_entry_point, graphics_api::GL45, frag_shader);
 
     ///Get the buffer layout of our uniform buffer
-    status layout_create = stardraw::create_shader_buffer_layout(frag_shader, "uniforms", uniforms_layout);
+    status layout_create = stardraw::determine_shader_buffer_layout(frag_shader, "uniforms", uniforms_layout);
 
     return {vert_shader, frag_shader};
 }
@@ -127,7 +127,7 @@ int main()
         }
     );
 
-    void* uniform_mem = layout_shader_buffer_memory(uniforms_layout, &uniforms, sizeof(uniform_block));
+    void* uniform_mem = layout_memory(uniforms_layout, &uniforms, sizeof(uniform_block));
     free(uniform_mem);
 
     std::array<u8, 36> texture_bytes = {
@@ -140,12 +140,12 @@ int main()
     status transfer_status = ctx->transfer_buffer_memory_immediate({"vertices", 0, sizeof(vertex) * 3}, &triangle);
     status tex_transfer_status = ctx->transfer_texture_memory_immediate({"tex", 0, 0, 0, 2, 2}, texture_bytes.data());
 
-    status init_status = ctx->execute_temp_command_buffer({
+    status init_status = ctx->execute_command_buffer({
         configure_blending(blending_configs::ALPHA),
         configure_shader(
             "shader",
             {
-                {frag_shader.locate("uniforms").field("meow").index(3).field("mrrp"), shader_parameter_value::buffer("param-buffer")},
+                {frag_shader.locate("uniforms"), shader_parameter_value::buffer("param-buffer")},
                 {frag_shader.locate("uniforms").index(1), shader_parameter_value::vector(1.0f, 0.0f, 1.0f, 1.0f)},
                 {frag_shader.locate("texture"), shader_parameter_value::texture("tex")},
                 {frag_shader.locate("texture"), shader_parameter_value::sampler("tex_sampler")}

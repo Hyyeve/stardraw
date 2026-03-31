@@ -1,13 +1,19 @@
 #pragma once
+#include <vector>
+
 #include "stardraw/api/common.hpp"
+#include "starlib/types/status.hpp"
+
 namespace stardraw
 {
+    ///Status for memory transfers
     enum class memory_transfer_status
     {
         READY, TRANSFERRING, COMPLETE
     };
 
-
+    ///Information required to transfer data to/from buffers
+    ///TODO: Readback operations are currently not implemented.
     struct buffer_memory_transfer_info
     {
         enum class type : starlib_stdint::u8
@@ -23,15 +29,21 @@ namespace stardraw
         type transfer_type = type::UPLOAD_CHUNK;
     };
 
-
+    ///Information required to transfer data to/from textures
+    ///TODO: Readback operations are currently not implemented.
     struct texture_memory_transfer_info
     {
-        enum class pixel_data_type
+        enum class type : starlib_stdint::u8
+        {
+            UPLOAD,
+        };
+
+        enum class pixel_data_type : starlib_stdint::u8
         {
             U8, U32, I8, I32, F32
         };
 
-        enum class pixel_channels
+        enum class pixel_channels : starlib_stdint::u8
         {
             R, RG, RGB, RGBA, DEPTH, STENCIL
         };
@@ -67,4 +79,22 @@ namespace stardraw
         virtual memory_transfer_status transfer_status() = 0;
     };
 
+    ///Information required to layout packed data into a padded layout
+    struct memory_layout_info
+    {
+        struct pad
+        {
+            starlib_stdint::u64 address;
+            starlib_stdint::u64 size;
+        };
+
+        starlib_stdint::u64 packed_size = 0;
+        starlib_stdint::u64 padded_size = 0;
+        std::vector<pad> pads;
+    };
+
+    ///Allocates and returns a new block of memory with the data laid out according to the layout information.
+    ///Inserted padding space is left uninitialized.
+    ///NOTE: Input data is assumed to be tightly packed. Using non-tightly-packed input data will result in unexpected behaviour!
+    [[nodiscard]] void* layout_memory(const memory_layout_info& layout, const void* data, const starlib_stdint::u64 data_size);
 }
