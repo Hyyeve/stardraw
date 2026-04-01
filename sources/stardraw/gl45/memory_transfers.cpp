@@ -16,19 +16,15 @@ namespace stardraw::gl45
 
         switch (info.transfer_type)
         {
-            case buffer_memory_transfer_info::type::UPLOAD_STREAMING:
+            case buffer_memory_transfer_info::type::UPLOAD_TRANSFER_BUFFER:
             {
+                if (!info.transfer_buffer.has_value()) return {status_type::INVALID, "No transfer buffer provided to upload via!"};
+                transfer_buffer_state* transfer_buff;
+                status buff_find_status = find_transfer_buffer_state(info.transfer_buffer.value(), &transfer_buff);
+                if (buff_find_status.is_error()) return buff_find_status;
+
                 memory_transfer_handle* handle;
-                status prepare_status = buffer->prepare_upload_data_streaming(info.address, info.bytes, &handle);
-                if (prepare_status.is_error()) return prepare_status;
-                buffer_transfers[handle] = info;
-                out_handle = handle;
-                return status_type::SUCCESS;
-            }
-            case buffer_memory_transfer_info::type::UPLOAD_CHUNK:
-            {
-                memory_transfer_handle* handle;
-                status prepare_status = buffer->prepare_upload_data_chunked(info.address, info.bytes, &handle);
+                status prepare_status = buffer->prepare_upload_data_via_transfer(transfer_buff, info.address, info.bytes, &handle);
                 if (prepare_status.is_error()) return prepare_status;
                 buffer_transfers[handle] = info;
                 out_handle = handle;
@@ -62,8 +58,7 @@ namespace stardraw::gl45
 
         switch (info.transfer_type)
         {
-            case buffer_memory_transfer_info::type::UPLOAD_STREAMING: return buffer->flush_upload_data_streaming(handle);
-            case buffer_memory_transfer_info::type::UPLOAD_CHUNK: return buffer->flush_upload_data_chunked(handle);
+            case buffer_memory_transfer_info::type::UPLOAD_TRANSFER_BUFFER: return buffer->flush_upload_data_via_transfer(handle);
             case buffer_memory_transfer_info::type::UPLOAD_UNCHECKED: return buffer->flush_upload_data_unchecked(handle);
 
             default: return {status_type::UNSUPPORTED};
@@ -77,8 +72,12 @@ namespace stardraw::gl45
         status find_status = find_texture_state(object_identifier(info.target), &texture);
         if (find_status.is_error()) return find_status;
 
+        transfer_buffer_state* transfer_buff;
+        status buff_find_status = find_transfer_buffer_state(info.transfer_buffer, &transfer_buff);
+        if (buff_find_status.is_error()) return buff_find_status;
+
         memory_transfer_handle* handle;
-        status prepare_status = texture->prepare_upload(info, &handle);
+        status prepare_status = texture->prepare_upload(transfer_buff, info, &handle);
         if (prepare_status.is_error()) return prepare_status;
         texture_transfers[handle] = info;
         out_handle = handle;

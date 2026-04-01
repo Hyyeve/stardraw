@@ -1,9 +1,13 @@
 #include "../api/memory_transfer.hpp"
+
+#include "tracy/Tracy.hpp"
+
 namespace stardraw
 {
     using namespace starlib_stdint;
     void* layout_memory(const memory_layout_info& layout, const void* data, const u64 data_size)
     {
+        ZoneScoped;
         if (data == nullptr) return nullptr;
         if (layout.packed_size == 0 || layout.padded_size == 0) return nullptr;
 

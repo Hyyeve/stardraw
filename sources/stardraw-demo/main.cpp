@@ -99,6 +99,7 @@ int main()
     const i64 param_buffer_size = frag_shader.buffer_size("uniforms");
 
     status object_state_status = ctx->create_objects({
+            transfer_buffer("transfer_buff", 500),
             buffer("vertices", 300),
             buffer("param-buffer", param_buffer_size * 2),
             texture("tex", texture_format::create_2d(2, 2), texture_sampling_configs::nearest),
@@ -135,8 +136,8 @@ int main()
         0, 0, 0, 127,
     };
 
-    status transfer_status = ctx->transfer_buffer_memory_immediate({"vertices", 0, sizeof(vertex) * 3}, &triangle);
-    status tex_transfer_status = ctx->transfer_texture_memory_immediate({"tex", 0, 0, 0, 2, 2}, texture_bytes.data());
+    status transfer_status = ctx->transfer_buffer_memory_immediate({"vertices", "transfer_buff", 0, sizeof(vertex) * 3}, &triangle);
+    status tex_transfer_status = ctx->transfer_texture_memory_immediate({"tex", "transfer_buff", 0, 0, 0, 2, 2}, texture_bytes.data());
 
     status init_status = ctx->execute_command_buffer({
         configure_blending(blending_configs::ALPHA),

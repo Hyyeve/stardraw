@@ -1,5 +1,6 @@
 #pragma once
 
+#include "transfer_buffer_state.hpp"
 #include "../common.hpp"
 #include "../gl_headers.hpp"
 #include "stardraw/api/commands.hpp"
@@ -16,10 +17,10 @@ namespace stardraw::gl45
         explicit texture_state(const texture_state* original, const texture& desc, status& out_status);
         ~texture_state() override;
 
-        [[nodiscard]] status unpack_pixels(const u32 mipmap_level, const u32 x, const u32 y, const u32 z, const u32 width, const u32 height, const u32 depth, const GLenum format, const GLenum gl_data_type) const;
+        [[nodiscard]] status unpack_pixels(u32 mipmap_level, u32 x, u32 y, u32 z, u32 width, u32 height, u32 depth, GLenum format, GLenum gl_data_type, u64 pbo_offset) const;
         [[nodiscard]] status copy_pixels(const texture_state* read_texture, const texture_copy_info& copy_info) const;
 
-        [[nodiscard]] status prepare_upload(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) const;
+        [[nodiscard]] status prepare_upload(transfer_buffer_state* transfer_buffer, const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) const;
         [[nodiscard]] status flush_upload(const texture_memory_transfer_info& info, memory_transfer_handle* handle) const;
 
         [[nodiscard]] bool is_valid() const;

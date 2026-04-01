@@ -1,8 +1,11 @@
 #include "texture_state.hpp"
 #include <format>
 #include <spirv_glsl.hpp>
+
+#include "transfer_buffer_state.hpp"
 #include "stardraw/api/memory_transfer.hpp"
 #include "stardraw/gl45/api_conversion.hpp"
+#include "stardraw/gl45/memory_barrier_controller.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -137,7 +140,7 @@ namespace stardraw::gl45
         glDeleteTextures(1, &gl_texture_id);
     }
 
-    status texture_state::unpack_pixels(const u32 mipmap_level, const u32 x, const u32 y, const u32 z, const u32 width, const u32 height, const u32 depth, const GLenum format, const GLenum gl_data_type) const
+    status texture_state::unpack_pixels(const u32 mipmap_level, const u32 x, const u32 y, const u32 z, const u32 width, const u32 height, const u32 depth, const GLenum format, const GLenum gl_data_type, const u64 pbo_offset) const
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Unpack texture data");
@@ -151,18 +154,18 @@ namespace stardraw::gl45
         {
             case texture_shape::_1D:
             {
-                glTextureSubImage1D(gl_texture_id, mipmap_level, x, width, format, gl_data_type, nullptr);
+                glTextureSubImage1D(gl_texture_id, mipmap_level, x, width, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
                 break;
             }
             case texture_shape::_2D:
             {
-                glTextureSubImage2D(gl_texture_id, mipmap_level, x, y, width, height, format, gl_data_type, nullptr);
+                glTextureSubImage2D(gl_texture_id, mipmap_level, x, y, width, height, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
                 break;
             }
             case texture_shape::_3D:
             case texture_shape::CUBE_MAP:
             {
-                glTextureSubImage3D(gl_texture_id, mipmap_level, x, y, z, width, height, depth, format, gl_data_type, nullptr);
+                glTextureSubImage3D(gl_texture_id, mipmap_level, x, y, z, width, height, depth, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
                 break;
             }
         }
@@ -230,7 +233,7 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    status texture_state::prepare_upload(const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) const
+    status texture_state::prepare_upload(transfer_buffer_state* transfer_buffer, const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) const
     {
         ZoneScoped;
         TracyGpuZone("[Stardraw] Prepare texture upload");
@@ -246,26 +249,11 @@ namespace stardraw::gl45
         if (info.channels == texture_memory_transfer_info::pixel_channels::STENCIL && !does_texture_data_type_have_stencil(data_type)) return {status_type::INVALID, std::format("Texture upload channels is set to stencil, but texture '{0}' does not contain stencil data!", texture_id.name)};
         if (info.channels == texture_memory_transfer_info::pixel_channels::DEPTH && !does_texture_data_type_have_depth(data_type)) return {status_type::INVALID, std::format("Texture upload channels is set to depth, but texture '{0}' does not contain depth data!", texture_id.name)};
 
-        GLuint temp_buffer;
-        glCreateBuffers(1, &temp_buffer);
-        if (temp_buffer == 0) return {status_type::BACKEND_ERROR, std::format("Unable to create temporary upload destination for texture '{0}'", texture_id.name)};
-
         const u64 bytes = compute_bytes_in_transfer(info);
 
-        glNamedBufferStorage(temp_buffer, bytes, nullptr, GL_MAP_WRITE_BIT);
-        GLbyte* temp_buffer_ptr = static_cast<GLbyte*>(glMapNamedBuffer(temp_buffer, GL_WRITE_ONLY));
-        if (temp_buffer_ptr == nullptr)
-        {
-            glDeleteBuffers(1, &temp_buffer);
-            return {status_type::BACKEND_ERROR, std::format("Unable to write to temporary upload destination for texture '{0}'", texture_id.name)};
-        }
-
-        gl_memory_transfer_handle* handle = new gl_memory_transfer_handle();
-        handle->transfer_size = bytes;
-        handle->transfer_destination_address = 0;
-        handle->transfer_buffer_id = temp_buffer;
-        handle->transfer_buffer_ptr = temp_buffer_ptr;
-        handle->transfer_buffer_address = 0;
+        gl_memory_transfer_handle* handle;
+        status upload_alloc_status = transfer_buffer->allocate_upload(0, bytes, &handle);
+        if (upload_alloc_status.is_error()) return upload_alloc_status;
         *out_handle = handle;
         return status_type::SUCCESS;
     }
@@ -276,12 +264,10 @@ namespace stardraw::gl45
         TracyGpuZone("[Stardraw] Flush texture upload");
         const gl_memory_transfer_handle* gl_handle = dynamic_cast<gl_memory_transfer_handle*>(handle);
         if (gl_handle == nullptr) return {status_type::INVALID, std::format("Invalid memory transfer handle cast - this is an internal bug! (trying to upload to texture '{0}')", texture_id.name)};
-        glUnmapNamedBuffer(gl_handle->transfer_buffer_id);
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, gl_handle->transfer_buffer_id);
-        status unpack_status = unpack_pixels(info.mipmap_level, info.x, info.y, info.z, info.width, info.height, info.depth, to_gl_channels_format(info.channels), to_gl_memory_transfer_data_type(info.data_type));
-        glDeleteBuffers(1, &gl_handle->transfer_buffer_id);
-        delete handle;
-        return unpack_status;
+        status unpack_status = unpack_pixels(info.mipmap_level, info.x, info.y, info.z, info.width, info.height, info.depth, to_gl_channels_format(info.channels), to_gl_memory_transfer_data_type(info.data_type), gl_handle->transfer_buffer_address);
+        if (unpack_status.is_error()) return unpack_status;
+        return transfer_buffer_state::flush_upload(gl_handle);
     }
 
     u64 texture_state::compute_bytes_in_transfer(const texture_memory_transfer_info& info) const

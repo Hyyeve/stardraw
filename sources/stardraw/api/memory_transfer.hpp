@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <vector>
 
 #include "stardraw/api/common.hpp"
@@ -18,15 +19,15 @@ namespace stardraw
     {
         enum class type : starlib_stdint::u8
         {
-            UPLOAD_UNCHECKED, //Fastest upload, but not syncronization safe. Use if doing your own syncronization checks.
-            UPLOAD_STREAMING, //Fast upload, allocates additional memory to stage uploads. Use for small repeated uploads.
-            UPLOAD_CHUNK, //Slower upload, creates a single-use staging buffer. Use for large infrequent uploads.
+            UPLOAD_UNCHECKED, //Uploads directly to the buffer (if possible), does not do any syncronization. Usually you don't want this.
+            UPLOAD_TRANSFER_BUFFER, //Uploads to a provided intermediary buffer, then copies to the destination, fully syncronization safe. Usually you want this.
         };
 
         object_identifier target;
-        starlib_stdint::u64 address;
-        starlib_stdint::u64 bytes;
-        type transfer_type = type::UPLOAD_CHUNK;
+        std::optional<object_identifier> transfer_buffer = std::nullopt;
+        starlib_stdint::u64 address = 0;
+        starlib_stdint::u64 bytes = 0;
+        type transfer_type = type::UPLOAD_TRANSFER_BUFFER;
     };
 
     ///Information required to transfer data to/from textures
@@ -48,7 +49,12 @@ namespace stardraw
             R, RG, RGB, RGBA, DEPTH, STENCIL
         };
 
+        //The target texture to upload to
         object_identifier target;
+
+        //The transfer buffer to use to upload texture data
+        object_identifier transfer_buffer;
+
         starlib_stdint::u32 x = 0;
         starlib_stdint::u32 y = 0;
         starlib_stdint::u32 z = 0;

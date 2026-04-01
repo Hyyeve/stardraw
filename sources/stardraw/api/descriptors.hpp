@@ -13,7 +13,7 @@ namespace stardraw
     ///Identifier for descriptors. Used for internal descriptor polymorphism purposes
     enum class descriptor_type : starlib_stdint::u8
     {
-        BUFFER, SHADER, TEXTURE, SAMPLER,  FRAMEBUFFER,
+        BUFFER, TRANSFER_BUFFER, SHADER, TEXTURE, SAMPLER,  FRAMEBUFFER,
         VERTEX_CONFIGURATION, DRAW_CONFIGURATION,
     };
 
@@ -56,6 +56,25 @@ namespace stardraw
 
         starlib_stdint::u64 size;
         buffer_memory_storage memory;
+    };
+
+    ///Options for how a transfer buffer may be used
+    enum class transfer_buffer_usage : starlib_stdint::u8
+    {
+        UPLOAD_ONLY, DOWNLOAD_ONLY, UPLOAD_OR_DOWNLOAD,
+    };
+
+    ///Describes an opaque block of gpu memory with the specific purpose of being used as an intermediary buffer for data transfers
+    struct transfer_buffer final : descriptor
+    {
+        explicit transfer_buffer(const std::string_view& name, const starlib_stdint::u64 size, const transfer_buffer_usage usage = transfer_buffer_usage::UPLOAD_ONLY) : descriptor(name), size(size), usage(usage) {}
+        [[nodiscard]] descriptor_type type() const override
+        {
+            return descriptor_type::TRANSFER_BUFFER;
+        }
+
+        starlib_stdint::u64 size;
+        transfer_buffer_usage usage;
     };
 
     ///Specifies how vertex data is interpreted.

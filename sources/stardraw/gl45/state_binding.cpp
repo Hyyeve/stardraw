@@ -284,6 +284,31 @@ namespace stardraw::gl45
             return {status_type::INVALID, std::format("Can't apply shader parameter value; the shader does not have a buffer bound to store data at '{0}'", location.internal->path_string)};
         }
 
-        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, location.internal->byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_STREAMING}, value.bytes.data());
+        const std::string implicit_buffer_id = "<implicit shader parameter transfer buffer>";
+
+        transfer_buffer_state* implicit_buff;
+        if (find_transfer_buffer_state(object_identifier(implicit_buffer_id), &implicit_buff).is_error())
+        {
+            status delete_status = delete_object(descriptor_type::TRANSFER_BUFFER, implicit_buffer_id);
+            if (delete_status.is_error()) return delete_status;
+
+            const u64 desired_size = value.bytes.size() * 3;
+            const transfer_buffer descriptor = transfer_buffer(implicit_buffer_id, desired_size);
+            status create_status = create_transfer_buffer_state(&descriptor);
+            if (create_status.is_error()) return create_status;
+        }
+        else  if (implicit_buff->get_available_space() < value.bytes.size())
+        {
+            const u64 desired_size = std::max(implicit_buff->get_buffer_size() * 3, value.bytes.size() * 3);
+
+            status delete_status = delete_object(descriptor_type::TRANSFER_BUFFER, implicit_buffer_id);
+            if (delete_status.is_error()) return delete_status;
+
+            const transfer_buffer descriptor = transfer_buffer(implicit_buffer_id, desired_size);
+            status create_status = create_transfer_buffer_state(&descriptor);
+            if (create_status.is_error()) return create_status;
+        }
+
+        return transfer_buffer_memory_immediate({shader->bound_objects[actual_slot].identifier, object_identifier(implicit_buffer_id), location.internal->byte_address, value.bytes.size(), buffer_memory_transfer_info::type::UPLOAD_TRANSFER_BUFFER}, value.bytes.data());
     }
 }

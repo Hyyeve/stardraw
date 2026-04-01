@@ -9,7 +9,7 @@ namespace stardraw
     ///Used internally to identify objects created from descriptors. Usually constructed automatically.
     struct object_identifier
     {
-        object_identifier() : object_identifier("???") {}
+        object_identifier() : object_identifier("<unspecified>") {}
         // ReSharper disable once CppNonExplicitConvertingConstructor
         object_identifier(const std::string_view& string) : hash(std::hash<std::string_view>()(string)), name(string) {}
         // ReSharper disable once CppNonExplicitConvertingConstructor

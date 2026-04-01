@@ -8,6 +8,8 @@
 #include <spirv_glsl.hpp>
 #include <stack>
 
+#include "tracy/Tracy.hpp"
+
 namespace stardraw
 {
     struct shader_module::shader_module_internal
@@ -58,6 +60,7 @@ namespace stardraw
 
     status setup_shader_compiler(const std::vector<shader_macro>& macro_defines)
     {
+        ZoneScoped;
         if (global_slang_context == nullptr)
         {
             const SlangResult result = slang::createGlobalSession(&global_slang_context);
@@ -110,6 +113,7 @@ namespace stardraw
 
     starlib::status cleanup_shader_compiler()
     {
+        ZoneScoped;
         if (active_slang_session == nullptr) return {status_type::NOTHING_TO_DO, "Shader compiler not initialized"};
         linked_programs.clear();
         active_slang_session->release();
@@ -121,6 +125,7 @@ namespace stardraw
 
     status load_shader_module(const std::string_view& source, shader_module& out_shader_module)
     {
+        ZoneScoped;
         if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         constexpr std::hash<std::string_view> hash;
         const std::string fake_path = std::format("module_{0}.fakepath", hash(source));
@@ -146,6 +151,7 @@ namespace stardraw
 
     status load_shader_module(const void* cache_ptr, const u64 cache_size, shader_module& out_shader_module)
     {
+        ZoneScoped;
         if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         const std::string fake_path = std::format("module_{0}.fakepath", std::hash<const void*>()(cache_ptr));
         Slang::ComPtr<slang::IBlob> diagnostics;
@@ -170,6 +176,7 @@ namespace stardraw
 
     status cache_shader_module(const shader_module& module, void*& out_cache_ptr, u64& out_cache_size)
     {
+        ZoneScoped;
         if (module.internal == nullptr) return {status_type::UNEXPECTED, "Module is invalid!"};
         const Slang::ComPtr<slang::IModule> inner_module = module.internal->slang_module;
 
@@ -189,6 +196,7 @@ namespace stardraw
 
     status link_shader_program(const std::vector<shader_entry_point>& entry_points, shader_program& out_linked_shader, const std::vector<shader_module>& additional_modules)
     {
+        ZoneScoped;
         std::vector<slang::IComponentType*> shader_components;
         std::unordered_map<shader_entry_point, u32> entry_point_index_map;
 
@@ -258,6 +266,7 @@ namespace stardraw
 
     status create_shader_stage(const shader_program& linked_shader, const shader_entry_point& entry_point, const graphics_api& api, shader_stage& out_shader_stage)
     {
+        ZoneScoped;
         if (linked_shader.internal == nullptr) return {status_type::UNEXPECTED, "Linked shader program is not valid!"};
 
         const shader_stage result = shader_stage(std::make_shared<shader_stage::shader_stage_internal>());
@@ -320,6 +329,7 @@ namespace stardraw
 
     std::vector<struct_field_location> flatten_structure(slang::TypeLayoutReflection* structure)
     {
+        ZoneScoped;
         struct stack_frame
         {
             slang::TypeLayoutReflection* type;
@@ -383,6 +393,7 @@ namespace stardraw
 
     shader_parameter_location shader_parameter_location::index(const u32 index) const
     {
+        ZoneScoped;
         if (internal == nullptr)
         {
             shader_parameter_location result = shader_parameter_location(*this);
@@ -431,6 +442,7 @@ namespace stardraw
 
     shader_parameter_location shader_parameter_location::field(const std::string_view& name) const
     {
+        ZoneScoped;
         if (internal == nullptr)
         {
             shader_parameter_location result = shader_parameter_location(*this);
@@ -492,6 +504,7 @@ namespace stardraw
 
     shader_parameter_location shader_stage::locate(const std::string_view& name) const
     {
+        ZoneScoped;
         if (internal == nullptr)
         {
             return
@@ -542,6 +555,7 @@ namespace stardraw
 
     i64 shader_stage::buffer_size(const std::string_view& name) const
     {
+        ZoneScoped;
         if (internal == nullptr) return -1;
         slang::TypeLayoutReflection* globals = internal->reflection->getGlobalParamsTypeLayout();
         const i64 global_idx = globals->findFieldIndexByName(name.data(), name.data() + name.size());
@@ -562,6 +576,7 @@ namespace stardraw
 
     status determine_shader_buffer_layout(const shader_stage& program, const std::string_view& buffer_name, memory_layout_info& out_buffer_layout)
     {
+        ZoneScoped;
         if (program.internal == nullptr) return {status_type::UNEXPECTED, "Shader program is not valid!"};
         slang::ShaderReflection* shader_layout = program.internal->reflection;
 
@@ -629,6 +644,7 @@ namespace stardraw
 
     binding_location_info vk_binding_for_location(const shader_parameter_location& location)
     {
+        ZoneScoped;
         slang::VariableLayoutReflection* root_var = location.internal->root_ptr;
         slang::TypeLayoutReflection* root_layout = root_var->getTypeLayout();
         slang::TypeLayoutReflection* selected_layout = location.internal->offset_ptr;

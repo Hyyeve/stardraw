@@ -194,6 +194,7 @@ namespace stardraw::gl45
             case descriptor_type::TEXTURE: return create_texture_state(dynamic_cast<const texture*>(descriptor));
             case descriptor_type::SAMPLER: return create_texture_sampler_state(dynamic_cast<const sampler*>(descriptor));
             case descriptor_type::FRAMEBUFFER: return create_framebuffer_state(dynamic_cast<const framebuffer*>(descriptor));
+            case descriptor_type::TRANSFER_BUFFER: return create_transfer_buffer_state(dynamic_cast<const transfer_buffer*>(descriptor));
         }
         return status_type::UNIMPLEMENTED;
     }
@@ -309,6 +310,13 @@ namespace stardraw::gl45
     status render_context::find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state) {
         *out_state = find_object_state<draw_specification_state, descriptor_type::DRAW_CONFIGURATION>(identifier);
         if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No draw specification with name '{0}' exists in context", identifier.name)};
+        return status_type::SUCCESS;
+    }
+
+    status render_context::find_transfer_buffer_state(const object_identifier& identifier, transfer_buffer_state** out_state)
+    {
+        *out_state = find_object_state<transfer_buffer_state, descriptor_type::TRANSFER_BUFFER>(identifier);
+        if (*out_state == nullptr) return {status_type::UNKNOWN, std::format("No transfer buffer with name '{0}' exists in context", identifier.name)};
         return status_type::SUCCESS;
     }
 

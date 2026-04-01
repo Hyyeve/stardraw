@@ -330,6 +330,20 @@ namespace stardraw::gl45
         return record_object_state(descriptor->identifier(), new draw_specification_state(*descriptor, vertex_spec->has_index_buffer));
     }
 
+    status render_context::create_transfer_buffer_state(const transfer_buffer* descriptor)
+    {
+        ZoneScoped;
+        status create_status = status_type::SUCCESS;
+        transfer_buffer_state* state = new transfer_buffer_state(*descriptor, create_status);
+        if (create_status.is_error())
+        {
+            delete state;
+            return create_status;
+        }
+
+        return record_object_state(descriptor->identifier(), state);
+    }
+
     status render_context::record_object_state(const object_identifier& identifier, object_state* state)
     {
         ZoneScoped;

@@ -36,6 +36,7 @@ namespace stardraw::gl45
 
         [[nodiscard]] status prepare_texture_memory_transfer(const texture_memory_transfer_info& info, memory_transfer_handle*& out_handle) override;
         [[nodiscard]] status flush_texture_memory_transfer(memory_transfer_handle* handle) override;
+
     private:
         [[nodiscard]] status execute_command(const command* cmd);
         [[nodiscard]] status execute_draw(const draw* cmd);
@@ -71,6 +72,7 @@ namespace stardraw::gl45
         [[nodiscard]] status create_framebuffer_state(const framebuffer* descriptor);
         [[nodiscard]] status create_vertex_specification_state(const vertex_configuration* descriptor);
         [[nodiscard]] status create_draw_specification_state(const draw_configuration* descriptor);
+        [[nodiscard]] status create_transfer_buffer_state(const transfer_buffer* descriptor);
 
         [[nodiscard]] status bind_vertex_specification_state(const object_identifier& source);
         [[nodiscard]] status bind_draw_specification_state(const object_identifier& source);
@@ -112,6 +114,7 @@ namespace stardraw::gl45
         [[nodiscard]] status find_framebuffer_state(const object_identifier& identifier, framebuffer_state** out_state);
         [[nodiscard]] status find_vertex_specification_state(const object_identifier& identifier, vertex_specification_state** out_state);
         [[nodiscard]] status find_draw_specification_state(const object_identifier& identifier, draw_specification_state** out_state);
+        [[nodiscard]] status find_transfer_buffer_state(const object_identifier& identifier, transfer_buffer_state** out_state);
 
         static void on_gl_error_static(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* user_ptr);
         void on_gl_error(GLenum source, GLenum type, GLenum severity, const GLchar* message) const;
@@ -122,7 +125,7 @@ namespace stardraw::gl45
         std::unordered_map<memory_transfer_handle*, buffer_memory_transfer_info> buffer_transfers;
         std::unordered_map<memory_transfer_handle*, texture_memory_transfer_info> texture_transfers;
         memory_barrier_controller mem_barrier_controller;
-        const draw_specification_state* active_draw_specification = nullptr;
+        draw_specification_state* active_draw_specification = nullptr;
         bool backend_validation_enabled;
         std::function<void(const std::string message)> validation_message_callback;
     };

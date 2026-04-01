@@ -403,17 +403,17 @@ namespace stardraw
         constexpr clear_channel_values(const starlib_stdint::u32 r, const starlib_stdint::u32 g, const starlib_stdint::u32 b, const starlib_stdint::u32 a) : data({r, g, b, a}) {}
         std::array<starlib_stdint::u32, 4> data;
 
-        constexpr starlib_stdint::f32 as_f32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib_stdint::f32 as_f32(const starlib_stdint::u32 idx) const
         {
             return std::bit_cast<const starlib_stdint::f32>(data[idx]);
         }
 
-        constexpr starlib_stdint::i32 as_i32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib_stdint::i32 as_i32(const starlib_stdint::u32 idx) const
         {
             return std::bit_cast<const starlib_stdint::i32>(data[idx]);
         }
 
-        constexpr starlib_stdint::i32 as_u32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib_stdint::i32 as_u32(const starlib_stdint::u32 idx) const
         {
             return std::bit_cast<const starlib_stdint::u32>(data[idx]);
         }
@@ -564,17 +564,17 @@ namespace stardraw
         starlib_stdint::u32 copy_depth = 1;
         starlib_stdint::u32 copy_layers = 1;
 
-        inline texture_copy_info create_simple_1d(const starlib_stdint::u32 x, const starlib_stdint::u32 width, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1) const
+        static inline texture_copy_info create_simple_1d(const starlib_stdint::u32 x, const starlib_stdint::u32 width, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
         {
             return {x, 0, 0, mipmap_level, layer, x, 0, 0, mipmap_level, layer, width, 1, 1, layers};
         }
 
-        inline texture_copy_info create_simple_2d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1) const
+        static inline texture_copy_info create_simple_2d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
         {
             return {x, y, 0, mipmap_level, layer, x, y, 0, mipmap_level, layer, width, height, 1, layers};
         }
 
-        inline texture_copy_info create_simple_3d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 z, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 depth, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1) const
+        static inline texture_copy_info create_simple_3d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 z, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 depth, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
         {
             return {x, y, z, mipmap_level, layer, x, y, z, mipmap_level, layer, width, height, depth, layers};
         }
@@ -695,7 +695,7 @@ namespace stardraw
         starlib_stdint::u32 read_color_attachment_index = 0;
         starlib_stdint::u32 write_color_attachment_index = 0;
 
-        inline framebuffer_copy_info create_simple(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const attachment_components copy_components = attachment_components::ALL, const starlib_stdint::u32 color_attachment_index = 0) const
+        static inline framebuffer_copy_info create_simple(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const attachment_components copy_components = attachment_components::ALL, const starlib_stdint::u32 color_attachment_index = 0)
         {
             return {x, y, width, height, x, y, width, height, framebuffer_copy_filtering::NEAREST, copy_components, color_attachment_index, color_attachment_index};
         }

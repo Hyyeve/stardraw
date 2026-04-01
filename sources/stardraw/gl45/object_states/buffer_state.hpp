@@ -1,6 +1,6 @@
 #pragma once
+#include "transfer_buffer_state.hpp"
 #include "../common.hpp"
-#include "../staging_buffer_uploader.hpp"
 #include "glad/glad.h"
 namespace stardraw::gl45
 {
@@ -18,14 +18,11 @@ namespace stardraw::gl45
         [[nodiscard]] status bind_to_slot(const GLenum target, const GLuint slot) const;
         [[nodiscard]] status bind_to_slot(const GLenum target, const GLuint slot, const GLintptr address, const GLsizeiptr bytes) const;
 
-        [[nodiscard]] status prepare_upload_data_streaming(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
-        [[nodiscard]] status flush_upload_data_streaming(memory_transfer_handle* handle) const;
-
-        [[nodiscard]] status prepare_upload_data_chunked(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
-        [[nodiscard]] status flush_upload_data_chunked(memory_transfer_handle* handle) const;
+        [[nodiscard]] status prepare_upload_data_via_transfer(transfer_buffer_state* transfer_buffer, GLintptr address, GLintptr bytes, memory_transfer_handle** out_handle);
+        [[nodiscard]] status flush_upload_data_via_transfer(memory_transfer_handle* handle) const;
 
         [[nodiscard]] status prepare_upload_data_unchecked(const GLintptr address, const GLintptr bytes, memory_transfer_handle** out_handle);
-        [[nodiscard]] status flush_upload_data_unchecked(const memory_transfer_handle* handle);
+        [[nodiscard]] status flush_upload_data_unchecked(const memory_transfer_handle* handle) const;
 
         [[nodiscard]] status copy_data(const GLuint source_buffer_id, const GLintptr read_address, const GLintptr write_address, const GLintptr bytes) const;
 
@@ -44,9 +41,6 @@ namespace stardraw::gl45
         GLuint main_buffer_id = 0;
         GLsizeiptr main_buffer_size = 0;
         void* main_buff_pointer = nullptr;
-
-        staging_buffer_uploader staging_uploader;
-
         object_identifier buffer_identifier;
     };
 }
