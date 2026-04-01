@@ -12,8 +12,8 @@ namespace stardraw::gl45
         explicit transfer_buffer_state(const transfer_buffer& descriptor, status& out_status);
 
         [[nodiscard]] status allocate_upload(const u64 address, const u64 bytes, gl_memory_transfer_handle** out_handle);
-        [[nodiscard]] u64 get_available_space() const;
         [[nodiscard]] u64 get_buffer_size() const;
+        [[nodiscard]] bool check_can_allocate(const u64 size) const;
         static status flush_upload(const gl_memory_transfer_handle* handle);
         ~transfer_buffer_state() override;
 

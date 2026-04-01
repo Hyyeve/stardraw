@@ -42,14 +42,14 @@ namespace stardraw::gl45
         return status_type::SUCCESS;
     }
 
-    u64 transfer_buffer_state::get_available_space() const
-    {
-        return chunk_allocator.get_remaining_space();
-    }
-
     u64 transfer_buffer_state::get_buffer_size() const
     {
         return buffer_size;
+    }
+
+    bool transfer_buffer_state::check_can_allocate(const u64 size) const
+    {
+        return chunk_allocator.can_allocate(size);
     }
 
     status transfer_buffer_state::flush_upload(const gl_memory_transfer_handle* handle)

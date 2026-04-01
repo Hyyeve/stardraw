@@ -287,19 +287,21 @@ namespace stardraw::gl45
         const std::string implicit_buffer_id = "<implicit shader parameter transfer buffer>";
 
         transfer_buffer_state* implicit_buff;
+        const u64 transfer_size = value.bytes.size();
+
         if (find_transfer_buffer_state(object_identifier(implicit_buffer_id), &implicit_buff).is_error())
         {
             status delete_status = delete_object(descriptor_type::TRANSFER_BUFFER, implicit_buffer_id);
             if (delete_status.is_error()) return delete_status;
 
-            const u64 desired_size = value.bytes.size() * 3;
+            const u64 desired_size = transfer_size * 3;
             const transfer_buffer descriptor = transfer_buffer(implicit_buffer_id, desired_size);
             status create_status = create_transfer_buffer_state(&descriptor);
             if (create_status.is_error()) return create_status;
         }
-        else  if (implicit_buff->get_available_space() < value.bytes.size())
+        else if(!implicit_buff->check_can_allocate(transfer_size))
         {
-            const u64 desired_size = std::max(implicit_buff->get_buffer_size() * 3, value.bytes.size() * 3);
+            const u64 desired_size = std::max(implicit_buff->get_buffer_size() * 3, transfer_size * 3);
 
             status delete_status = delete_object(descriptor_type::TRANSFER_BUFFER, implicit_buffer_id);
             if (delete_status.is_error()) return delete_status;
