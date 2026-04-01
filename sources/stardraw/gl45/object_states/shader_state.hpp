@@ -10,7 +10,6 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
     class shader_state final : public object_state
     {
     public:

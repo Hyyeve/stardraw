@@ -72,7 +72,7 @@ namespace stardraw
         [[nodiscard]] virtual signal_status check_signal(const std::string_view& name) = 0;
 
         ///Wait for a named signal to be flagged
-        [[nodiscard]] virtual signal_status wait_signal(const std::string_view& name, const starlib_stdint::u64 timeout_nanos) = 0;
+        [[nodiscard]] virtual signal_status wait_signal(const std::string_view& name, const starlib::u64 timeout_nanos) = 0;
 
         //Create a memory transfer handle for uploading or downloading data to/from a buffer.
         //Memory transfer handles are single-use and threadsafe.

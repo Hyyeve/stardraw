@@ -8,7 +8,7 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
+    using namespace starlib;
 
     inline GLenum to_gl_shader_type(const shader_stage_type stage)
     {

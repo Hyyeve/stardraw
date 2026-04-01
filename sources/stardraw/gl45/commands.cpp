@@ -7,8 +7,6 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
-
     inline void gl_set_flag(const GLenum flag, const bool enable, const GLuint index = 0)
     {
         ZoneScoped;

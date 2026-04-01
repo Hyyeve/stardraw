@@ -6,7 +6,6 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
     using namespace starlib;
 
     #pragma pack(push, 1)

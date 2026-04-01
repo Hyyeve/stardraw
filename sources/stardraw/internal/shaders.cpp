@@ -30,7 +30,6 @@ struct std::hash<stardraw::shader_entry_point>
 
 namespace stardraw
 {
-    using namespace starlib_stdint;
     using namespace starlib;
 
     struct shader_program::shader_program_internal

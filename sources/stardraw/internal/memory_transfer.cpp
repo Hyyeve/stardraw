@@ -4,7 +4,7 @@
 
 namespace stardraw
 {
-    using namespace starlib_stdint;
+    using namespace starlib;
     void* layout_memory(const memory_layout_info& layout, const void* data, const u64 data_size)
     {
         ZoneScoped;

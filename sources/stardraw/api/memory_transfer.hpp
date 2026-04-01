@@ -17,7 +17,7 @@ namespace stardraw
     ///TODO: Readback operations are currently not implemented.
     struct buffer_memory_transfer_info
     {
-        enum class type : starlib_stdint::u8
+        enum class type : starlib::u8
         {
             UPLOAD_UNCHECKED, //Uploads directly to the buffer (if possible), does not do any syncronization. Usually you don't want this.
             UPLOAD_TRANSFER_BUFFER, //Uploads to a provided intermediary buffer, then copies to the destination, fully syncronization safe. Usually you want this.
@@ -25,8 +25,8 @@ namespace stardraw
 
         object_identifier target;
         std::optional<object_identifier> transfer_buffer = std::nullopt;
-        starlib_stdint::u64 address = 0;
-        starlib_stdint::u64 bytes = 0;
+        starlib::u64 address = 0;
+        starlib::u64 bytes = 0;
         type transfer_type = type::UPLOAD_TRANSFER_BUFFER;
     };
 
@@ -34,17 +34,17 @@ namespace stardraw
     ///TODO: Readback operations are currently not implemented.
     struct texture_memory_transfer_info
     {
-        enum class type : starlib_stdint::u8
+        enum class type : starlib::u8
         {
             UPLOAD,
         };
 
-        enum class pixel_data_type : starlib_stdint::u8
+        enum class pixel_data_type : starlib::u8
         {
             U8, U32, I8, I32, F32
         };
 
-        enum class pixel_channels : starlib_stdint::u8
+        enum class pixel_channels : starlib::u8
         {
             R, RG, RGB, RGBA, DEPTH, STENCIL
         };
@@ -55,17 +55,17 @@ namespace stardraw
         //The transfer buffer to use to upload texture data
         object_identifier transfer_buffer;
 
-        starlib_stdint::u32 x = 0;
-        starlib_stdint::u32 y = 0;
-        starlib_stdint::u32 z = 0;
+        starlib::u32 x = 0;
+        starlib::u32 y = 0;
+        starlib::u32 z = 0;
 
-        starlib_stdint::u32 width = 1;
-        starlib_stdint::u32 height = 1;
-        starlib_stdint::u32 depth = 1;
+        starlib::u32 width = 1;
+        starlib::u32 height = 1;
+        starlib::u32 depth = 1;
 
-        starlib_stdint::u32 mipmap_level = 0;
-        starlib_stdint::u32 layer = 0;
-        starlib_stdint::u32 layers = 1;
+        starlib::u32 mipmap_level = 0;
+        starlib::u32 layer = 0;
+        starlib::u32 layers = 1;
 
         //The data type that the pixels being uploaded are provided as.
         pixel_data_type data_type = pixel_data_type::U8;
@@ -90,17 +90,17 @@ namespace stardraw
     {
         struct pad
         {
-            starlib_stdint::u64 address;
-            starlib_stdint::u64 size;
+            starlib::u64 address;
+            starlib::u64 size;
         };
 
-        starlib_stdint::u64 packed_size = 0;
-        starlib_stdint::u64 padded_size = 0;
+        starlib::u64 packed_size = 0;
+        starlib::u64 padded_size = 0;
         std::vector<pad> pads;
     };
 
     ///Allocates and returns a new block of memory with the data laid out according to the layout information.
     ///Inserted padding space is left uninitialized.
     ///NOTE: Input data is assumed to be tightly packed. Using non-tightly-packed input data will result in unexpected behaviour!
-    [[nodiscard]] void* layout_memory(const memory_layout_info& layout, const void* data, const starlib_stdint::u64 data_size);
+    [[nodiscard]] void* layout_memory(const memory_layout_info& layout, const void* data, const starlib::u64 data_size);
 }

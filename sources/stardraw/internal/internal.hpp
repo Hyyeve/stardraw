@@ -6,7 +6,7 @@
 
 namespace stardraw
 {
-    using namespace starlib_stdint;
+    using namespace starlib;
 
     struct binding_location_info
     {
@@ -22,10 +22,10 @@ namespace stardraw
     {
         slang::VariableLayoutReflection* root_ptr = nullptr;
         slang::TypeLayoutReflection* offset_ptr = nullptr;
-        starlib_stdint::u64 root_idx = 0;
-        starlib_stdint::u64 byte_address = 0;
-        starlib_stdint::u64 binding_range = 0;
-        starlib_stdint::u64 binding_range_index = 0;
+        u64 root_idx = 0;
+        u64 byte_address = 0;
+        u64 binding_range = 0;
+        u64 binding_range_index = 0;
         std::string path_string = "???";
         bool is_valid = true;
         bool operator==(const shader_parameter_location_internal&) const = default;
@@ -35,9 +35,9 @@ namespace stardraw
     {
         void* data;
         slang::ShaderReflection* reflection;
-        starlib_stdint::u32 data_size;
+        u32 data_size;
         shader_stage_type type;
-        starlib::graphics_api api;
+        graphics_api api;
 
         ~shader_stage_internal()
         {
@@ -53,7 +53,7 @@ struct std::hash<stardraw::shader_parameter_location>
 {
     std::size_t operator()(const stardraw::shader_parameter_location& key) const noexcept
     {
-        return hash<starlib_stdint::u32>()(key.internal->binding_range_index + key.internal->binding_range + key.internal->byte_address + key.internal->root_idx);
+        return hash<starlib::u32>()(key.internal->binding_range_index + key.internal->binding_range + key.internal->byte_address + key.internal->root_idx);
     }
 };
 

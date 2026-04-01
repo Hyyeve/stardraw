@@ -8,8 +8,6 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
-
     class texture_state final : public object_state
     {
     public:

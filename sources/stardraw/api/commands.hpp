@@ -12,7 +12,7 @@
 namespace stardraw
 {
     ///Identifier for commands. Used for internal command polymorphism purposes
-    enum class command_type : starlib_stdint::u8
+    enum class command_type : starlib::u8
     {
         DRAW, DRAW_INDIRECT, DRAW_INDEXED, DRAW_INDEXED_INDIRECT,
         CONFIG_BLENDING, CONFIG_STENCIL, CONFIG_SCISSOR, CONFIG_FACE_CULL, CONFIG_DEPTH_TEST, CONFIG_DEPTH_RANGE, CONFIG_DRAW, CONFIG_VIEWPORTS,
@@ -34,13 +34,13 @@ namespace stardraw
     typedef std::vector<starlib::polymorphic<command>> command_list;
 
     ///Geometry draw modes. Starlib only supports a small subset of possibilities to ensure cross-api compatibility.
-    enum class draw_mode : starlib_stdint::u8
+    enum class draw_mode : starlib::u8
     {
         TRIANGLES, TRIANGLE_STRIP, TRIANGLE_FAN,
     };
 
     ///Data type to determine how index values are interpreted.
-    enum class draw_indexed_index_type : starlib_stdint::u8
+    enum class draw_indexed_index_type : starlib::u8
     {
         UINT_32, UINT_16, UINT_8
     };
@@ -49,7 +49,7 @@ namespace stardraw
     ///Does *not* use index data. See draw_indexed_command for that.
     struct draw final : command
     {
-        draw(const draw_mode mode, const starlib_stdint::u32 vertex_count, const starlib_stdint::u32 start_vertex = 0, const starlib_stdint::u32 instance_count = 1, const starlib_stdint::u32 start_instance = 0) : mode(mode), count(vertex_count), start_vertex(start_vertex), instances(instance_count), start_instance(start_instance) {}
+        draw(const draw_mode mode, const starlib::u32 vertex_count, const starlib::u32 start_vertex = 0, const starlib::u32 instance_count = 1, const starlib::u32 start_instance = 0) : mode(mode), count(vertex_count), start_vertex(start_vertex), instances(instance_count), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -57,21 +57,21 @@ namespace stardraw
         }
 
         draw_mode mode;
-        starlib_stdint::u32 count;
+        starlib::u32 count;
 
         ///Starting index for vertices
-        starlib_stdint::u32 start_vertex;
+        starlib::u32 start_vertex;
 
-        starlib_stdint::u32 instances;
+        starlib::u32 instances;
         ///Starting index for instanced attributes
-        starlib_stdint::u32 start_instance = 0;
+        starlib::u32 start_instance = 0;
     };
 
     ///Draws some triangles! A valid draw specification must have been configured to provide the shader and vertex/index data
     ///*Requires* index data. For non-indexed drawing, see draw_command.
     struct draw_indexed final : command
     {
-        draw_indexed(const draw_mode mode, const starlib_stdint::u32 count, const starlib_stdint::i32 vertex_index_offset = 0, const starlib_stdint::u32 start_index = 0, const starlib_stdint::u32 instances = 1, const starlib_stdint::u32 start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
+        draw_indexed(const draw_mode mode, const starlib::u32 count, const starlib::i32 vertex_index_offset = 0, const starlib::u32 start_index = 0, const starlib::u32 instances = 1, const starlib::u32 start_instance = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : mode(mode), index_type(index_type), count(count), vertex_index_offset(vertex_index_offset), start_index(start_index), instances(instances), start_instance(start_instance) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -80,24 +80,24 @@ namespace stardraw
 
         draw_mode mode;
         draw_indexed_index_type index_type;
-        starlib_stdint::u32 count;
+        starlib::u32 count;
 
         ///Offset applied to all vertex indices
-        starlib_stdint::i32 vertex_index_offset;
+        starlib::i32 vertex_index_offset;
 
         ///Starting index for indices
-        starlib_stdint::u32 start_index;
+        starlib::u32 start_index;
 
-        starlib_stdint::u32 instances;
+        starlib::u32 instances;
         ///Starting index for instanced attributes
-        starlib_stdint::u32 start_instance;
+        starlib::u32 start_instance;
     };
 
     ///Draws some triangles, using an indirect draw command buffer. A valid draw specification must have been configured to provide the shader and vertex data
     ///Does *not* use index data. See draw_indexed_indirect_command for that.
     struct draw_indirect final : command
     {
-        draw_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib_stdint::u32 draw_count, const starlib_stdint::u32 indirect_index = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_index(indirect_index) {}
+        draw_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib::u32 draw_count, const starlib::u32 indirect_index = 0) : indirect_buffer(indirect_buffer), mode(mode), draw_count(draw_count), indirect_index(indirect_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -106,15 +106,15 @@ namespace stardraw
 
         object_identifier indirect_buffer;
         draw_mode mode;
-        starlib_stdint::u32 draw_count;
-        starlib_stdint::u32 indirect_index;
+        starlib::u32 draw_count;
+        starlib::u32 indirect_index;
     };
 
     ///Draws some triangles, using an indirect draw command buffer. A valid draw specification must have been configured to provide the shader and vertex data
     ///*Requires* index data. For non-indexed drawing, see draw_indirect_command.
     struct draw_indexed_indirect final : command
     {
-        draw_indexed_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib_stdint::u32 draw_count, const starlib_stdint::u32 indirect_index = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_index(indirect_index) {}
+        draw_indexed_indirect(const std::string_view& indirect_buffer, const draw_mode mode, const starlib::u32 draw_count, const starlib::u32 indirect_index = 0, const draw_indexed_index_type index_type = draw_indexed_index_type::UINT_32) : indirect_buffer(indirect_buffer), mode(mode), index_type(index_type), draw_count(draw_count), indirect_index(indirect_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -124,8 +124,8 @@ namespace stardraw
         object_identifier indirect_buffer;
         draw_mode mode;
         draw_indexed_index_type index_type;
-        starlib_stdint::u32 draw_count;
-        starlib_stdint::u32 indirect_index;
+        starlib::u32 draw_count;
+        starlib::u32 indirect_index;
     };
 
     ///Sets the active draw specification. A valid draw specification must be set prior to calling any draw commands.
@@ -141,19 +141,19 @@ namespace stardraw
     };
 
     ///Stencil test function options
-    enum class stencil_test_func : starlib_stdint::u8
+    enum class stencil_test_func : starlib::u8
     {
         ALWAYS, NEVER, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL
     };
 
     ///Stencil test result options
-    enum class stencil_result_op : starlib_stdint::u8
+    enum class stencil_result_op : starlib::u8
     {
         KEEP, ZERO, REPLACE, INCREMENT, INCREMENT_WRAP, DECREMENT, DECREMENT_WRAP, INVERT
     };
 
     ///Stencil test face options
-    enum class stencil_facing : starlib_stdint::u8
+    enum class stencil_facing : starlib::u8
     {
         FRONT, BACK, BOTH
     };
@@ -167,9 +167,9 @@ namespace stardraw
         stencil_result_op depth_fail_op = stencil_result_op::KEEP;
         stencil_result_op pixel_pass_op = stencil_result_op::KEEP;
 
-        starlib_stdint::u32 reference = 0;
-        starlib_stdint::u32 test_mask = starlib_stdint::u32_max;
-        starlib_stdint::u32 write_mask = starlib_stdint::u32_max;
+        starlib::u32 reference = 0;
+        starlib::u32 test_mask = starlib::u32_max;
+        starlib::u32 write_mask = starlib::u32_max;
 
         bool enabled = true;
     };
@@ -195,13 +195,13 @@ namespace stardraw
     };
 
     ///Blending function options
-    enum class blending_func : starlib_stdint::u8
+    enum class blending_func : starlib::u8
     {
         ADD, SUBTRACT, REVERSE_SUBTRACT, MIN, MAX
     };
 
     ///Blending factor options
-    enum class blending_factor : starlib_stdint::u8
+    enum class blending_factor : starlib::u8
     {
         ZERO,
         ONE,
@@ -240,10 +240,10 @@ namespace stardraw
         blending_factor dest_blend_alpha = blending_factor::ONE_MINUS_SOURCE_ALPHA;
         blending_func alpha_equation = blending_func::ADD;
 
-        starlib_stdint::f32 constant_blend_r = 1.0f;
-        starlib_stdint::f32 constant_blend_g = 1.0f;
-        starlib_stdint::f32 constant_blend_b = 1.0f;
-        starlib_stdint::f32 constant_blend_a = 1.0f;
+        starlib::f32 constant_blend_r = 1.0f;
+        starlib::f32 constant_blend_g = 1.0f;
+        starlib::f32 constant_blend_b = 1.0f;
+        starlib::f32 constant_blend_a = 1.0f;
 
         bool enabled = true;
     };
@@ -264,7 +264,7 @@ namespace stardraw
     ///Configures the active blending state
     struct configure_blending final : command
     {
-        explicit configure_blending(const blending_config& config, const starlib_stdint::u32 draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
+        explicit configure_blending(const blending_config& config, const starlib::u32 draw_buffer_index = 0) : config(config), draw_buffer_index(draw_buffer_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -272,11 +272,11 @@ namespace stardraw
         }
 
         blending_config config;
-        starlib_stdint::u32 draw_buffer_index;
+        starlib::u32 draw_buffer_index;
     };
 
     ///Depth test function options
-    enum class depth_test_func : starlib_stdint::u8
+    enum class depth_test_func : starlib::u8
     {
         ALWAYS, NEVER, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL
     };
@@ -314,16 +314,16 @@ namespace stardraw
     ///Configures the active depth range
     struct configure_depth_range final : command
     {
-        explicit configure_depth_range(const starlib_stdint::f64 near, const starlib_stdint::f64 far, const starlib_stdint::u32 viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
+        explicit configure_depth_range(const starlib::f64 near, const starlib::f64 far, const starlib::u32 viewport_index = 0) : near(near), far(far), viewport_index(viewport_index) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_DEPTH_RANGE;
         }
 
-        starlib_stdint::f64 near;
-        starlib_stdint::f64 far;
-        starlib_stdint::u32 viewport_index;
+        starlib::f64 near;
+        starlib::f64 far;
+        starlib::u32 viewport_index;
     };
 
     ///Face culling options
@@ -348,11 +348,11 @@ namespace stardraw
     ///Options required to configure stencil testing
     struct scissor_test_config
     {
-        starlib_stdint::i32 left = std::numeric_limits<starlib_stdint::i32>::min();
-        starlib_stdint::i32 bottom = std::numeric_limits<starlib_stdint::i32>::min();
+        starlib::i32 left = std::numeric_limits<starlib::i32>::min();
+        starlib::i32 bottom = std::numeric_limits<starlib::i32>::min();
 
-        starlib_stdint::i32 width = std::numeric_limits<starlib_stdint::i32>::max();
-        starlib_stdint::i32 height = std::numeric_limits<starlib_stdint::i32>::max();
+        starlib::i32 width = std::numeric_limits<starlib::i32>::max();
+        starlib::i32 height = std::numeric_limits<starlib::i32>::max();
 
         bool enabled = true;
     };
@@ -366,7 +366,7 @@ namespace stardraw
     ///Configures the active scissor test state
     struct configure_scissor_test final : command
     {
-        explicit configure_scissor_test(const scissor_test_config& config, const starlib_stdint::u32 viewport_index = 0) : config(config), viewport_index(viewport_index) {}
+        explicit configure_scissor_test(const scissor_test_config& config, const starlib::u32 viewport_index = 0) : config(config), viewport_index(viewport_index) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -374,13 +374,13 @@ namespace stardraw
         }
 
         scissor_test_config config;
-        starlib_stdint::u32 viewport_index;
+        starlib::u32 viewport_index;
     };
 
     ///Copies raw data between two buffers
     struct buffer_copy final : command
     {
-        explicit buffer_copy(const std::string_view& source_buffer, const std::string_view& dest_buffer, const starlib_stdint::u64 from_address, const starlib_stdint::u64 to_address, const starlib_stdint::u64 bytes) : read_buffer(source_buffer), write_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
+        explicit buffer_copy(const std::string_view& source_buffer, const std::string_view& dest_buffer, const starlib::u64 from_address, const starlib::u64 to_address, const starlib::u64 bytes) : read_buffer(source_buffer), write_buffer(dest_buffer), source_address(from_address), dest_address(to_address), bytes(bytes) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -389,33 +389,33 @@ namespace stardraw
 
         object_identifier read_buffer;
         object_identifier write_buffer;
-        starlib_stdint::u64 source_address;
-        starlib_stdint::u64 dest_address;
-        starlib_stdint::u64 bytes;
+        starlib::u64 source_address;
+        starlib::u64 dest_address;
+        starlib::u64 bytes;
     };
 
     ///Stores a set of 4 values for clearing RGBA channels.
     ///The values will be assumed to be in the correct format for the format of the buffer being cleared (float, int, or uint)
     struct clear_channel_values
     {
-        constexpr clear_channel_values(const starlib_stdint::f32 r, const starlib_stdint::f32 g, const starlib_stdint::f32 b, const starlib_stdint::f32 a) : data({std::bit_cast<const starlib_stdint::u32>(r), std::bit_cast<const starlib_stdint::u32>(g), std::bit_cast<const starlib_stdint::u32>(b), std::bit_cast<const starlib_stdint::u32>(a)}) {}
-        constexpr clear_channel_values(const starlib_stdint::i32 r, const starlib_stdint::i32 g, const starlib_stdint::i32 b, const starlib_stdint::i32 a) : data({std::bit_cast<const starlib_stdint::u32>(r), std::bit_cast<const starlib_stdint::u32>(g), std::bit_cast<const starlib_stdint::u32>(b), std::bit_cast<const starlib_stdint::u32>(a)}) {}
-        constexpr clear_channel_values(const starlib_stdint::u32 r, const starlib_stdint::u32 g, const starlib_stdint::u32 b, const starlib_stdint::u32 a) : data({r, g, b, a}) {}
-        std::array<starlib_stdint::u32, 4> data;
+        constexpr clear_channel_values(const starlib::f32 r, const starlib::f32 g, const starlib::f32 b, const starlib::f32 a) : data({std::bit_cast<const starlib::u32>(r), std::bit_cast<const starlib::u32>(g), std::bit_cast<const starlib::u32>(b), std::bit_cast<const starlib::u32>(a)}) {}
+        constexpr clear_channel_values(const starlib::i32 r, const starlib::i32 g, const starlib::i32 b, const starlib::i32 a) : data({std::bit_cast<const starlib::u32>(r), std::bit_cast<const starlib::u32>(g), std::bit_cast<const starlib::u32>(b), std::bit_cast<const starlib::u32>(a)}) {}
+        constexpr clear_channel_values(const starlib::u32 r, const starlib::u32 g, const starlib::u32 b, const starlib::u32 a) : data({r, g, b, a}) {}
+        std::array<starlib::u32, 4> data;
 
-        [[nodiscard]] constexpr starlib_stdint::f32 as_f32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib::f32 as_f32(const starlib::u32 idx) const
         {
-            return std::bit_cast<const starlib_stdint::f32>(data[idx]);
+            return std::bit_cast<const starlib::f32>(data[idx]);
         }
 
-        [[nodiscard]] constexpr starlib_stdint::i32 as_i32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib::i32 as_i32(const starlib::u32 idx) const
         {
-            return std::bit_cast<const starlib_stdint::i32>(data[idx]);
+            return std::bit_cast<const starlib::i32>(data[idx]);
         }
 
-        [[nodiscard]] constexpr starlib_stdint::i32 as_u32(const starlib_stdint::u32 idx) const
+        [[nodiscard]] constexpr starlib::i32 as_u32(const starlib::u32 idx) const
         {
-            return std::bit_cast<const starlib_stdint::u32>(data[idx]);
+            return std::bit_cast<const starlib::u32>(data[idx]);
         }
     };
 
@@ -423,8 +423,8 @@ namespace stardraw
     struct clear_values
     {
         clear_channel_values channels;
-        starlib_stdint::f64 depth = 1.0f;
-        starlib_stdint::u32 stencil = 0;
+        starlib::f64 depth = 1.0f;
+        starlib::u32 stencil = 0;
     };
 
     ///Default clear value configs
@@ -461,7 +461,7 @@ namespace stardraw
     ///Clears a texture to the given values.
     struct clear_texture final : command
     {
-        explicit clear_texture(const std::string_view& texture, const clear_values& clear_values = clear_info_defaults::FLOAT_DEFAULT, const starlib_stdint::u32 mipmap_level = 0) : texture(texture), mipmap_level(mipmap_level), clear_vlaues(clear_values) {}
+        explicit clear_texture(const std::string_view& texture, const clear_values& clear_values = clear_info_defaults::FLOAT_DEFAULT, const starlib::u32 mipmap_level = 0) : texture(texture), mipmap_level(mipmap_level), clear_vlaues(clear_values) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -469,22 +469,22 @@ namespace stardraw
         }
 
         object_identifier texture;
-        starlib_stdint::u32 mipmap_level;
+        starlib::u32 mipmap_level;
         clear_values clear_vlaues;
     };
 
     ///Clear info for a framebuffer color attachment
     struct framebuffer_color_clear_info
     {
-        starlib_stdint::u32 attachment_index = 0;
+        starlib::u32 attachment_index = 0;
         clear_values values = clear_info_defaults::FLOAT_DEFAULT;
     };
 
     ///Clears some number of framebuffer attachments to the given values.
     struct clear_framebuffer final : command
     {
-        explicit clear_framebuffer(const std::string_view& framebuffer, const std::initializer_list<framebuffer_color_clear_info> color_clears, const std::optional<starlib_stdint::f32>& depth_clear = std::nullopt, const std::optional<starlib_stdint::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
-        explicit clear_framebuffer(const std::string_view& framebuffer, const std::vector<framebuffer_color_clear_info>& color_clears, const std::optional<starlib_stdint::f32>& depth_clear = std::nullopt, const std::optional<starlib_stdint::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+        explicit clear_framebuffer(const std::string_view& framebuffer, const std::initializer_list<framebuffer_color_clear_info> color_clears, const std::optional<starlib::f32>& depth_clear = std::nullopt, const std::optional<starlib::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
+        explicit clear_framebuffer(const std::string_view& framebuffer, const std::vector<framebuffer_color_clear_info>& color_clears, const std::optional<starlib::f32>& depth_clear = std::nullopt, const std::optional<starlib::u32>& stencil_clear = std::nullopt) : framebuffer(framebuffer), color_clears(color_clears), depth_clear(depth_clear), stencil_clear(stencil_clear) {}
 
         [[nodiscard]] command_type type() const override
         {
@@ -493,8 +493,8 @@ namespace stardraw
 
         object_identifier framebuffer;
         std::vector<framebuffer_color_clear_info> color_clears;
-        std::optional<starlib_stdint::f32> depth_clear = std::nullopt;
-        std::optional<starlib_stdint::u32> stencil_clear = std::nullopt;
+        std::optional<starlib::f32> depth_clear = std::nullopt;
+        std::optional<starlib::u32> stencil_clear = std::nullopt;
     };
 
     ///Location and value for a single shader parameter
@@ -524,7 +524,7 @@ namespace stardraw
     };
 
     ///Status for signals. Not used in the command, but retured when querying signal state.
-    enum class signal_status : starlib_stdint::u8
+    enum class signal_status : starlib::u8
     {
         SIGNALLED, NOT_SIGNALLED, TIMED_OUT, UNKNOWN_SIGNAL, CONTEXT_ERROR
     };
@@ -545,36 +545,36 @@ namespace stardraw
     ///Information required to perform texture copies
     struct texture_copy_info
     {
-        starlib_stdint::u32 read_x;
-        starlib_stdint::u32 read_y;
-        starlib_stdint::u32 read_z;
+        starlib::u32 read_x;
+        starlib::u32 read_y;
+        starlib::u32 read_z;
 
-        starlib_stdint::u32 read_mipmap_level = 0;
-        starlib_stdint::u32 read_layer = 0;
+        starlib::u32 read_mipmap_level = 0;
+        starlib::u32 read_layer = 0;
 
-        starlib_stdint::u32 write_x;
-        starlib_stdint::u32 write_y;
-        starlib_stdint::u32 write_z;
+        starlib::u32 write_x;
+        starlib::u32 write_y;
+        starlib::u32 write_z;
 
-        starlib_stdint::u32 write_mipmap_level = 0;
-        starlib_stdint::u32 write_layer = 0;
+        starlib::u32 write_mipmap_level = 0;
+        starlib::u32 write_layer = 0;
 
-        starlib_stdint::u32 copy_width = 1;
-        starlib_stdint::u32 copy_height = 1;
-        starlib_stdint::u32 copy_depth = 1;
-        starlib_stdint::u32 copy_layers = 1;
+        starlib::u32 copy_width = 1;
+        starlib::u32 copy_height = 1;
+        starlib::u32 copy_depth = 1;
+        starlib::u32 copy_layers = 1;
 
-        static inline texture_copy_info create_simple_1d(const starlib_stdint::u32 x, const starlib_stdint::u32 width, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
+        static inline texture_copy_info create_simple_1d(const starlib::u32 x, const starlib::u32 width, const starlib::u32 mipmap_level = 0, const starlib::u32 layer = 0, const starlib::u32 layers = 1)
         {
             return {x, 0, 0, mipmap_level, layer, x, 0, 0, mipmap_level, layer, width, 1, 1, layers};
         }
 
-        static inline texture_copy_info create_simple_2d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
+        static inline texture_copy_info create_simple_2d(const starlib::u32 x, const starlib::u32 y, const starlib::u32 width, const starlib::u32 height, const starlib::u32 mipmap_level = 0, const starlib::u32 layer = 0, const starlib::u32 layers = 1)
         {
             return {x, y, 0, mipmap_level, layer, x, y, 0, mipmap_level, layer, width, height, 1, layers};
         }
 
-        static inline texture_copy_info create_simple_3d(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 z, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 depth, const starlib_stdint::u32 mipmap_level = 0, const starlib_stdint::u32 layer = 0, const starlib_stdint::u32 layers = 1)
+        static inline texture_copy_info create_simple_3d(const starlib::u32 x, const starlib::u32 y, const starlib::u32 z, const starlib::u32 width, const starlib::u32 height, const starlib::u32 depth, const starlib::u32 mipmap_level = 0, const starlib::u32 layer = 0, const starlib::u32 layers = 1)
         {
             return {x, y, z, mipmap_level, layer, x, y, z, mipmap_level, layer, width, height, depth, layers};
         }
@@ -618,22 +618,22 @@ namespace stardraw
     ///Dispatches a compute shader with the given group numbers
     struct dispatch_compute final : command
     {
-        dispatch_compute(const std::string_view& shader, const starlib_stdint::u32 groups_x, const starlib_stdint::u32 groups_y, const starlib_stdint::u32 groups_z) : groups_x(groups_x), groups_y(groups_y), groups_z(groups_z), shader(shader) {}
+        dispatch_compute(const std::string_view& shader, const starlib::u32 groups_x, const starlib::u32 groups_y, const starlib::u32 groups_z) : groups_x(groups_x), groups_y(groups_y), groups_z(groups_z), shader(shader) {}
         [[nodiscard]] command_type type() const override
         {
             return command_type::COMPUTE_DISPATCH;
         }
 
-        starlib_stdint::u32 groups_x;
-        starlib_stdint::u32 groups_y;
-        starlib_stdint::u32 groups_z;
+        starlib::u32 groups_x;
+        starlib::u32 groups_y;
+        starlib::u32 groups_z;
         object_identifier shader;
     };
 
     ///Dispatches a compute shader multiple times indirectly
     struct dispatch_compute_indirect final : command
     {
-        dispatch_compute_indirect(const std::string_view& shader, const std::string_view& indirect_buffer, const starlib_stdint::u32 indirect_index = 0) : shader(shader), indirect_buffer(indirect_buffer), indirect_index(indirect_index) {}
+        dispatch_compute_indirect(const std::string_view& shader, const std::string_view& indirect_buffer, const starlib::u32 indirect_index = 0) : shader(shader), indirect_buffer(indirect_buffer), indirect_index(indirect_index) {}
         [[nodiscard]] command_type type() const override
         {
             return command_type::COMPUTE_DISPATCH_INDIRECT;
@@ -641,7 +641,7 @@ namespace stardraw
 
         object_identifier shader;
         object_identifier indirect_buffer;
-        starlib_stdint::u32 indirect_index;
+        starlib::u32 indirect_index;
     };
 
     ///Configuration information for veiwports
@@ -656,15 +656,15 @@ namespace stardraw
     ///Configures the active drawing viewports
     struct comnfigure_viewports final : command
     {
-        explicit comnfigure_viewports(const std::initializer_list<viewport_config> viewports, const starlib_stdint::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
-        explicit comnfigure_viewports(const std::vector<viewport_config>& viewports, const starlib_stdint::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
+        explicit comnfigure_viewports(const std::initializer_list<viewport_config> viewports, const starlib::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
+        explicit comnfigure_viewports(const std::vector<viewport_config>& viewports, const starlib::u32 first_viewport_index = 0) : first_viewport_index(first_viewport_index), viewports(viewports) {}
 
         [[nodiscard]] command_type type() const override
         {
             return command_type::CONFIG_VIEWPORTS;
         }
 
-        starlib_stdint::u32 first_viewport_index;
+        starlib::u32 first_viewport_index;
         std::vector<viewport_config> viewports;
     };
 
@@ -679,23 +679,23 @@ namespace stardraw
     ///NOTE: It is invalid to use linear interpolation when copying depth/stencil components or a non-floating-point color component.
     struct framebuffer_copy_info
     {
-        starlib_stdint::u32 read_x;
-        starlib_stdint::u32 read_y;
-        starlib_stdint::u32 read_width;
-        starlib_stdint::u32 read_height;
+        starlib::u32 read_x;
+        starlib::u32 read_y;
+        starlib::u32 read_width;
+        starlib::u32 read_height;
 
-        starlib_stdint::u32 write_x;
-        starlib_stdint::u32 write_y;
-        starlib_stdint::u32 write_width;
-        starlib_stdint::u32 write_height;
+        starlib::u32 write_x;
+        starlib::u32 write_y;
+        starlib::u32 write_width;
+        starlib::u32 write_height;
 
         framebuffer_copy_filtering filtering = framebuffer_copy_filtering::NEAREST;
         attachment_components components = attachment_components::ALL;
 
-        starlib_stdint::u32 read_color_attachment_index = 0;
-        starlib_stdint::u32 write_color_attachment_index = 0;
+        starlib::u32 read_color_attachment_index = 0;
+        starlib::u32 write_color_attachment_index = 0;
 
-        static inline framebuffer_copy_info create_simple(const starlib_stdint::u32 x, const starlib_stdint::u32 y, const starlib_stdint::u32 width, const starlib_stdint::u32 height, const attachment_components copy_components = attachment_components::ALL, const starlib_stdint::u32 color_attachment_index = 0)
+        static inline framebuffer_copy_info create_simple(const starlib::u32 x, const starlib::u32 y, const starlib::u32 width, const starlib::u32 height, const attachment_components copy_components = attachment_components::ALL, const starlib::u32 color_attachment_index = 0)
         {
             return {x, y, width, height, x, y, width, height, framebuffer_copy_filtering::NEAREST, copy_components, color_attachment_index, color_attachment_index};
         }

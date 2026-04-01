@@ -11,7 +11,7 @@ namespace stardraw
 {
 
     ///Identifier for descriptors. Used for internal descriptor polymorphism purposes
-    enum class descriptor_type : starlib_stdint::u8
+    enum class descriptor_type : starlib::u8
     {
         BUFFER, TRANSFER_BUFFER, SHADER, TEXTURE, SAMPLER,  FRAMEBUFFER,
         VERTEX_CONFIGURATION, DRAW_CONFIGURATION,
@@ -39,7 +39,7 @@ namespace stardraw
 
     ///NOTE: Buffer memory storage cannot be guarenteed on OpenGL, but SYSRAM guarentees it will be possible to write into the buffer directly.
     ///TODO: This needs to be refactored into more specific usage flags to support other backends.
-    enum class buffer_memory_storage : starlib_stdint::u8
+    enum class buffer_memory_storage : starlib::u8
     {
         SYSRAM, VRAM,
     };
@@ -47,19 +47,19 @@ namespace stardraw
     ///Describes a generic block of GPU-accessible memory that can be used for almost any purpose.
     struct buffer final : descriptor
     {
-        explicit buffer(const std::string_view& name, const starlib_stdint::u64 size, const buffer_memory_storage memory = buffer_memory_storage::VRAM) : descriptor(name), size(size), memory(memory) {}
+        explicit buffer(const std::string_view& name, const starlib::u64 size, const buffer_memory_storage memory = buffer_memory_storage::VRAM) : descriptor(name), size(size), memory(memory) {}
 
         [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::BUFFER;
         }
 
-        starlib_stdint::u64 size;
+        starlib::u64 size;
         buffer_memory_storage memory;
     };
 
     ///Options for how a transfer buffer may be used
-    enum class transfer_buffer_usage : starlib_stdint::u8
+    enum class transfer_buffer_usage : starlib::u8
     {
         UPLOAD_ONLY, DOWNLOAD_ONLY, UPLOAD_OR_DOWNLOAD,
     };
@@ -67,13 +67,13 @@ namespace stardraw
     ///Describes an opaque block of gpu memory with the specific purpose of being used as an intermediary buffer for data transfers
     struct transfer_buffer final : descriptor
     {
-        explicit transfer_buffer(const std::string_view& name, const starlib_stdint::u64 size, const transfer_buffer_usage usage = transfer_buffer_usage::UPLOAD_ONLY) : descriptor(name), size(size), usage(usage) {}
+        explicit transfer_buffer(const std::string_view& name, const starlib::u64 size, const transfer_buffer_usage usage = transfer_buffer_usage::UPLOAD_ONLY) : descriptor(name), size(size), usage(usage) {}
         [[nodiscard]] descriptor_type type() const override
         {
             return descriptor_type::TRANSFER_BUFFER;
         }
 
-        starlib_stdint::u64 size;
+        starlib::u64 size;
         transfer_buffer_usage usage;
     };
 
@@ -83,7 +83,7 @@ namespace stardraw
     /// - Shader sees a FLOAT2 / VEC2
     /// - Each U16 in the buffer is converted to one float
     /// - The conversion is 'normalized' - U16_MIN maps to 0.0f, U16_MAX maps to 1.0f.
-    enum class vertex_data_type : starlib_stdint::u8
+    enum class vertex_data_type : starlib::u8
     {
         //Simple non-converting types (same representation in shader and buffer)
         UINT_U8, UINT2_U8, UINT3_U8, UINT4_U8,
@@ -110,10 +110,10 @@ namespace stardraw
     ///A >0 value means that this input will only advance per-instance, specifically per X instances where instance_divisor is X.
     struct vertex_data_binding
     {
-        constexpr vertex_data_binding(const std::string_view& buffer, const vertex_data_type& type, const starlib_stdint::u32 instance_divisor = 0) : type(type), instance_divisor(instance_divisor), buffer(buffer) {}
+        constexpr vertex_data_binding(const std::string_view& buffer, const vertex_data_type& type, const starlib::u32 instance_divisor = 0) : type(type), instance_divisor(instance_divisor), buffer(buffer) {}
 
         vertex_data_type type;
-        starlib_stdint::u32 instance_divisor;
+        starlib::u32 instance_divisor;
         object_identifier buffer;
     };
 
@@ -160,7 +160,7 @@ namespace stardraw
     struct shader final : descriptor
     {
         shader(const std::string_view& name, const std::vector<shader_stage>& stages) : descriptor(name), stages(stages), cache_ptr(nullptr), cache_size(0) {}
-        shader(const std::string_view& name, const void* cache_ptr, const starlib_stdint::u64 cache_size) : descriptor(name), stages({}), cache_ptr(cache_ptr), cache_size(cache_size) {}
+        shader(const std::string_view& name, const void* cache_ptr, const starlib::u64 cache_size) : descriptor(name), stages({}), cache_ptr(cache_ptr), cache_size(cache_size) {}
 
         [[nodiscard]] descriptor_type type() const override
         {
@@ -169,7 +169,7 @@ namespace stardraw
 
         std::vector<shader_stage> stages;
         const void* cache_ptr;
-        const starlib_stdint::u64 cache_size;
+        const starlib::u64 cache_size;
     };
 
     ///Specifies how texture data is interpreted.
@@ -179,7 +179,7 @@ namespace stardraw
     /// - Each U8 in the texture data is converted to one float
     /// - The conversion is 'normalized' - U8_MIN maps to 0.0f, U8_MAX maps to 1.0f.
     /// - The data is stored with the SRGB colorspace.
-    enum class texture_data_type : starlib_stdint::u8
+    enum class texture_data_type : starlib::u8
     {
         //Depth / stencil formats
         DEPTH_F32, DEPTH_U32_NORM, DEPTH_U24_NORM, DEPTH_U16_NORM,
@@ -206,7 +206,7 @@ namespace stardraw
     };
 
     ///Texture 'shape' determines what coordinates are used to read from the texture.
-    enum class texture_shape : starlib_stdint::u8
+    enum class texture_shape : starlib::u8
     {
         _1D,
         _2D,
@@ -215,7 +215,7 @@ namespace stardraw
     };
 
     ///Texture MSAA level determines whether the texture will store multiple samples per pixel
-    enum class texture_msaa_level : starlib_stdint::u8
+    enum class texture_msaa_level : starlib::u8
     {
         NONE = 0, X4 = 4, X8 = 8, X16 = 16, X32 = 32,
     };
@@ -228,51 +228,51 @@ namespace stardraw
         texture_shape shape = texture_shape::_1D;
         texture_msaa_level msaa = texture_msaa_level::NONE;
 
-        starlib_stdint::u32 width = 1;
-        starlib_stdint::u32 height = 1;
-        starlib_stdint::u32 depth = 1;
+        starlib::u32 width = 1;
+        starlib::u32 height = 1;
+        starlib::u32 depth = 1;
 
         ///Number of texture layers. Must be a multiple of 6 for cubemaps, and at least 1 for all other texture types. >1 (or >6 for cubemaps) creates a layered (array) texture.
-        starlib_stdint::u32 layers = 1;
+        starlib::u32 layers = 1;
 
         ///Number of mipmaps to allocate *including* the base (level 0) level. Must be >0
-        starlib_stdint::u8 mipmap_levels = 1;
+        starlib::u8 mipmap_levels = 1;
 
         ///Exclusive to view textures:
-        starlib_stdint::u8 view_texture_base_mipmap = 0;
-        starlib_stdint::u8 view_texture_base_layer = 0;
+        starlib::u8 view_texture_base_mipmap = 0;
+        starlib::u8 view_texture_base_layer = 0;
 
-        inline static texture_format create_1d(const starlib_stdint::u32 width, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1)
+        inline static texture_format create_1d(const starlib::u32 width, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1)
         {
             return {.data_type = data_type, .width = width, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_1d_layered(const starlib_stdint::u32 width, const starlib_stdint::u32 layers, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1)
+        inline static texture_format create_1d_layered(const starlib::u32 width, const starlib::u32 layers, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1)
         {
             return {.data_type = data_type, .width = width, .layers = layers, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_2d(const starlib_stdint::u32 width, const starlib_stdint::u32 height, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        inline static texture_format create_2d(const starlib::u32 width, const starlib::u32 height, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
         {
             return {.data_type = data_type, .shape = texture_shape::_2D, .msaa = msaa, .width = width, .height = height, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_2d_layered(const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 array_size, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        inline static texture_format create_2d_layered(const starlib::u32 width, const starlib::u32 height, const starlib::u32 array_size, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
         {
             return {.data_type = data_type, .shape = texture_shape::_2D, .msaa = msaa, .width = width, .height = height, .layers = array_size, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_3d(const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 depth, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
+        inline static texture_format create_3d(const starlib::u32 width, const starlib::u32 height, const starlib::u32 depth, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1, const texture_msaa_level msaa = texture_msaa_level::NONE)
         {
             return {.data_type = data_type, .shape = texture_shape::_3D, .msaa = msaa, .width = width, .height = height, .depth = depth, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_cube(const starlib_stdint::u32 width, const starlib_stdint::u32 height, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1)
+        inline static texture_format create_cube(const starlib::u32 width, const starlib::u32 height, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1)
         {
             return {.data_type = data_type, .shape = texture_shape::CUBE_MAP, .width = width, .height = height, .layers = 6, .mipmap_levels = mipmap_levels};
         }
 
-        inline static texture_format create_cube_layered(const starlib_stdint::u32 width, const starlib_stdint::u32 height, const starlib_stdint::u32 num_cubemaps, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib_stdint::u8 mipmap_levels = 1)
+        inline static texture_format create_cube_layered(const starlib::u32 width, const starlib::u32 height, const starlib::u32 num_cubemaps, const texture_data_type data_type = texture_data_type::RGBA_U8_NORM, const starlib::u8 mipmap_levels = 1)
         {
             return {.data_type = data_type, .shape = texture_shape::CUBE_MAP, .width = width, .height = height, .layers = num_cubemaps * 6, .mipmap_levels = mipmap_levels};
         }
@@ -280,25 +280,25 @@ namespace stardraw
 
     ///Level of anisotropic filtering to use on a texture.
     ///Requires that filtering must be able to account for at least an aspect ratio of 1/X where X is the anistropy level.
-    enum class texture_anisotropy_level : starlib_stdint::u8
+    enum class texture_anisotropy_level : starlib::u8
     {
         NONE = 1, X2 = 2, X4 = 4, X8 = 8, X16 = 16,
     };
 
     ///Type of interpolation to use when sampling inbetween pixels / layers / mipmaps.
-    enum class texture_filtering_mode : starlib_stdint::u8
+    enum class texture_filtering_mode : starlib::u8
     {
         NEAREST = 0, LINEAR = 1,
     };
 
     ///Type of wrapping to perform when sampling outside the texture boundary
-    enum class texture_wrapping_mode : starlib_stdint::u8
+    enum class texture_wrapping_mode : starlib::u8
     {
         CLAMP, REPEAT, MIRROR, BORDER
     };
 
     ///Color that will be returned when sampling outside the texture boundary if the wrapping mode is BORDER.
-    enum class texture_border_color : starlib_stdint::u8
+    enum class texture_border_color : starlib::u8
     {
         OPAUQE_BLACK, //0, 0, 0, 1
         OPAQUE_WHITE, //1, 1, 1, 1
@@ -342,9 +342,9 @@ namespace stardraw
         texture_swizzle_config swizzling = {};
 
         texture_filtering_mode mipmap_filter = texture_filtering_mode::NEAREST;
-        starlib_stdint::u32 mipmap_min_level = 0;
-        starlib_stdint::u32 mipmap_max_level = 99;
-        starlib_stdint::f32 mipmap_bias = 0;
+        starlib::u32 mipmap_min_level = 0;
+        starlib::u32 mipmap_max_level = 99;
+        starlib::f32 mipmap_bias = 0;
     };
 
     ///Default texture sampling configs
@@ -388,8 +388,8 @@ namespace stardraw
     struct framebuffer_attachment_info
     {
         object_identifier texture;
-        starlib_stdint::u32 mipmap_level;
-        starlib_stdint::u32 layer;
+        starlib::u32 mipmap_level;
+        starlib::u32 layer;
         bool layered;
     };
 

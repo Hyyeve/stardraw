@@ -10,7 +10,6 @@
 using namespace stardraw;
 using namespace starwin;
 using namespace starlib;
-using namespace starlib_stdint;
 
 memory_layout_info uniforms_layout;
 

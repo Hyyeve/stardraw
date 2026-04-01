@@ -39,7 +39,7 @@ namespace stardraw
     struct shader_parameter_location
     {
         ///Navigate to an index within the located array-like field or buffer
-        [[nodiscard]] shader_parameter_location index(starlib_stdint::u32 index) const;
+        [[nodiscard]] shader_parameter_location index(starlib::u32 index) const;
         ///Navigate to a named field within the located structure
         [[nodiscard]] shader_parameter_location field(const std::string_view& name) const;
 
@@ -63,7 +63,7 @@ namespace stardraw
         [[nodiscard]] shader_parameter_location locate(const std::string_view& name) const;
 
         ///Number of bytes required to store all variables of a shader buffer. -1 indicates an unknown or unsized buffer.
-        [[nodiscard]] starlib_stdint::i64 buffer_size(const std::string_view& name) const;
+        [[nodiscard]] starlib::i64 buffer_size(const std::string_view& name) const;
 
         ///Get the type of shader stage
         [[nodiscard]] shader_stage_type get_stage_type() const;
@@ -100,10 +100,10 @@ namespace stardraw
     [[nodiscard]] starlib::status load_shader_module(const std::string_view& source, shader_module& out_shader_module);
 
     ///Load a shader module from cache data previously generated.
-    [[nodiscard]] starlib::status load_shader_module(const void* cache_ptr, const starlib_stdint::u64 cache_size, shader_module& out_shader_module);
+    [[nodiscard]] starlib::status load_shader_module(const void* cache_ptr, const starlib::u64 cache_size, shader_module& out_shader_module);
 
     ///Create cache data for a shader module.
-    [[nodiscard]] starlib::status cache_shader_module(const shader_module& module, void*& out_cache_ptr, starlib_stdint::u64& out_cache_size);
+    [[nodiscard]] starlib::status cache_shader_module(const shader_module& module, void*& out_cache_ptr, starlib::u64& out_cache_size);
 
     ///Link some numnber of entry points into a shader program
     [[nodiscard]] starlib::status link_shader_program(const std::vector<shader_entry_point>& entry_points, shader_program& out_linked_shader, const std::vector<shader_module>& additional_modules = {});

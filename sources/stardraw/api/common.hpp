@@ -17,7 +17,7 @@ namespace stardraw
 
         bool operator==(const object_identifier&) const = default;
 
-        starlib_stdint::u64 hash;
+        starlib::u64 hash;
         std::string name;
     };
 }

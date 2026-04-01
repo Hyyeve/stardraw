@@ -9,7 +9,6 @@
 
 namespace stardraw::gl45
 {
-    using namespace starlib_stdint;
     shader_state::shader_state(const shader& desc, status& out_status) : shader_id(desc.identifier())
     {
         ZoneScoped;
