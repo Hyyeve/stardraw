@@ -4,8 +4,10 @@
 
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
-#include "starlib/general/random.hpp"
+#include "starlib/general/logger.hpp"
+#include "starlib/types/gameloop.hpp"
 #include "starwin/api/window.hpp"
+#include "tracy/Tracy.hpp"
 
 using namespace stardraw;
 using namespace starwin;
@@ -82,10 +84,11 @@ int main()
     status wind_status = window::create(
         {
             .api = graphics_api::GL45,
-            .gl_debug_context = true,
+            .gl_debug_context = false,
         }, wind);
 
     wind->set_title("Meow!");
+    wind->set_vsync(false);
 
     render_context* ctx;
     status ctx_status = render_context::create({
@@ -151,19 +154,36 @@ int main()
         configure_draw("draw-spec"),
     });
 
-    while (true)
+    starlib::logger logger;
+    for (int i = 0; i < 100; i++)
     {
-        wind->refresh();
-        wind->poll();
-
-        status execute_status = ctx->execute_command_buffer("main");
-
-        if (wind->is_close_requested())
-        {
-            delete wind;
-            break;
-        }
+        logger.log_info({"meow", ""}, "meow!");
     }
+    logger.flush_logs();
+
+    starlib::gameloop loop {
+        .target_fps = 93,
+        .update = [wind](const gameloop::loop_data& data)
+        {
+            wind->poll();
+
+            if (wind->is_close_requested())
+            {
+                delete wind;
+                data.config->should_exit = true;
+            }
+
+            TracyPlot("performance factor", data.performance_factor);
+        },
+        .render = [wind, ctx](const gameloop::loop_data& data)
+        {
+            wind->refresh();
+            status execute_status = ctx->execute_command_buffer("main");
+            TracyPlot("frame time", data.delta_time * 1000);
+        }
+    };
+
+    loop.run();
 
     status cleanup_status = stardraw::cleanup_shader_compiler();
 

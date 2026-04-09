@@ -8,6 +8,7 @@
 #include <tracy/TracyOpenGL.hpp>
 
 #include "../gl_headers.hpp"
+#include "stardraw/internal/internal.hpp"
 #include "starlib/types/block_allocator.hpp"
 
 namespace stardraw::gl45
@@ -55,10 +56,19 @@ namespace stardraw::gl45
     status transfer_buffer_state::flush_upload(const gl_memory_transfer_handle* handle)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Flush memory transfer handle")
-        *handle->sync_ptr = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        {
+            ZoneScopedN("TracyGpuZone");
+        }
+        {
+            ZoneScopedN("GL calls");
+            *handle->sync_ptr = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        }
         delete handle;
-        return status_type::SUCCESS;
+
+        {
+            ZoneScopedN("Destructors");
+            return status_type::SUCCESS;
+        }
     }
 
     transfer_buffer_state::~transfer_buffer_state()
@@ -66,7 +76,10 @@ namespace stardraw::gl45
         ZoneScoped;
         for (const auto& staging_buff : buffer_refcounts | std::views::keys)
         {
-            glDeleteBuffers(1, &staging_buff);
+            {
+                ZoneScopedN("GL calls");
+                glDeleteBuffers(1, &staging_buff);
+            }
         }
     }
 
@@ -76,7 +89,12 @@ namespace stardraw::gl45
         std::erase_if(chunks, [this](const upload_chunk* chunk)
         {
             if (chunk->fence == nullptr) return false;
-            const GLenum status = glClientWaitSync(chunk->fence, 0, 0);
+
+            GLenum status;
+            {
+                ZoneScopedN("GL calls");
+                status = glClientWaitSync(chunk->fence, 0, 0);
+            }
             if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED) return false;
 
             if (chunk->staging_buffer_id == current_buffer_id) chunk_allocator.free(chunk->address);
@@ -84,7 +102,10 @@ namespace stardraw::gl45
             buffer_refcounts[chunk->staging_buffer_id]--;
             if (buffer_refcounts[chunk->staging_buffer_id] <= 0 && chunk->staging_buffer_id != current_buffer_id)
             {
-                glDeleteBuffers(1, &chunk->staging_buffer_id);
+                {
+                    ZoneScopedN("GL calls");
+                    glDeleteBuffers(1, &chunk->staging_buffer_id);
+                }
                 buffer_refcounts.erase(chunk->staging_buffer_id);
             }
 
@@ -114,21 +135,31 @@ namespace stardraw::gl45
     status transfer_buffer_state::allocate_buffer()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Allocate transfer buffer");
 
-        glCreateBuffers(1, &current_buffer_id);
+        {
+            ZoneScopedN("GL calls");
+            glCreateBuffers(1, &current_buffer_id);
+        }
         if (current_buffer_id == 0) return {status_type::BACKEND_ERROR, std::format("Unable to allocate transfer buffer '{0}'", buffer_id.name)};
 
         const GLbitfield flags = GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | usage_to_flags(usage);
-        glNamedBufferStorage(current_buffer_id, buffer_size, nullptr, flags);
 
-        //Ideally, we would rely on the coherent mapping bit exclusively, and not flush manually.
-        //However, automatic flushing is broken in some cases, notably for pixel buffer transfer operations when uploading textures
-        //- at least, on my laptop RTX 3060. Is that a driver bug? Probably! The spec for coherent mapping is somewhat unclear.
-        current_buffer_ptr = static_cast<GLbyte*>(glMapNamedBufferRange(current_buffer_id, 0, buffer_size, flags));
+        {
+            ZoneScopedN("GL calls");
+            glNamedBufferStorage(current_buffer_id, buffer_size, nullptr, flags);
+
+            //Ideally, we would rely on the coherent mapping bit exclusively, and not flush manually.
+            //However, automatic flushing is broken in some cases, notably for pixel buffer transfer operations when uploading textures
+            //- at least, on my laptop RTX 3060. Is that a driver bug? Probably! The spec for coherent mapping is somewhat unclear.
+            current_buffer_ptr = static_cast<GLbyte*>(glMapNamedBufferRange(current_buffer_id, 0, buffer_size, flags));
+        }
+
         if (current_buffer_ptr == nullptr)
         {
-            glDeleteBuffers(1, &current_buffer_id);
+            {
+                ZoneScopedN("GL calls");
+                glDeleteBuffers(1, &current_buffer_id);
+            }
             current_buffer_id = 0;
             current_buffer_ptr = nullptr;
             buffer_size = 0;

@@ -2,6 +2,7 @@
 
 #include "texture_state.hpp"
 #include "stardraw/gl45/api_conversion.hpp"
+#include "stardraw/internal/internal.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -10,9 +11,11 @@ namespace stardraw::gl45
     framebuffer_state::framebuffer_state(const framebuffer& descriptor, status& out_status) : depth_format(0), stencil_format(0), framebuffer_id(descriptor.identifier()), gl_id(0)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Create framebuffer object");
 
-        glCreateFramebuffers(1, &gl_id);
+        {
+            ZoneScopedN("GL calls");
+            glCreateFramebuffers(1, &gl_id);
+        }
 
         if (gl_id <= 0)
         {
@@ -26,16 +29,22 @@ namespace stardraw::gl45
     framebuffer_state::~framebuffer_state()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Delete framebuffer object");
-        glDeleteFramebuffers(1, &gl_id);
+        {
+            ZoneScopedN("GL calls");
+            glDeleteFramebuffers(1, &gl_id);
+        }
     }
 
     status framebuffer_state::check_complete()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Validate framebuffer");
 
-        const GLenum status = glCheckNamedFramebufferStatus(gl_id, GL_FRAMEBUFFER);
+        GLenum status;
+        {
+            ZoneScopedN("GL calls");
+            status = glCheckNamedFramebufferStatus(gl_id, GL_FRAMEBUFFER);
+        }
+
         if (status == GL_FRAMEBUFFER_COMPLETE)
         {
             is_framebuffer_complete = true;
@@ -87,10 +96,16 @@ namespace stardraw::gl45
     {
         for (const GLuint attached_texture : attached_textures)
         {
-            if (!glIsTexture(attached_texture)) return false;
+            {
+                ZoneScopedN("GL calls");
+                if (!glIsTexture(attached_texture)) return false;
+            }
         }
 
-        return gl_id != 0 && glIsFramebuffer(gl_id) && is_framebuffer_complete;
+        {
+            ZoneScopedN("GL calls");
+            return gl_id != 0 && glIsFramebuffer(gl_id) && is_framebuffer_complete;
+        }
     }
 
     status framebuffer_state::attach_color_texture(const framebuffer_attachment_info& info, const texture_state* texture_state, const u32 attachment_index)
@@ -120,7 +135,11 @@ namespace stardraw::gl45
 
     status framebuffer_state::bind() const
     {
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_id);
+        ZoneScoped;
+        {
+            ZoneScopedN("GL calls");
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_id);
+        }
         return status_type::SUCCESS;
     }
 
@@ -132,7 +151,6 @@ namespace stardraw::gl45
     status framebuffer_state::blit_to(framebuffer_state* dest_state, const framebuffer_copy_info& info)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Framebuffer copy");
 
         if (info.components != attachment_components::COLOR && info.filtering != framebuffer_copy_filtering::NEAREST)
         {
@@ -168,11 +186,17 @@ namespace stardraw::gl45
                 return {status_type::INVALID, std::format("Read and write color attachments have incompatible data types for copy between '{0}' and '{1}'", framebuffer_id.name, dest_state->framebuffer_id.name)};
             }
 
-            glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
-            glNamedFramebufferDrawBuffer(dest_state->gl_id, GL_COLOR_ATTACHMENT0 + info.write_color_attachment_index);
+            {
+                ZoneScopedN("GL calls");
+                glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
+                glNamedFramebufferDrawBuffer(dest_state->gl_id, GL_COLOR_ATTACHMENT0 + info.write_color_attachment_index);
+            }
         }
 
-        glBlitNamedFramebuffer(gl_id, dest_state->gl_id, info.read_x, info.read_y, info.read_x + info.read_width, info.read_y + info.read_height, info.write_x, info.write_y, info.write_x + info.write_width, info.write_y + info.write_height, to_gl_attachment_bitfield(info.components), to_gl_filter_mode(info.filtering));
+        {
+            ZoneScopedN("GL calls");
+            glBlitNamedFramebuffer(gl_id, dest_state->gl_id, info.read_x, info.read_y, info.read_x + info.read_width, info.read_y + info.read_height, info.write_x, info.write_y, info.write_x + info.write_width, info.write_y + info.write_height, to_gl_attachment_bitfield(info.components), to_gl_filter_mode(info.filtering));
+        }
 
         return status_type::SUCCESS;
     }
@@ -180,7 +204,6 @@ namespace stardraw::gl45
     status framebuffer_state::blit_to_default(const framebuffer_copy_info& info)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Framebuffer copy");
 
         if (info.components != attachment_components::COLOR)
         {
@@ -205,8 +228,11 @@ namespace stardraw::gl45
             return {status_type::INVALID, std::format("Cannot copy integer data to the default framebuffer (trying to copy from '{0}')", framebuffer_id.name)};
         }
 
-        glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
-        glBlitNamedFramebuffer(gl_id, 0, info.read_x, info.read_y, info.read_x + info.read_width, info.read_y + info.read_height, info.write_x, info.write_y, info.write_x + info.write_width, info.write_y + info.write_height, to_gl_attachment_bitfield(info.components), to_gl_filter_mode(info.filtering));
+        {
+            ZoneScopedN("GL calls");
+            glNamedFramebufferReadBuffer(gl_id, GL_COLOR_ATTACHMENT0 + info.read_color_attachment_index);
+            glBlitNamedFramebuffer(gl_id, 0, info.read_x, info.read_y, info.read_x + info.read_width, info.read_y + info.read_height, info.write_x, info.write_y, info.write_x + info.write_width, info.write_y + info.write_height, to_gl_attachment_bitfield(info.components), to_gl_filter_mode(info.filtering));
+        }
 
         return status_type::SUCCESS;
     }
@@ -214,23 +240,26 @@ namespace stardraw::gl45
     status framebuffer_state::clear_depth(const f32 value) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Framebuffer clear (depth)");
-        glClearNamedFramebufferfv(gl_id, GL_DEPTH, 0, &value);
+        {
+            ZoneScopedN("GL calls");
+            glClearNamedFramebufferfv(gl_id, GL_DEPTH, 0, &value);
+        }
         return status_type::SUCCESS;
     }
 
     status framebuffer_state::clear_stencil(const u32 value) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Framebuffer clear (stencil)");
-        glClearNamedFramebufferuiv(gl_id, GL_STENCIL, 0, &value);
+        {
+            ZoneScopedN("GL calls");
+            glClearNamedFramebufferuiv(gl_id, GL_STENCIL, 0, &value);
+        }
         return status_type::SUCCESS;
     }
 
     status framebuffer_state::clear_color(u32 attachment, const clear_values& values)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Framebuffer clear (color)");
         if (!attached_color_formats.contains(attachment))
         {
             return {status_type::INVALID, std::format("Can't clear attachment; no color attachment with index {0} in framebuffer '{1}'", attachment, framebuffer_id.name)};
@@ -241,16 +270,25 @@ namespace stardraw::gl45
         {
             if (is_integer_texture_data_type_signed(data_format))
             {
-                glClearNamedFramebufferiv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLint*>(values.channels.data.data()));
+                {
+                    ZoneScopedN("GL calls");
+                    glClearNamedFramebufferiv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLint*>(values.channels.data.data()));
+                }
             }
             else
             {
-                glClearNamedFramebufferuiv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLuint*>(values.channels.data.data()));
+                {
+                    ZoneScopedN("GL calls");
+                    glClearNamedFramebufferuiv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLuint*>(values.channels.data.data()));
+                }
             }
         }
         else
         {
-            glClearNamedFramebufferfv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLfloat*>(values.channels.data.data()));
+            {
+                ZoneScopedN("GL calls");
+                glClearNamedFramebufferfv(gl_id, GL_COLOR, GL_COLOR_ATTACHMENT0 + attachment, reinterpret_cast<const GLfloat*>(values.channels.data.data()));
+            }
         }
 
         return status_type::SUCCESS;
@@ -259,15 +297,20 @@ namespace stardraw::gl45
     status framebuffer_state::attach_texture(const framebuffer_attachment_info& info, const GLenum attachment, const texture_state* texture_state)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Attach framebuffer texture");
 
         if (info.layered)
         {
-            glNamedFramebufferTexture(gl_id, attachment, texture_state->gl_texture_id, info.mipmap_level);
+            {
+                ZoneScopedN("GL calls");
+                glNamedFramebufferTexture(gl_id, attachment, texture_state->gl_texture_id, info.mipmap_level);
+            }
         }
         else
         {
-            glNamedFramebufferTextureLayer(gl_id, attachment, texture_state->gl_texture_id, info.mipmap_level, info.layer);
+            {
+                ZoneScopedN("GL calls");
+                glNamedFramebufferTextureLayer(gl_id, attachment, texture_state->gl_texture_id, info.mipmap_level, info.layer);
+            }
         }
 
         attached_textures.push_back(texture_state->gl_texture_id);

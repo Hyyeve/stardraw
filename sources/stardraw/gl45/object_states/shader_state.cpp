@@ -12,17 +12,18 @@ namespace stardraw::gl45
     shader_state::shader_state(const shader& desc, status& out_status) : shader_id(desc.identifier())
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Create shader object");
         out_status = create_from_stages(desc.stages);
     }
 
     shader_state::~shader_state()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Delete shader object");
         if (!is_valid()) return;
 
-        glDeleteProgram(shader_program_id);
+        {
+            ZoneScopedN("GL calls");
+            glDeleteProgram(shader_program_id);
+        }
         shader_program_id = 0;
     }
 
@@ -34,31 +35,40 @@ namespace stardraw::gl45
     status shader_state::make_active() const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Make shader active");
         if (!is_valid()) return {status_type::BACKEND_ERROR, std::format("Shader object '{0}' not valid!", shader_id.name)};
-        glUseProgram(shader_program_id);
+
+        {
+            ZoneScopedN("GL calls");
+            glUseProgram(shader_program_id);
+        }
         return status_type::SUCCESS;
     }
 
     status shader_state::dispatch_compute(const u32 groups_x, const u32 groups_y, const u32 groups_z) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Shader compute dispatch");
         if (!has_compute_stage) return {status_type::INVALID, std::format("Can't dispatch compute stage of shader '{0}' - doesn't have a compute stage!", shader_id.name)};
         status activate_status = make_active();
         if (activate_status.is_error()) return activate_status;
-        glDispatchCompute(groups_x, groups_y, groups_z);
+
+        {
+            ZoneScopedN("GL calls");
+            glDispatchCompute(groups_x, groups_y, groups_z);
+        }
         return status_type::SUCCESS;
     }
 
     status shader_state::dispatch_compute_indirect(const u64 indirect_offset) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Shader compute dispatch (indirect)");
         if (!has_compute_stage) return {status_type::INVALID, std::format("Can't dispatch compute stage of shader '{0}' - doesn't have a compute stage!", shader_id.name)};
         status activate_status = make_active();
         if (activate_status.is_error()) return activate_status;
-        glDispatchComputeIndirect(static_cast<GLintptr>(indirect_offset));
+
+        {
+            ZoneScopedN("GL calls");
+            glDispatchComputeIndirect(static_cast<GLintptr>(indirect_offset));
+        }
         return status_type::SUCCESS;
     }
 
@@ -141,7 +151,10 @@ namespace stardraw::gl45
         {
             for (const GLuint& compiled_stage : shader_stages)
             {
-                glDeleteShader(compiled_stage);
+                {
+                    ZoneScopedN("GL calls");
+                    glDeleteShader(compiled_stage);
+                }
             }
 
             return stages_compile_status;
@@ -152,7 +165,10 @@ namespace stardraw::gl45
 
         for (const GLuint shader : shader_stages)
         {
-            glDeleteShader(shader);
+            {
+                ZoneScopedN("GL calls");
+                glDeleteShader(shader);
+            }
         }
 
         if (link_status.is_error()) return link_status;
@@ -275,25 +291,39 @@ namespace stardraw::gl45
     status shader_state::link_shader(const std::vector<GLuint>& stages, GLuint& out_shader_id)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Link shader stages");
         const GLuint program = glCreateProgram();
         if (program == 0) return {status_type::BACKEND_ERROR, std::format("Creating shader '{0}' failed (glCreateProgram)", shader_id.name)};
 
         for (const GLuint shader : stages)
         {
             if (shader != 0)
-                glAttachShader(program, shader);
+            {
+                {
+                    ZoneScopedN("GL calls");
+                    glAttachShader(program, shader);
+                }
+            }
         }
 
-        glLinkProgram(program);
+        {
+            ZoneScopedN("GL calls");
+            glLinkProgram(program);
+        }
 
         GLint success = GL_TRUE;
-        glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+        {
+            ZoneScopedN("GL calls");
+            glGetProgramiv(program, GL_LINK_STATUS, &success);
+        }
 
         if (success != GL_TRUE)
         {
             std::string log = get_program_log(program);
-            glDeleteProgram(program);
+            {
+                ZoneScopedN("GL calls");
+                glDeleteProgram(program);
+            }
             return {status_type::BACKEND_ERROR, std::format("Shader validation for shader '{1}' failed with error: \n {0}", log, shader_id.name)};
         }
 
@@ -305,21 +335,34 @@ namespace stardraw::gl45
     status shader_state::compile_shader_stage(const std::string& source, const GLuint type, GLuint& out_shader_id)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Compile shader stage");
-        const GLuint shader = glCreateShader(type);
+        GLuint shader;
+        {
+            ZoneScopedN("GL calls");
+            shader = glCreateShader(type);
+        }
         if (shader == 0) return {status_type::BACKEND_ERROR, std::format("Creating shader '{0}' failed (glCreateShader)", shader_id.name)};
 
         const char* c_str = source.c_str();
-        glShaderSource(shader, 1, &c_str, nullptr);
-        glCompileShader(shader);
+        {
+            ZoneScopedN("GL calls");
+            glShaderSource(shader, 1, &c_str, nullptr);
+            glCompileShader(shader);
+        }
 
         GLint success = GL_TRUE;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+        {
+            ZoneScopedN("GL calls");
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        }
 
         if (success != GL_TRUE)
         {
             const std::string log = get_shader_log(shader);
-            glDeleteShader(shader);
+            {
+                ZoneScopedN("GL calls");
+                glDeleteShader(shader);
+            }
             return {status_type::BACKEND_ERROR, std::format("Shader stage compilation for shader '{1}' failed with error: \n {0}", log, shader_id.name)};
         }
 
@@ -333,8 +376,11 @@ namespace stardraw::gl45
         ZoneScoped;
         GLint success = GL_TRUE;
 
-        glValidateProgram(program);
-        glGetProgramiv(program, GL_VALIDATE_STATUS, &success);
+        {
+            ZoneScopedN("GL calls");
+            glValidateProgram(program);
+            glGetProgramiv(program, GL_VALIDATE_STATUS, &success);
+        }
 
         if (success != GL_TRUE)
         {
@@ -348,13 +394,19 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         i32 log_length = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+        {
+            ZoneScopedN("GL calls");
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+        }
 
         std::string log;
         log.resize(std::max(log_length, 0));
 
-        glGetShaderInfoLog(shader, log_length, nullptr, log.data());
-        glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+        {
+            ZoneScopedN("GL calls");
+            glGetShaderInfoLog(shader, log_length, nullptr, log.data());
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+        }
 
         return log;
     }
@@ -363,13 +415,20 @@ namespace stardraw::gl45
     {
         ZoneScoped;
         i32 log_length = 0;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
+
+        {
+            ZoneScopedN("GL calls");
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
+        }
 
         std::string log;
         log.resize(std::max(log_length, 0));
 
-        glGetProgramInfoLog(program, log_length, nullptr, log.data());
-        glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+        {
+            ZoneScopedN("GL calls");
+            glGetProgramInfoLog(program, log_length, nullptr, log.data());
+            glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, log.length(), log.data());
+        }
 
         return log;
     }

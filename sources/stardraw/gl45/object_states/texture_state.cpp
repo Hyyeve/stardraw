@@ -6,6 +6,7 @@
 #include "stardraw/api/memory_transfer.hpp"
 #include "stardraw/gl45/api_conversion.hpp"
 #include "stardraw/gl45/memory_barrier_controller.hpp"
+#include "stardraw/internal/internal.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -27,7 +28,6 @@ namespace stardraw::gl45
     texture_state::texture_state(const texture& desc, status& out_status)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Create texture object");
 
         const status initial_status = initalize_and_validate_texture_descriptor(desc);
         if (initial_status.is_error())
@@ -42,7 +42,11 @@ namespace stardraw::gl45
         const bool has_msaa = desc.format.msaa != texture_msaa_level::NONE;
 
         root_data_store_texture = desc.identifier(); //This texture stores data, the root store is itself.
-        glCreateTextures(gl_texture_target, 1, &gl_texture_id);
+
+        {
+            ZoneScopedN("GL calls");
+            glCreateTextures(gl_texture_target, 1, &gl_texture_id);
+        }
 
         if (gl_texture_id == 0)
         {
@@ -50,46 +54,50 @@ namespace stardraw::gl45
             return;
         }
 
-        switch (desc.format.shape)
+
         {
-            case texture_shape::_1D:
+            ZoneScopedN("GL calls");
+            switch (desc.format.shape)
             {
-                if (num_texture_array_layers > 1)
-                    glTextureStorage2D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, num_texture_array_layers);
-                else
-                    glTextureStorage1D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width);
-                break;
-            }
-            case texture_shape::_3D:
-            {
-                glTextureStorage3D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height, depth);
-                break;
-            }
-            case texture_shape::_2D:
-            case texture_shape::CUBE_MAP:
-            {
-                if (num_texture_array_layers > 1 && has_msaa)
+                case texture_shape::_1D:
                 {
-                    //It's unclear whether the last parameter (fixed sample locations) is actually used by any implementations, so for now I'm not supporting customizing it.
-                    glTextureStorage3DMultisample(gl_texture_id, num_texture_msaa_samples, gl_texture_format, width, height, num_texture_array_layers, GL_TRUE);
+                    if (num_texture_array_layers > 1)
+                        glTextureStorage2D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, num_texture_array_layers);
+                    else
+                        glTextureStorage1D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width);
                     break;
                 }
-
-                if (num_texture_array_layers > 1)
+                case texture_shape::_3D:
                 {
-                    glTextureStorage3D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height, num_texture_array_layers);
+                    glTextureStorage3D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height, depth);
                     break;
                 }
-
-                if (has_msaa)
+                case texture_shape::_2D:
+                case texture_shape::CUBE_MAP:
                 {
-                    //It's unclear whether the last parameter (fixed sample locations) is actually used by any implementations, so for now I'm not supporting customizing it.
-                    glTextureStorage2DMultisample(gl_texture_id, num_texture_msaa_samples, gl_texture_format, width, height, GL_TRUE);
+                    if (num_texture_array_layers > 1 && has_msaa)
+                    {
+                        //It's unclear whether the last parameter (fixed sample locations) is actually used by any implementations, so for now I'm not supporting customizing it.
+                        glTextureStorage3DMultisample(gl_texture_id, num_texture_msaa_samples, gl_texture_format, width, height, num_texture_array_layers, GL_TRUE);
+                        break;
+                    }
+
+                    if (num_texture_array_layers > 1)
+                    {
+                        glTextureStorage3D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height, num_texture_array_layers);
+                        break;
+                    }
+
+                    if (has_msaa)
+                    {
+                        //It's unclear whether the last parameter (fixed sample locations) is actually used by any implementations, so for now I'm not supporting customizing it.
+                        glTextureStorage2DMultisample(gl_texture_id, num_texture_msaa_samples, gl_texture_format, width, height, GL_TRUE);
+                        break;
+                    }
+
+                    glTextureStorage2D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height);
                     break;
                 }
-
-                glTextureStorage2D(gl_texture_id, num_texture_mipmap_levels, gl_texture_format, width, height);
-                break;
             }
         }
 
@@ -101,7 +109,6 @@ namespace stardraw::gl45
     texture_state::texture_state(const texture_state* original, const texture& desc, status& out_status)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Create texture object");
 
         const status compatibility_status = original->is_view_compatible(desc);
         if (compatibility_status.is_error())
@@ -118,7 +125,11 @@ namespace stardraw::gl45
         }
 
         root_data_store_texture = original->root_data_store_texture; //This texture is NOT the original, the root data store is the data store of the original.
-        glGenTextures(1, &gl_texture_id);
+
+        {
+            ZoneScopedN("GL calls");
+            glGenTextures(1, &gl_texture_id);
+        }
 
         if (gl_texture_id == 0)
         {
@@ -126,7 +137,11 @@ namespace stardraw::gl45
             return;
         }
 
-        glTextureView(gl_texture_id, gl_texture_target, original->gl_texture_id, gl_texture_format, desc.format.view_texture_base_mipmap, desc.format.mipmap_levels, desc.format.view_texture_base_layer, num_texture_array_layers);
+
+        {
+            ZoneScopedN("GL calls");
+            glTextureView(gl_texture_id, gl_texture_target, original->gl_texture_id, gl_texture_format, desc.format.view_texture_base_mipmap, desc.format.mipmap_levels, desc.format.view_texture_base_layer, num_texture_array_layers);
+        }
 
         texture_sampling_conifg sampling_config = desc.default_sampling_config;
         sampling_config.mipmap_max_level = std::min(sampling_config.mipmap_max_level, num_texture_mipmap_levels - 1);
@@ -136,46 +151,52 @@ namespace stardraw::gl45
     texture_state::~texture_state()
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Delete texture object");
-        glDeleteTextures(1, &gl_texture_id);
+
+        {
+            ZoneScopedN("GL calls");
+            glDeleteTextures(1, &gl_texture_id);
+        }
     }
 
     status texture_state::unpack_pixels(const u32 mipmap_level, const u32 x, const u32 y, const u32 z, const u32 width, const u32 height, const u32 depth, const GLenum format, const GLenum gl_data_type, const u64 pbo_offset) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Unpack texture data");
         texture_shape effective_shape = shape;
         if (num_texture_array_layers > 1 && shape == texture_shape::_1D) effective_shape = texture_shape::_2D;
         if (num_texture_array_layers > 1 && shape == texture_shape::_2D) effective_shape = texture_shape::_3D;
 
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-        switch (effective_shape)
         {
-            case texture_shape::_1D:
+            ZoneScopedN("GL calls");
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+            switch (effective_shape)
             {
-                glTextureSubImage1D(gl_texture_id, mipmap_level, x, width, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
-                break;
-            }
-            case texture_shape::_2D:
-            {
-                glTextureSubImage2D(gl_texture_id, mipmap_level, x, y, width, height, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
-                break;
-            }
-            case texture_shape::_3D:
-            case texture_shape::CUBE_MAP:
-            {
-                glTextureSubImage3D(gl_texture_id, mipmap_level, x, y, z, width, height, depth, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
-                break;
+                case texture_shape::_1D:
+                {
+                    glTextureSubImage1D(gl_texture_id, mipmap_level, x, width, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
+                    break;
+                }
+                case texture_shape::_2D:
+                {
+                    glTextureSubImage2D(gl_texture_id, mipmap_level, x, y, width, height, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
+                    break;
+                }
+                case texture_shape::_3D:
+                case texture_shape::CUBE_MAP:
+                {
+                    glTextureSubImage3D(gl_texture_id, mipmap_level, x, y, z, width, height, depth, format, gl_data_type, reinterpret_cast<void*>(pbo_offset));
+                    break;
+                }
             }
         }
+
         return status_type::SUCCESS;
     }
 
     status texture_state::copy_pixels(const texture_state* read_texture, const texture_copy_info& copy_info) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Copy texture data");
         if (!is_view_format_compatible(gl_texture_format, read_texture->gl_texture_format)) return {status_type::INVALID, std::format("Can't transfer between textures '{0}' and '{1}' - incompatible data formats", texture_id.name, read_texture->texture_id.name)};
         if (!is_view_target_compatible(gl_texture_target, read_texture->gl_texture_target)) return {status_type::INVALID, std::format("Can't transfer between textures '{0}' and '{1}' - incompatible texture shapes", texture_id.name, read_texture->texture_id.name)};
 
@@ -207,26 +228,30 @@ namespace stardraw::gl45
         if (copy_info.read_layer + copy_info.copy_layers >= read_texture->num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture copy array layers are outside the bounds of the read texture '{0}'", read_texture->texture_id.name)};
         if (copy_info.write_layer + copy_info.copy_layers >= num_texture_array_layers) return {status_type::RANGE_OVERFLOW, std::format("Texture copy array layers are outside the bounds of the write texture '{0}'", texture_id.name)};
 
-        switch (read_texture->shape)
+
         {
-            case texture_shape::_1D: //Copy between 1D textures (or 1D texture arrays)
+            ZoneScopedN("GL calls");
+            switch (read_texture->shape)
             {
-                glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, copy_info.read_layer, 0,
-                                   gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, copy_info.write_layer, 0, copy_info.copy_width, copy_info.copy_layers, 0);
-                break;
-            }
-            case texture_shape::_2D: //Copy between 2D textures (or 2D texture arrays. Cubemaps are a special kind of 2D texture array)
-            case texture_shape::CUBE_MAP:
-            {
-                glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, read_y, copy_info.read_layer,
-                                   gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, write_y, copy_info.write_layer, copy_info.copy_width, copy_info.copy_height, copy_info.copy_layers);
-                break;
-            }
-            case texture_shape::_3D: //Copy between 3D textures
-            {
-                glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, read_y, read_z,
-                                   gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, write_y, write_z, copy_info.copy_width, copy_info.copy_height, copy_info.copy_depth);
-                break;
+                case texture_shape::_1D: //Copy between 1D textures (or 1D texture arrays)
+                {
+                    glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, copy_info.read_layer, 0,
+                                       gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, copy_info.write_layer, 0, copy_info.copy_width, copy_info.copy_layers, 0);
+                    break;
+                }
+                case texture_shape::_2D: //Copy between 2D textures (or 2D texture arrays. Cubemaps are a special kind of 2D texture array)
+                case texture_shape::CUBE_MAP:
+                {
+                    glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, read_y, copy_info.read_layer,
+                                       gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, write_y, copy_info.write_layer, copy_info.copy_width, copy_info.copy_height, copy_info.copy_layers);
+                    break;
+                }
+                case texture_shape::_3D: //Copy between 3D textures
+                {
+                    glCopyImageSubData(read_texture->gl_texture_id, read_texture->gl_texture_target, copy_info.read_mipmap_level, read_x, read_y, read_z,
+                                       gl_texture_id, gl_texture_target, copy_info.write_mipmap_level, write_x, write_y, write_z, copy_info.copy_width, copy_info.copy_height, copy_info.copy_depth);
+                    break;
+                }
             }
         }
 
@@ -236,7 +261,6 @@ namespace stardraw::gl45
     status texture_state::prepare_upload(transfer_buffer_state* transfer_buffer, const texture_memory_transfer_info& info, memory_transfer_handle** out_handle) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Prepare texture upload");
 
         if (info.x + info.width > size.x || info.y + info.height > size.y || info.z + info.depth > size.z)
         {
@@ -261,10 +285,13 @@ namespace stardraw::gl45
     status texture_state::flush_upload(const texture_memory_transfer_info& info, memory_transfer_handle* handle) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Flush texture upload");
         const gl_memory_transfer_handle* gl_handle = dynamic_cast<gl_memory_transfer_handle*>(handle);
         if (gl_handle == nullptr) return {status_type::INVALID, std::format("Invalid memory transfer handle cast - this is an internal bug! (trying to upload to texture '{0}')", texture_id.name)};
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, gl_handle->transfer_buffer_id);
+
+        {
+            ZoneScopedN("GL calls");
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, gl_handle->transfer_buffer_id);
+        }
         status unpack_status = unpack_pixels(info.mipmap_level, info.x, info.y, info.z, info.width, info.height, info.depth, to_gl_channels_format(info.channels), to_gl_memory_transfer_data_type(info.data_type), gl_handle->transfer_buffer_address);
         if (unpack_status.is_error()) return unpack_status;
         return transfer_buffer_state::flush_upload(gl_handle);
@@ -408,24 +435,32 @@ namespace stardraw::gl45
     bool texture_state::is_valid() const
     {
         ZoneScoped;
-        return gl_texture_id != 0 && glIsTexture(gl_texture_id);
+        {
+            ZoneScopedN("GL calls");
+            return gl_texture_id != 0 && glIsTexture(gl_texture_id);
+        }
     }
 
     status texture_state::bind_to_texture_slot(const u32 slot) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Bind texture");
-        glBindTextureUnit(slot, gl_texture_id);
+        {
+            ZoneScopedN("GL calls");
+            glBindTextureUnit(slot, gl_texture_id);
+        }
         return status_type::SUCCESS;
     }
 
     status texture_state::bind_to_image_slot(const u32 slot, const u32 mipmap_level, const u32 array_layer, const bool entire_array, const GLenum access) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Bind texture as image");
         if (mipmap_level >= num_texture_mipmap_levels) return {status_type::INVALID, std::format("Texture '{0}' does not contain specified mipmap level for image binding", texture_id.name)};
         if (array_layer >= num_texture_array_layers) return {status_type::INVALID, std::format("Texture '{0}' does not contain specified array layer for image binding", texture_id.name)};
-        glBindImageTexture(slot, gl_texture_id, mipmap_level, entire_array, array_layer, access, gl_texture_format);
+
+        {
+            ZoneScopedN("GL calls");
+            glBindImageTexture(slot, gl_texture_id, mipmap_level, entire_array, array_layer, access, gl_texture_format);
+        }
         return status_type::SUCCESS;
     }
 
@@ -503,30 +538,33 @@ namespace stardraw::gl45
     status texture_state::set_sampling_config(const texture_sampling_conifg& config, const bool is_integer_texture) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Set texture sampling config");
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_MAG_FILTER, to_gl_filter_mode_from_modes(config.upscale_filter, config.mipmap_filter, false));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_MIN_FILTER, to_gl_filter_mode_from_modes(config.downscale_filter, config.mipmap_filter, true));
 
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_S, to_gl_wrapping_mode(config.wrapping_mode_x));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_T, to_gl_wrapping_mode(config.wrapping_mode_y));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_R, to_gl_wrapping_mode(config.wrapping_mode_z));
-
-        set_texture_border_color(gl_texture_id, config.border_color, is_integer_texture);
-
-        if (GLAD_GL_VERSION_4_6 || GLAD_GL_ARB_texture_filter_anisotropic || GLAD_GL_EXT_texture_filter_anisotropic)
         {
-            //Anisotropy is not *strictly* core, but it's supported practically universally
-            glTextureParameterf(gl_texture_id, GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(config.anisotropy_level));
+            ZoneScopedN("GL calls");
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_MAG_FILTER, to_gl_filter_mode_from_modes(config.upscale_filter, config.mipmap_filter, false));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_MIN_FILTER, to_gl_filter_mode_from_modes(config.downscale_filter, config.mipmap_filter, true));
+
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_S, to_gl_wrapping_mode(config.wrapping_mode_x));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_T, to_gl_wrapping_mode(config.wrapping_mode_y));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_WRAP_R, to_gl_wrapping_mode(config.wrapping_mode_z));
+
+            set_texture_border_color(gl_texture_id, config.border_color, is_integer_texture);
+
+            if (GLAD_GL_VERSION_4_6 || GLAD_GL_ARB_texture_filter_anisotropic || GLAD_GL_EXT_texture_filter_anisotropic)
+            {
+                //Anisotropy is not *strictly* core, but it's supported practically universally
+                glTextureParameterf(gl_texture_id, GL_TEXTURE_MAX_ANISOTROPY, static_cast<float>(config.anisotropy_level));
+            }
+
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_BASE_LEVEL, config.mipmap_min_level);
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_MAX_LEVEL, config.mipmap_max_level);
+            glTextureParameterf(gl_texture_id, GL_TEXTURE_LOD_BIAS, config.mipmap_bias);
+
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_R, to_gl_swizzle_mode(config.swizzling.swizzle_red));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_G, to_gl_swizzle_mode(config.swizzling.swizzle_green));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_B, to_gl_swizzle_mode(config.swizzling.swizzle_blue));
+            glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_A, to_gl_swizzle_mode(config.swizzling.swizzle_alpha));
         }
-
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_BASE_LEVEL, config.mipmap_min_level);
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_MAX_LEVEL, config.mipmap_max_level);
-        glTextureParameterf(gl_texture_id, GL_TEXTURE_LOD_BIAS, config.mipmap_bias);
-
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_R, to_gl_swizzle_mode(config.swizzling.swizzle_red));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_G, to_gl_swizzle_mode(config.swizzling.swizzle_green));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_B, to_gl_swizzle_mode(config.swizzling.swizzle_blue));
-        glTextureParameteri(gl_texture_id, GL_TEXTURE_SWIZZLE_A, to_gl_swizzle_mode(config.swizzling.swizzle_alpha));
 
         return status_type::SUCCESS;
     }
@@ -534,27 +572,29 @@ namespace stardraw::gl45
     status texture_state::clear(const u32 mipmap_level, const clear_values& clear_values) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Clear texture mipmap");
 
         if (mipmap_level >= num_texture_mipmap_levels)
         {
             return {status_type::RANGE_OVERFLOW, std::format("Mipmap level out of the bounds of the texture '{0}'", texture_id.name)};
         }
 
-        if (is_texture_data_type_integer(data_type))
         {
-            if (is_integer_texture_data_type_signed(data_type))
+            ZoneScopedN("GL calls");
+            if (is_texture_data_type_integer(data_type))
             {
-                glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_INT, clear_values.channels.data.data());
+                if (is_integer_texture_data_type_signed(data_type))
+                {
+                    glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_INT, clear_values.channels.data.data());
+                }
+                else
+                {
+                    glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_UNSIGNED_INT, clear_values.channels.data.data());
+                }
             }
             else
             {
-                glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_UNSIGNED_INT, clear_values.channels.data.data());
+                glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_FLOAT, clear_values.channels.data.data());
             }
-        }
-        else
-        {
-            glClearTexImage(gl_texture_id, mipmap_level, GL_RGBA, GL_FLOAT, clear_values.channels.data.data());
         }
 
         return status_type::SUCCESS;
@@ -565,4 +605,3 @@ namespace stardraw::gl45
         return shape;
     }
 }
-

@@ -90,6 +90,7 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::create_objects(const descriptor_list&& descriptors)
     {
         ZoneScoped;
+        TracyGpuZone("[Stardraw] Create object states");
         for (const starlib::polymorphic<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());

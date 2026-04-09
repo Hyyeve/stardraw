@@ -3,6 +3,7 @@
 #include "stardraw/api/descriptors.hpp"
 #include "stardraw/api/memory_transfer.hpp"
 #include "stardraw/gl45/gl_headers.hpp"
+#include "tracy/Tracy.hpp"
 
 namespace stardraw::gl45
 {
@@ -51,6 +52,7 @@ namespace stardraw::gl45
     public:
         status transfer(void* data) override
         {
+            ZoneScoped;
             if (current_status != memory_transfer_status::READY) return {status_type::INVALID, "Transfer has already been called on this handle!"};
             current_status = memory_transfer_status::TRANSFERRING;
             memcpy(transfer_buffer_ptr, data, transfer_size);

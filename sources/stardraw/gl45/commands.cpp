@@ -2,6 +2,7 @@
 
 #include "api_conversion.hpp"
 #include "render_context.hpp"
+#include "stardraw/internal/internal.hpp"
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyOpenGL.hpp"
 
@@ -12,10 +13,12 @@ namespace stardraw::gl45
         ZoneScoped;
         if (enable)
         {
+            ZoneScopedN("GL calls");
             glEnablei(flag, index);
         }
         else
         {
+            ZoneScopedN("GL calls");
             glDisablei(flag, index);
         }
     }
@@ -23,7 +26,6 @@ namespace stardraw::gl45
     status render_context::execute_draw(const draw* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute draw cmd");
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
 
         vertex_specification_state* vertex_spec;
@@ -37,7 +39,12 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glDrawArraysInstancedBaseInstance(to_gl_draw_mode(cmd->mode), cmd->start_vertex, cmd->count, cmd->instances, cmd->start_instance);
+
+        {
+            ZoneScopedN("GL calls");
+            glDrawArraysInstancedBaseInstance(to_gl_draw_mode(cmd->mode), cmd->start_vertex, cmd->count, cmd->instances, cmd->start_instance);
+        }
+
         shader->flag_barriers(mem_barrier_controller);
         return status_type::SUCCESS;
     }
@@ -45,7 +52,6 @@ namespace stardraw::gl45
     status render_context::execute_draw_indexed(const draw_indexed* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute draw indexed cmd");
 
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
         if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, std::format("The current draw specification '{0}' does not have an index buffer for indexed drawing", active_draw_specification->id.name)};
@@ -65,7 +71,12 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glDrawElementsInstancedBaseVertexBaseInstance(to_gl_draw_mode(cmd->mode), cmd->count, index_element_type, reinterpret_cast<const void*>(cmd->start_index * index_element_size), cmd->instances, cmd->vertex_index_offset, cmd->start_instance);
+
+        {
+            ZoneScopedN("GL calls");
+            glDrawElementsInstancedBaseVertexBaseInstance(to_gl_draw_mode(cmd->mode), cmd->count, index_element_type, reinterpret_cast<const void*>(cmd->start_index * index_element_size), cmd->instances, cmd->vertex_index_offset, cmd->start_instance);
+        }
+
         shader->flag_barriers(mem_barrier_controller);
         return status_type::SUCCESS;
     }
@@ -73,7 +84,6 @@ namespace stardraw::gl45
     status render_context::execute_draw_indirect(const draw_indirect* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute draw indirect cmd");
 
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
 
@@ -92,7 +102,12 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glMultiDrawArraysIndirect(to_gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
+
+        {
+            ZoneScopedN("GL calls");
+            glMultiDrawArraysIndirect(to_gl_draw_mode(cmd->mode), reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_arrays_indirect_params)), cmd->draw_count, 0);
+        }
+
         shader->flag_barriers(mem_barrier_controller);
         return status_type::SUCCESS;
     }
@@ -100,7 +115,6 @@ namespace stardraw::gl45
     status render_context::execute_draw_indexed_indirect(const draw_indexed_indirect* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute draw indirect cmd");
 
         if (active_draw_specification == nullptr) return {status_type::INVALID, "No draw specification is currently active"};
         if (!active_draw_specification->has_index_buffer) return {status_type::INVALID, std::format("The current draw specification '{0}' does not have an index buffer for indexed drawing", active_draw_specification->id.name)};
@@ -123,7 +137,10 @@ namespace stardraw::gl45
         if (find_status.is_error()) return find_status;
 
         shader->barrier_objects_if_needed(mem_barrier_controller);
-        glMultiDrawElementsIndirect(to_gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
+        {
+            ZoneScopedN("GL calls");
+            glMultiDrawElementsIndirect(to_gl_draw_mode(cmd->mode), index_element_type, reinterpret_cast<const void*>(cmd->indirect_index * sizeof(draw_elements_indirect_params)), cmd->draw_count, 0);
+        }
         shader->flag_barriers(mem_barrier_controller);
 
         return status_type::SUCCESS;
@@ -132,7 +149,6 @@ namespace stardraw::gl45
     status render_context::execute_buffer_copy(const buffer_copy* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute buffer copy cmd");
 
         buffer_state* source_state;
         const status find_source_status = find_buffer_state(cmd->read_buffer, &source_state);
@@ -154,7 +170,6 @@ namespace stardraw::gl45
     status render_context::execute_texture_copy(const texture_copy* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute texture copy cmd");
 
         texture_state* source_state;
         const status find_source_status = find_texture_state(cmd->read_texture, &source_state);
@@ -202,51 +217,59 @@ namespace stardraw::gl45
     status render_context::execute_config_blending(const configure_blending* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config blending cmd");
         const blending_config& config = cmd->config;
 
         gl_set_flag(GL_BLEND, config.enabled);
         if (!config.enabled) return status_type::SUCCESS;
 
-        glBlendColor(config.constant_blend_r, config.constant_blend_g, config.constant_blend_b, config.constant_blend_a);
-        glBlendEquationSeparatei(cmd->draw_buffer_index, to_gl_blend_func(config.rgb_equation), to_gl_blend_func(config.alpha_equation));
-        glBlendFuncSeparatei(cmd->draw_buffer_index, to_gl_blend_factor(config.source_blend_rgb), to_gl_blend_factor(config.dest_blend_rgb), to_gl_blend_factor(config.source_blend_alpha), to_gl_blend_factor(config.dest_blend_alpha));
+        {
+            ZoneScopedN("GL calls");
+            glBlendColor(config.constant_blend_r, config.constant_blend_g, config.constant_blend_b, config.constant_blend_a);
+            glBlendEquationSeparatei(cmd->draw_buffer_index, to_gl_blend_func(config.rgb_equation), to_gl_blend_func(config.alpha_equation));
+            glBlendFuncSeparatei(cmd->draw_buffer_index, to_gl_blend_factor(config.source_blend_rgb), to_gl_blend_factor(config.dest_blend_rgb), to_gl_blend_factor(config.source_blend_alpha), to_gl_blend_factor(config.dest_blend_alpha));
+        }
         return status_type::SUCCESS;
     }
 
     status render_context::execute_config_stencil(const configure_stencil* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config stencil cmd");
         const stencil_config& config = cmd->config;
 
         gl_set_flag(GL_STENCIL_TEST, config.enabled);
         if (!config.enabled) return status_type::SUCCESS;
 
         const GLenum gl_facing = to_gl_stencil_facing(cmd->for_facing);
-        glStencilFuncSeparate(gl_facing, to_gl_stencil_test_func(config.test_func), config.reference, config.test_mask);
-        glStencilMaskSeparate(gl_facing, config.write_mask);
-        glStencilOpSeparate(gl_facing, to_gl_stencil_test_op(config.stencil_fail_op), to_gl_stencil_test_op(config.depth_fail_op), to_gl_stencil_test_op(config.pixel_pass_op));
+
+        {
+            ZoneScopedN("GL calls");
+            glStencilFuncSeparate(gl_facing, to_gl_stencil_test_func(config.test_func), config.reference, config.test_mask);
+            glStencilMaskSeparate(gl_facing, config.write_mask);
+            glStencilOpSeparate(gl_facing, to_gl_stencil_test_op(config.stencil_fail_op), to_gl_stencil_test_op(config.depth_fail_op), to_gl_stencil_test_op(config.pixel_pass_op));
+        }
+
         return status_type::SUCCESS;
     }
 
     status render_context::execute_config_scissor(const configure_scissor_test* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config scissor cmd");
         const scissor_test_config& config = cmd->config;
 
         gl_set_flag(GL_STENCIL_TEST, config.enabled, cmd->viewport_index);
         if (!config.enabled) return status_type::SUCCESS;
 
-        glScissorIndexed(cmd->viewport_index, config.left, config.bottom, config.width, config.height);
+        {
+            ZoneScopedN("GL calls");
+            glScissorIndexed(cmd->viewport_index, config.left, config.bottom, config.width, config.height);
+        }
+
         return status_type::SUCCESS;
     }
 
     status render_context::execute_config_face_cull(const configure_face_cull* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config face cull cmd");
 
         if (cmd->mode == face_cull_mode::DISABLED)
         {
@@ -263,35 +286,41 @@ namespace stardraw::gl45
     status render_context::execute_config_depth_test(const configure_depth_test* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config depth test cmd");
         const depth_test_config& config = cmd->config;
 
         gl_set_flag(GL_DEPTH_TEST, config.enabled);
         if (!config.enabled) return status_type::SUCCESS;
 
-        glDepthFunc(to_gl_depth_test_func(config.test_func));
-        glDepthMask(config.enable_depth_write);
+        {
+            ZoneScopedN("GL calls");
+            glDepthFunc(to_gl_depth_test_func(config.test_func));
+            glDepthMask(config.enable_depth_write);
+        }
         return status_type::SUCCESS;
     }
 
     status render_context::execute_config_depth_range(const configure_depth_range* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config depth range cmd");
 
-        glDepthRangeIndexed(cmd->viewport_index, cmd->near, cmd->far);
+        {
+            ZoneScopedN("GL calls");
+            glDepthRangeIndexed(cmd->viewport_index, cmd->near, cmd->far);
+        }
         return status_type::SUCCESS;
     }
 
     status render_context::execute_config_viewports(const comnfigure_viewports* cmd) const
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute config viewport cmd");
 
         for (u32 idx = 0; idx < cmd->viewports.size(); idx++)
         {
             const viewport_config& config = cmd->viewports[idx];
-            glViewportIndexedf(cmd->first_viewport_index + idx, config.x, config.y, config.width, config.height);
+            {
+                ZoneScopedN("GL calls");
+                glViewportIndexedf(cmd->first_viewport_index + idx, config.x, config.y, config.width, config.height);
+            }
         }
 
         return status_type::SUCCESS;
@@ -300,13 +329,15 @@ namespace stardraw::gl45
     status render_context::execute_clear_window(const clear_window* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute clear window cmd");
 
         const clear_values& config = cmd->config;
-        glClearColor(config.channels.as_f32(0), config.channels.as_f32(1), config.channels.as_f32(2), config.channels.as_f32(3));
-        glClearDepth(config.depth);
-        glClearStencil(config.stencil);
-        glClear(to_gl_clear_mask(cmd->clear_components));
+        {
+            ZoneScopedN("GL calls");
+            glClearColor(config.channels.as_f32(0), config.channels.as_f32(1), config.channels.as_f32(2), config.channels.as_f32(3));
+            glClearDepth(config.depth);
+            glClearStencil(config.stencil);
+            glClear(to_gl_clear_mask(cmd->clear_components));
+        }
 
         return status_type::SUCCESS;
     }
@@ -314,7 +345,6 @@ namespace stardraw::gl45
     status render_context::execute_clear_framebuffer(const clear_framebuffer* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute cleaer framebuffer cmd");
         framebuffer_state* framebuffer;
         status find_framebuffer_status = find_framebuffer_state(cmd->framebuffer, &framebuffer);
         if (find_framebuffer_status.is_error()) return find_framebuffer_status;
@@ -343,7 +373,6 @@ namespace stardraw::gl45
     status render_context::execute_clear_texture(const clear_texture* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute clear texture cmd");
 
         texture_state* texture;
         status find_status = find_texture_state(cmd->texture, &texture);
@@ -355,7 +384,6 @@ namespace stardraw::gl45
     status render_context::execute_compute_dispatch(const dispatch_compute* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute compute shader dispatch cmd");
 
         shader_state* shader;
         status find_status = find_shader_state(cmd->shader, &shader);
@@ -374,7 +402,6 @@ namespace stardraw::gl45
     status render_context::execute_compute_dispatch_indirect(const dispatch_compute_indirect* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute compute shader dispatch indirect");
 
         buffer_state* buffer;
         status find_buffer_status = find_buffer_state(cmd->indirect_buffer, &buffer);
@@ -410,7 +437,6 @@ namespace stardraw::gl45
     status render_context::execute_shader_parameters_upload(const configure_shader* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute shader parameters upload cmd");
 
         shader_state* shader;
         status find_status = find_shader_state(cmd->shader, &shader);
@@ -430,13 +456,15 @@ namespace stardraw::gl45
     status render_context::execute_signal(const signal* cmd)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Execute signal creation cmd");
-        if (signals.contains(cmd->signal_name))
         {
-            glDeleteSync(signals[cmd->signal_name].sync_point);
-        }
+            ZoneScopedN("GL calls");
+            if (signals.contains(cmd->signal_name))
+            {
+                glDeleteSync(signals[cmd->signal_name].sync_point);
+            }
 
-        signals[cmd->signal_name] = { glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)};
+            signals[cmd->signal_name] = {glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0)};
+        }
         return status_type::SUCCESS;
     }
 }

@@ -250,26 +250,29 @@ namespace stardraw::gl45
             const vertex_data_binding& elem = format.bindings[idx];
             GLsizeiptr& offset = buffer_strides[buffer_slots[elem.buffer.name]];
 
-            glEnableVertexArrayAttrib(vao_id, idx);
-            glVertexArrayAttribBinding(vao_id, idx, buffer_slots[elem.buffer.name]);
-            if (elem.instance_divisor > 0)
             {
-                glVertexArrayBindingDivisor(vao_id, idx, elem.instance_divisor);
-            }
+                ZoneScopedN("GL calls");
+                glEnableVertexArrayAttrib(vao_id, idx);
+                glVertexArrayAttribBinding(vao_id, idx, buffer_slots[elem.buffer.name]);
+                if (elem.instance_divisor > 0)
+                {
+                    glVertexArrayBindingDivisor(vao_id, idx, elem.instance_divisor);
+                }
 
-            auto [type, count, normalized, integer] = gl_vertex_element_data_type(elem.type);
+                auto [type, count, normalized, integer] = gl_vertex_element_data_type(elem.type);
 
-            if (integer)
-            {
-                glVertexArrayAttribIFormat(vao_id, idx, count, type, offset);
-            }
-            else if (type == GL_DOUBLE)
-            {
-                glVertexArrayAttribLFormat(vao_id, idx, count, type, offset);
-            }
-            else
-            {
-                glVertexArrayAttribFormat(vao_id, idx, count, type, normalized, offset);
+                if (integer)
+                {
+                    glVertexArrayAttribIFormat(vao_id, idx, count, type, offset);
+                }
+                else if (type == GL_DOUBLE)
+                {
+                    glVertexArrayAttribLFormat(vao_id, idx, count, type, offset);
+                }
+                else
+                {
+                    glVertexArrayAttribFormat(vao_id, idx, count, type, normalized, offset);
+                }
             }
 
             offset += vertex_element_size(elem.type);
