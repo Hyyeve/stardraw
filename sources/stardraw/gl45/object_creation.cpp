@@ -6,8 +6,7 @@
 #include "object_states/framebuffer_state.hpp"
 #include "object_states/texture_sampler_state.hpp"
 #include "stardraw/internal/internal.hpp"
-#include "starlib/general/string.hpp"
-#include "tracy/TracyOpenGL.hpp"
+#include "starlib/utility/string.hpp"
 
 namespace stardraw::gl45
 {

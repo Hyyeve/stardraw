@@ -4,8 +4,8 @@
 
 #include "stardraw/api/render_context.hpp"
 #include "stardraw/api/shaders.hpp"
+#include "starlib/general/gameloop.hpp"
 #include "starlib/general/logger.hpp"
-#include "starlib/types/gameloop.hpp"
 #include "starwin/api/window.hpp"
 #include "tracy/Tracy.hpp"
 
@@ -159,13 +159,24 @@ int main()
     {
         logger.log_info({"meow", ""}, "meow!");
     }
-    logger.flush_logs();
+
+    wind->callbacks.on_input_events = [&logger, wind](window*, const std::vector<input_event>& events)
+    {
+        for (const input_event& event : events)
+        {
+            if (event.device_type == input_device_type::keyboard && event.input_control_name != input_control_type::mouse_horizontal_pos && event.input_control_name != input_control_type::mouse_vertical_pos)
+            {
+                logger.log_info({"meow", ""}, wind->get_input_control_name(event.input_control_id), " : ", event.value);
+            }
+        }
+    };
 
     starlib::gameloop loop {
         .target_fps = 93,
-        .update = [wind](const gameloop::loop_data& data)
+        .update = [wind, &logger](const gameloop::loop_data& data)
         {
             wind->poll();
+            logger.flush_logs();
 
             if (wind->is_close_requested())
             {

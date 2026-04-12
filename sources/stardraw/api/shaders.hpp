@@ -4,9 +4,9 @@
 #include <vector>
 
 #include "memory_transfer.hpp"
-#include "starlib/types/graphics.hpp"
-#include "starlib/types/starlib_stdint.hpp"
-#include "starlib/types/status.hpp"
+#include "starlib/general/graphics.hpp"
+#include "starlib/general/stdint.hpp"
+#include "starlib/general/status.hpp"
 
 namespace stardraw
 {

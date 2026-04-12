@@ -2,8 +2,7 @@
 
 #include "api_conversion.hpp"
 #include "stardraw/internal/internal.hpp"
-#include "starlib/general/string.hpp"
-#include "tracy/TracyOpenGL.hpp"
+#include "starlib/utility/string.hpp"
 
 namespace stardraw::gl45
 {

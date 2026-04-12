@@ -6,8 +6,8 @@
 #include "common.hpp"
 #include "shaders.hpp"
 #include "shader_parameter_value.hpp"
-#include "starlib/types/polymorphic.hpp"
-#include "starlib/types/starlib_stdint.hpp"
+#include "starlib/utility/polymorphic.hpp"
+#include "starlib/general/stdint.hpp"
 
 namespace stardraw
 {

@@ -2,7 +2,7 @@
 #include <string>
 #include <string_view>
 
-#include "starlib/types/starlib_stdint.hpp"
+#include "starlib/general/stdint.hpp"
 
 namespace stardraw
 {
