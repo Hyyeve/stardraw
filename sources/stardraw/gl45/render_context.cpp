@@ -7,6 +7,7 @@
 #include "object_states/texture_sampler_state.hpp"
 #include "stardraw/internal/internal.hpp"
 #include "starlib/utility/string.hpp"
+#include "tracy/TracyOpenGL.hpp"
 
 namespace stardraw::gl45
 {
@@ -89,7 +90,6 @@ namespace stardraw::gl45
     [[nodiscard]] status render_context::create_objects(const descriptor_list&& descriptors)
     {
         ZoneScoped;
-        TracyGpuZone("[Stardraw] Create object states");
         for (const starlib::polymorphic<descriptor>& descriptor : descriptors)
         {
             const status create_status = create_object(descriptor.ptr());
