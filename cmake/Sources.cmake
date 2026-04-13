@@ -3,6 +3,6 @@ set(H_TARGETS
         stardraw stardraw-demo glad
 )
 
-add_subdirectory(sources/glad)
-add_subdirectory(sources/stardraw)
-add_subdirectory(sources/stardraw-demo)
+add_subdirectory_library(glad sources/glad)
+add_subdirectory_library(stardraw sources/stardraw)
+add_subdirectory_library(stardraw-demo sources/stardraw-demo)

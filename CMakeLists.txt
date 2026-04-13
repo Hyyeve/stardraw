@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.28)
 set(CMAKE_DEBUG_POSTFIX "-debug")
 
+# Checks if a target already exists, and includes the subdirectory if not.
+function(add_subdirectory_library target_name path)
+    if (NOT TARGET ${target_name})
+        add_subdirectory(${path})
+    endif ()
+endfunction()
+
 include(cmake/Config.cmake)
 
 project(${H_PROJECT_NAME} VERSION ${H_PROJECT_VERSION} DESCRIPTION ${H_PROJECT_DESCRIPTION} LANGUAGES CXX)
