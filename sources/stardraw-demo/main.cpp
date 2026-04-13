@@ -6,6 +6,7 @@
 #include "stardraw/api/shaders.hpp"
 #include "starlib/general/gameloop.hpp"
 #include "starlib/general/logger.hpp"
+#include "starlib/general/resource_manager.hpp"
 #include "starwin/api/window.hpp"
 #include "tracy/Tracy.hpp"
 
@@ -17,6 +18,8 @@ memory_layout_info uniforms_layout;
 
 shader_stage frag_shader;
 shader_stage vert_shader;
+
+stardraw::shader_compiler_context* shader_ctx;
 
 std::vector<shader_stage> load_shader()
 {
@@ -31,14 +34,14 @@ std::vector<shader_stage> load_shader()
     shader_program linked_shader;
 
     ///Init the internal compiler session & load the source
-    status init_status = stardraw::setup_shader_compiler();
-    status load_status = stardraw::load_shader_module(buffer.str(), main_module);
+    status init_status = stardraw::shader_compiler_context::create(shader_ctx);
+    status load_status = shader_ctx->load_shader_module(buffer.str(), main_module);
 
     ///Create entry points and link them into a shader program
     shader_entry_point vert_entry_point = {main_module, "vertexMain"};
     shader_entry_point frag_entry_point = {main_module, "fragmentMain"};
 
-    status link_status_vtx = stardraw::link_shader_program(
+    status link_status_vtx = shader_ctx->link_shader_program(
         {
             vert_entry_point,
             frag_entry_point,
@@ -47,11 +50,11 @@ std::vector<shader_stage> load_shader()
     );
 
     ///Get individual stages from the linked program
-    status vtx_load_status = stardraw::create_shader_stage(linked_shader, vert_entry_point, graphics_api::GL45, vert_shader);
-    status frg_load_status = stardraw::create_shader_stage(linked_shader, frag_entry_point, graphics_api::GL45, frag_shader);
+    status vtx_load_status = shader_ctx->create_shader_stage(linked_shader, vert_entry_point, graphics_api::GL45, vert_shader);
+    status frg_load_status = shader_ctx->create_shader_stage(linked_shader, frag_entry_point, graphics_api::GL45, frag_shader);
 
     ///Get the buffer layout of our uniform buffer
-    status layout_create = stardraw::determine_shader_buffer_layout(frag_shader, "uniforms", uniforms_layout);
+    status layout_create = shader_ctx->determine_shader_buffer_layout(frag_shader, "uniforms", uniforms_layout);
 
     return {vert_shader, frag_shader};
 }
@@ -196,7 +199,7 @@ int main()
 
     loop.run();
 
-    status cleanup_status = stardraw::cleanup_shader_compiler();
+    delete shader_ctx;
 
     return 0;
 }

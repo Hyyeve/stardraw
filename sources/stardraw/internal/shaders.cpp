@@ -38,10 +38,19 @@ namespace stardraw
         std::unordered_map<shader_entry_point, u32> entry_point_indexes;
     };
 
-    static slang::IGlobalSession* global_slang_context;
-    static slang::ISession* active_slang_session;
-    static std::vector<Slang::ComPtr<slang::IComponentType>> linked_programs;
+    struct shader_compiler_context::shader_compiler_context_internal
+    {
+        slang::IGlobalSession* context = nullptr;
+        slang::ISession* session = nullptr;
+        std::vector<Slang::ComPtr<slang::IComponentType>> linked_programs;
 
+        ~shader_compiler_context_internal()
+        {
+            ZoneScoped;
+            if (session != nullptr) session->release();
+            if (context != nullptr) context->release();
+        }
+    };
 
     int get_target_index_for_api(const graphics_api& api)
     {
@@ -57,21 +66,21 @@ namespace stardraw
         return -1;
     }
 
-    status setup_shader_compiler(const std::vector<shader_macro>& macro_defines)
+    starlib::status cleanup_shader_compiler()
+    {
+        return status_type::SUCCESS;
+    }
+
+    starlib::status shader_compiler_context::create(shader_compiler_context*& out_context, const std::vector<shader_macro>& macro_defines)
     {
         ZoneScoped;
-        if (global_slang_context == nullptr)
-        {
-            const SlangResult result = slang::createGlobalSession(&global_slang_context);
-            if (SLANG_FAILED(result)) return {status_type::BACKEND_ERROR, "Slang context creation failed"};
-        }
+        shader_compiler_context::shader_compiler_context_internal* internal_ctx = new shader_compiler_context::shader_compiler_context_internal();
 
-        if (active_slang_session != nullptr)
+        const SlangResult result = slang::createGlobalSession(&internal_ctx->context);
+        if (SLANG_FAILED(result))
         {
-            const SlangResult delete_result = active_slang_session->release();
-            delete active_slang_session;
-
-            if (SLANG_FAILED(delete_result)) return {status_type::BACKEND_ERROR, "Deleting previous slang session failed"};
+            delete internal_ctx;
+            return {status_type::BACKEND_ERROR, "Slang context creation failed"};
         }
 
         std::vector<slang::CompilerOptionEntry> compiler_options;
@@ -91,7 +100,7 @@ namespace stardraw
         const static std::array slang_targets = {
             slang::TargetDesc {
                 .format = SlangCompileTarget::SLANG_SPIRV,
-                .profile = global_slang_context->findProfile("spirv_latest"),
+                .profile = internal_ctx->context->findProfile("spirv_latest"),
             },
         };
 
@@ -104,32 +113,26 @@ namespace stardraw
         session_desc.searchPaths = nullptr;
         session_desc.searchPathCount = 0;
 
-        const SlangResult session_creation = global_slang_context->createSession(session_desc, &active_slang_session);
-        if (SLANG_FAILED(session_creation)) return {status_type::BACKEND_ERROR, "Slang session creation failed"};
+        const SlangResult session_creation = internal_ctx->context->createSession(session_desc, &internal_ctx->session);
+        if (SLANG_FAILED(session_creation))
+        {
+            delete internal_ctx;
+            return {status_type::BACKEND_ERROR, "Slang session creation failed"};
+        }
 
+        out_context = new shader_compiler_context;
+        out_context->internal.reset(std::move(internal_ctx));
         return status_type::SUCCESS;
     }
 
-    starlib::status cleanup_shader_compiler()
+    status shader_compiler_context::load_shader_module(const std::string_view& source, shader_module& out_shader_module) const
     {
         ZoneScoped;
-        if (active_slang_session == nullptr) return {status_type::NOTHING_TO_DO, "Shader compiler not initialized"};
-        linked_programs.clear();
-        active_slang_session->release();
-        global_slang_context->release();
-        active_slang_session = nullptr;
-        global_slang_context = nullptr;
-        return status_type::SUCCESS;
-    }
-
-    status load_shader_module(const std::string_view& source, shader_module& out_shader_module)
-    {
-        ZoneScoped;
-        if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
+        if (this->internal->session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         constexpr std::hash<std::string_view> hash;
         const std::string fake_path = std::format("module_{0}.fakepath", hash(source));
         Slang::ComPtr<slang::IBlob> diagnostics;
-        const Slang::ComPtr module(active_slang_session->loadModuleFromSourceString(fake_path.c_str(), fake_path.c_str(), source.data(), diagnostics.writeRef()));
+        const Slang::ComPtr module(this->internal->session->loadModuleFromSourceString(fake_path.c_str(), fake_path.c_str(), source.data(), diagnostics.writeRef()));
 
         if (diagnostics)
         {
@@ -148,14 +151,14 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
-    status load_shader_module(const void* cache_ptr, const u64 cache_size, shader_module& out_shader_module)
+    status shader_compiler_context::load_shader_module(const void* cache_ptr, const u64 cache_size, shader_module& out_shader_module) const
     {
         ZoneScoped;
-        if (active_slang_session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
+        if (this->internal->session == nullptr) return {status_type::INVALID, "Shader compiler not initialized"};
         const std::string fake_path = std::format("module_{0}.fakepath", std::hash<const void*>()(cache_ptr));
         Slang::ComPtr<slang::IBlob> diagnostics;
 
-        const Slang::ComPtr module(active_slang_session->loadModuleFromIRBlob(fake_path.c_str(), fake_path.c_str(), slang_createBlob(cache_ptr, cache_size), diagnostics.writeRef()));
+        const Slang::ComPtr module(this->internal->session->loadModuleFromIRBlob(fake_path.c_str(), fake_path.c_str(), slang_createBlob(cache_ptr, cache_size), diagnostics.writeRef()));
 
         if (diagnostics)
         {
@@ -173,7 +176,7 @@ namespace stardraw
         return status_type::SUCCESS;
     }
 
-    status cache_shader_module(const shader_module& module, void*& out_cache_ptr, u64& out_cache_size)
+    status shader_compiler_context::cache_shader_module(const shader_module& module, void*& out_cache_ptr, u64& out_cache_size) const
     {
         ZoneScoped;
         if (module.internal == nullptr) return {status_type::UNEXPECTED, "Module is invalid!"};
@@ -193,7 +196,7 @@ namespace stardraw
     }
 
 
-    status link_shader_program(const std::vector<shader_entry_point>& entry_points, shader_program& out_linked_shader, const std::vector<shader_module>& additional_modules)
+    status shader_compiler_context::link_shader_program(const std::vector<shader_entry_point>& entry_points, shader_program& out_linked_shader, const std::vector<shader_module>& additional_modules) const
     {
         ZoneScoped;
         std::vector<slang::IComponentType*> shader_components;
@@ -224,7 +227,7 @@ namespace stardraw
 
         {
             Slang::ComPtr<slang::IBlob> diagnostics;
-            active_slang_session->createCompositeComponentType(shader_components.data(), shader_components.size(), composite.writeRef(), diagnostics.writeRef());
+            this->internal->session->createCompositeComponentType(shader_components.data(), shader_components.size(), composite.writeRef(), diagnostics.writeRef());
 
             if (diagnostics)
             {
@@ -246,7 +249,7 @@ namespace stardraw
             }
         }
 
-        linked_programs.push_back(linked_program); //We need to hang on to the references so the lifetimes of pointers obtained via the linked program are kept alive until the shader compiler is cleaned up.
+        internal->linked_programs.push_back(linked_program); //We need to hang on to the references so the lifetimes of pointers obtained via the linked program are kept alive until the shader compiler is cleaned up.
         out_linked_shader = shader_program(std::make_unique<shader_program::shader_program_internal>(linked_program, std::move(entry_point_index_map)));
         return status_type::SUCCESS;
     }
@@ -263,7 +266,7 @@ namespace stardraw
         }
     }
 
-    status create_shader_stage(const shader_program& linked_shader, const shader_entry_point& entry_point, const graphics_api& api, shader_stage& out_shader_stage)
+    status shader_compiler_context::create_shader_stage(const shader_program& linked_shader, const shader_entry_point& entry_point, const graphics_api& api, shader_stage& out_shader_stage) const
     {
         ZoneScoped;
         if (linked_shader.internal == nullptr) return {status_type::UNEXPECTED, "Linked shader program is not valid!"};
@@ -420,6 +423,8 @@ namespace stardraw
         return result;
     }
 
+    shader_compiler_context::~shader_compiler_context() = default;
+
     bool is_single_element_container_kind(const slang::TypeReflection::Kind kind)
     {
         switch (kind)
@@ -573,7 +578,7 @@ namespace stardraw
 
     shader_stage::~shader_stage() = default;
 
-    status determine_shader_buffer_layout(const shader_stage& program, const std::string_view& buffer_name, memory_layout_info& out_buffer_layout)
+    status shader_compiler_context::determine_shader_buffer_layout(const shader_stage& program, const std::string_view& buffer_name, memory_layout_info& out_buffer_layout) const
     {
         ZoneScoped;
         if (program.internal == nullptr) return {status_type::UNEXPECTED, "Shader program is not valid!"};
@@ -615,6 +620,9 @@ namespace stardraw
 
         return status_type::SUCCESS;
     }
+
+    shader_compiler_context::shader_compiler_context()
+    {}
 
     bool does_slang_type_consume_bindings(slang::TypeLayoutReflection* type)
     {
